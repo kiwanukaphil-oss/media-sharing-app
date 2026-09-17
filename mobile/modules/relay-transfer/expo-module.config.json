@@ -1,0 +1,10 @@
+{
+  "platforms": ["android", "apple"],
+  "apple": {
+    "appDelegateSubscribers": ["RelayTransferAppDelegate"],
+    "modules": ["RelayTransferModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.relaytransfer.RelayTransferModule"]
+  }
+}

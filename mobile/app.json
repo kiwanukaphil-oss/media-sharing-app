@@ -1,0 +1,51 @@
+{
+    "expo":  {
+                 "name":  "Relay",
+                 "slug":  "relay-media-exchange",
+                 "version":  "1.0.0",
+                 "orientation":  "portrait",
+                 "icon":  "./assets/icon.png",
+                 "userInterfaceStyle":  "light",
+                 "ios":  {
+                             "supportsTablet":  true,
+                             "bundleIdentifier":  "app.relay.media",
+                             "infoPlist":  {
+                                               "NSPhotoLibraryAddUsageDescription":  "Save your original photos and videos to Photos."
+                                           }
+                         },
+                 "android":  {
+                                 "adaptiveIcon":  {
+                                                      "backgroundColor":  "#E6F4FE",
+                                                      "foregroundImage":  "./assets/android-icon-foreground.png",
+                                                      "backgroundImage":  "./assets/android-icon-background.png",
+                                                      "monochromeImage":  "./assets/android-icon-monochrome.png"
+                                                  },
+                                 "predictiveBackGestureEnabled":  false,
+                                 "package":  "app.relay.media",
+                                 "allowBackup":  false
+                             },
+                 "web":  {
+                             "favicon":  "./assets/favicon.png"
+                         },
+                 "scheme":  "relay",
+                 "plugins":  [
+                                 [
+                                     "expo-build-properties",
+                                     {
+                                         "android":  {
+                                                         "minSdkVersion":  29
+                                                     }
+                                     }
+                                 ],
+                                 [
+                                     "expo-camera",
+                                     {
+                                         "cameraPermission":  "Scan your Relay pairing QR code.",
+                                         "recordAudioAndroid":  false
+                                     }
+                                 ],
+                                 "expo-document-picker",
+                                 "./plugins/with-bundled-preview"
+                             ]
+             }
+}
