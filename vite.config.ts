@@ -1,6 +1,7 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
+import runtimePolicy from "./deploy/runtime-policy.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { sites } from "./build/sites-vite-plugin";
 
@@ -14,7 +15,9 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const managedLinux = readExecutionProfile() === "managed-linux";
 
 const localBindingConfig = {
-  main: "vinext/server/fetch-handler",
+  ratelimits: runtimePolicy.ratelimits.map(binding => ({ ...binding, simple: { ...binding.simple, period: 60 as const } })),
+  // The wrapper applies security policy even to framework errors and special routes.
+  main: "./worker.ts",
   compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [

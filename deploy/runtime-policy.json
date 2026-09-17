@@ -1,0 +1,47 @@
+{
+  "ratelimits": [
+    {
+      "name": "API_RATE_LIMIT",
+      "namespace_id": "9172601",
+      "simple": {
+        "limit": 1800,
+        "period": 60
+      }
+    },
+    {
+      "name": "PAIR_RATE_LIMIT",
+      "namespace_id": "9172602",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    },
+    {
+      "name": "DEVICE_RATE_LIMIT",
+      "namespace_id": "9172603",
+      "simple": {
+        "limit": 600,
+        "period": 60
+      }
+    },
+    {
+      "name": "WRITE_RATE_LIMIT",
+      "namespace_id": "9172604",
+      "simple": {
+        "limit": 120,
+        "period": 60
+      }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": false
+    }
+  }
+}

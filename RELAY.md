@@ -71,6 +71,8 @@ Without production signing settings, the hosted adapter fails closed. It never s
 
 ## Boundaries and remaining work
 
+The subsequent hardening deployment and operational readiness status are recorded in [PRODUCTION-RUNBOOK.md](./docs/PRODUCTION-RUNBOOK.md). Cloudflare currently identifies this hosting account as Workers Free; do not assume an existing payment on another account covers this deployment. Alert delivery, independent media-backup policy and physical iPhone validation are not yet signed off.
+
 - Native Android and iOS transfer source now lives in [mobile](./mobile/README.md). Android builds and has passed real-device pairing, background multipart upload, verified gallery/download saving, and app force-stop recovery tests. iOS requires Mac compilation and device validation. Dedicated capture and original-resource extraction remain pending. Browser uploads cannot promise to survive closing the tab, and web downloads cannot silently write to Photos.
 - Supported images use separate lightweight thumbnails. Older files and unsupported formats use placeholders until explicitly previewed. Live Photo/RAW grouping and video-poster extraction remain outside this web release.
 - The feed loads 48 files per page with Load more, stable cursors, and search across the entire shared space.

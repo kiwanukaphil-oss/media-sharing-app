@@ -35,6 +35,7 @@ export function assertSameOrigin(request: Request) {
 }
 // Bound metadata bodies while reading so oversized requests cannot exhaust the Worker heap.
 export async function readJson<T extends z.ZodTypeAny>(request: Request, schema: T): Promise<z.infer<T>> {
+  if (Number(request.headers.get("Content-Length")) > 1024 * 1024) throw new ApiError(413, "This request is too large.");
   if (!request.body) throw new ApiError(400, "Request details are missing.");
   const reader = request.body.getReader();
   const decoder = new TextDecoder();
@@ -44,7 +45,7 @@ export async function readJson<T extends z.ZodTypeAny>(request: Request, schema:
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > 1024 * 1024) { await reader.cancel(); throw new ApiError(413, "This request is too large."); }
+    if (size > 1024 * 1024) { reader.releaseLock(); throw new ApiError(413, "This request is too large."); }
     raw += decoder.decode(value, { stream: true });
   }
   raw += decoder.decode();
@@ -76,7 +77,7 @@ export function attachmentName(name: string) {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, c => `%${c.charCodeAt(0).toString(16)}`)}`;
 }
 // Sign only the server-selected object and operation; callers cannot choose a bucket or key.
-export async function signedObjectUrl(key: string, method: "GET" | "PUT", parameters: Record<string, string> = {}) {
+export async function signedObjectUrl(key: string, method: "GET" | "PUT", parameters: Record<string, string> = {}, expectedBytes?: number) {
   const { R2_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
   if (!R2_ACCOUNT_ID || !R2_BUCKET_NAME || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
     throw new ApiError(503, "Direct transfers are not connected yet.");
@@ -85,7 +86,8 @@ export async function signedObjectUrl(key: string, method: "GET" | "PUT", parame
   url.searchParams.set("X-Amz-Expires", "3600");
   for (const [name, value] of Object.entries(parameters)) url.searchParams.set(name, value);
   const client = new AwsClient({ accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY, service: "s3", region: "auto" });
-  return (await client.sign(url, { method, aws: { signQuery: true } })).url;
+  // Signing Content-Length binds each upload URL to its reserved part size; browsers supply this header for Blob bodies.
+  return (await client.sign(url, { method, ...(expectedBytes === undefined ? {} : { headers: { "Content-Length": String(expectedBytes) } }), aws: { signQuery: true, allHeaders: expectedBytes !== undefined } })).url;
 }
 export const uploadSchema = z.object({
   id: z.string().uuid(), name: z.string().min(1).max(240).refine(name => !/[\u0000-\u001f/\\]/.test(name)),
@@ -112,6 +114,14 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
       WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?`)
       .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), device.space_id, input.size, spaceLimitBytes()).run();
     if (!reserved.meta.changes) throw new ApiError(507, "This space has reached its 100 GB limit. Empty Trash or cancel unfinished uploads in Storage to make room.");
-  } catch (error) { await upload.abort(); throw error; }
+  } catch (error) {
+    await upload.abort();
+    // Two retries may initialize the same UUID concurrently; reuse the winning immutable manifest.
+    const winner = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
+    if (winner && winner.device_id === device.id && winner.sha256 === input.sha256 && winner.size === input.size && ["uploading", "ready"].includes(winner.status) && !winner.archived_at) {
+      return { id: winner.id, partSize: winner.part_size, status: winner.status, uploadId: winner.upload_id };
+    }
+    throw error;
+  }
   return { id: input.id, partSize: PART_SIZE, status: "uploading", uploadId: upload.uploadId };
 }

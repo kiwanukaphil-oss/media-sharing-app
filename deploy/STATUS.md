@@ -4,7 +4,8 @@ Updated 2026-09-17. User selected direct Cloudflare hosting and authorized conti
 
 - URL: https://relay-media-exchange.kiwanukaphil.workers.dev
 - Worker: `relay-media-exchange`
-- Web release version: `abb8d007-f788-4393-bc13-11f4e8fb1e58` (17 September 2026).
+- Current hardening version: `279fd194-3c83-4ea2-8ea4-1ed4bb0199d9` (17 September 2026), 100% deployment verified. Previous web release: `abb8d007-f788-4393-bc13-11f4e8fb1e58`.
+- Hosting account is currently Workers Free according to Cloudflare's deployment API. No plan upgrade was made; the owner's existing $5 subscription needs reconciliation before paid-plan capacity is assumed.
 - R2: `relay-media-originals` (private)
 - D1: `relay-media`, resource identity in `cloudflare.json`
 - Schema: `drizzle/0000_purple_chamber.sql` applied remotely once; additive migrations 0001_late_beyonder.sql and 0002_lush_karma.sql are also applied. Never replay these files.
@@ -19,6 +20,8 @@ Updated 2026-09-17. User selected direct Cloudflare hosting and authorized conti
 ## Web release and handoff
 
 Web validation details and reproducible checks: [docs/WEB-VALIDATION.md](../docs/WEB-VALIDATION.md). Hosted web and direct multipart verification passed after migration and deployment.
+
+Production-hardening controls and recovery instructions are in [PRODUCTION-RUNBOOK.md](../docs/PRODUCTION-RUNBOOK.md). Patched dependencies, rate limits, health checks, security headers, signed part-size enforcement and redacted error logs are deployed. The owner approved publishing the GitHub checks and health workflows; alert delivery is not yet verified. Independent media backups and physical iPhone checks remain outstanding decisions/validation.
 
 The web release adds paginated/searchable feeds, separate image thumbnails, 100 GiB quotas with atomic reservations, Trash/restore/permanent deletion, upload cancellation/restart, download progress/cancellation, and invitation expiry feedback. Local API/integrity tests and Chrome, Edge, Firefox, and WebKit flows passed. Native source is unchanged in this phase.
 

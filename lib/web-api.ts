@@ -49,11 +49,12 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
   if (item.status !== "ready" || item.archived_at) throw new ApiError(409, "This original is not available for preview.");
   if (item.preview_ready) return Response.json({ ready: true });
   if (request.headers.get("Content-Type") !== "image/jpeg" || !request.body) throw new ApiError(415, "Use a JPEG preview.");
+  if (Number(request.headers.get("Content-Length")) > 250000) throw new ApiError(413, "Preview is too large.");
   const reader = request.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;
   for (;;) {
     const { value, done } = await reader.read(); if (done) break;
     size += value.byteLength;
-    if (size > 250000) { await reader.cancel(); throw new ApiError(413, "Preview is too large."); }
+    if (size > 250000) { reader.releaseLock(); throw new ApiError(413, "Preview is too large."); }
     chunks.push(value);
   }
   const bytes = new Uint8Array(size); let offset = 0;
