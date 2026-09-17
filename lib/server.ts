@@ -64,7 +64,8 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
   if (!device) throw new ApiError(401, "This device has been disconnected. Pair it again to continue.");
   return device;
 }
-export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number };
+export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number };
+export function spaceLimitBytes() { return 100 * 1024 * 1024 * 1024; }
 export async function requireMedia(device: ActiveDevice, id: string, ownerOnly = false) {
   const item = await database().prepare("SELECT * FROM media WHERE id = ? AND space_id = ?").bind(id, device.space_id).first<UploadRow>();
   if (!item || (ownerOnly && item.device_id !== device.id)) throw new ApiError(404, "This file is not available.");
@@ -97,7 +98,8 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
   const existing = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
   if (existing) {
     if (existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size) throw new ApiError(409, "That transfer belongs to a different file.");
-    return { id: existing.id, partSize: existing.part_size, status: existing.status };
+    if (!["ready", "uploading"].includes(existing.status) || existing.archived_at) throw new ApiError(409, "This original was removed from the feed.");
+    return { id: existing.id, partSize: existing.part_size, status: existing.status, uploadId: existing.upload_id };
   }
   const key = `${device.space_id}/${input.id}/original`;
   const upload = await bucket().createMultipartUpload(key, {
@@ -105,9 +107,11 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
     customMetadata: { sha256: input.sha256, filename: input.name },
   });
   try {
-    await database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?)`)
-      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now()).run();
+    const reserved = await database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?
+      WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?`)
+      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), device.space_id, input.size, spaceLimitBytes()).run();
+    if (!reserved.meta.changes) throw new ApiError(507, "This space has reached its 100 GB limit. Empty Trash or cancel unfinished uploads in Storage to make room.");
   } catch (error) { await upload.abort(); throw error; }
-  return { id: input.id, partSize: PART_SIZE, status: "uploading" };
+  return { id: input.id, partSize: PART_SIZE, status: "uploading", uploadId: upload.uploadId };
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { webAction } from "@/lib/web-api";
 import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, sessionCookie, signedObjectUrl, storageMode, tokenHash, uploadSchema } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
@@ -61,13 +62,17 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   if (resource === "access" && method === "GET") return Response.json({ canCreateSpace: isLocal(request) });
   if (resource === "connect" && method === "POST") return connectDevice(request);
   const device = await requireDevice(request);
+  const webResponse = await webAction(request, device, resource, id, action);
+  if (webResponse) return webResponse;
   if (resource === "session" && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name }, deviceId: device.id, transport: storageMode(request) });
-  if (resource === "feed" && method === "GET") {
+  /* Legacy feed query retained as a removal candidate; paginated reads are served by webAction.
+  if (resource === "legacy-feed-disabled" && method === "GET") {
     const result = await database().prepare(`SELECT media.id, media.name, media.mime, media.size, media.sha256, media.category,
       media.created_at AS createdAt, devices.name AS deviceName FROM media JOIN devices ON devices.id = media.device_id
       WHERE media.space_id = ? AND media.status = 'ready' ORDER BY media.created_at DESC LIMIT 200`).bind(device.space_id).all();
     return Response.json({ items: result.results });
   }
+  */
   if (resource === "devices" && method === "GET") {
     const result = await database().prepare("SELECT id, name, created_at AS createdAt FROM devices WHERE space_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at").bind(device.space_id, Date.now()).all<{ id: string; name: string; createdAt: number }>();
     return Response.json({ devices: result.results.map(item => ({ ...item, current: item.id === device.id })) });
@@ -90,7 +95,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   if (resource === "uploads" && id) {
     const item = await requireMedia(device, id, true);
     if (action === "part" && method === "POST") {
-      if (item.status === "ready") throw new ApiError(409, "This file is already available.");
+      if (item.status !== "uploading") throw new ApiError(409, "This transfer is no longer accepting parts.");
       const { number } = await readJson(request, z.object({ number: z.number().int().min(1).max(Math.ceil(item.size / item.part_size)) }));
       const url = storageMode(request) === "local" ? `/api/uploads/${id}/bytes/${number}` : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) });
       return Response.json({ url });
@@ -105,13 +110,21 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     }
     if (action === "complete" && method === "POST") {
       if (item.status === "ready") return Response.json({ ready: true });
+      if (item.status !== "uploading") throw new ApiError(409, "This upload was cancelled.");
       const { parts } = await readJson(request, z.object({ parts: z.array(z.object({ partNumber: z.number().int().positive(), etag: z.string().min(1).max(200) })).max(10000) }));
       const ordered = parts.sort((a, b) => a.partNumber - b.partNumber);
       if (ordered.length !== Math.ceil(item.size / item.part_size) || ordered.some((value, index) => value.partNumber !== index + 1)) throw new ApiError(400, "Some parts are missing. Resume this transfer.");
       let object = await bucket().head(item.object_key);
       if (!object) object = await bucket().resumeMultipartUpload(item.object_key, item.upload_id).complete(ordered);
       if (object.size !== item.size) throw new ApiError(409, "File size did not match. This transfer has not been published.");
-      await database().prepare("UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ?").bind(item.id, device.id).run();
+      const published = await database().prepare("UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ?").bind(item.id, device.id, item.upload_id).run();
+      if (!published.meta.changes) {
+        const latest = await database().prepare("SELECT status FROM media WHERE id = ?").bind(item.id).first<{ status: string }>();
+        if (latest?.status === "ready") return Response.json({ ready: true });
+        // Completion can race an explicit cancellation; remove a late R2 object left by that race.
+        if (!latest || latest.status === "cancelling") await bucket().delete(item.object_key);
+        throw new ApiError(409, "This upload was cancelled or restarted.");
+      }
       return Response.json({ ready: true });
     }
   }

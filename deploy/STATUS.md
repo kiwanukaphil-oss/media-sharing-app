@@ -1,12 +1,13 @@
 # Direct Cloudflare deployment
 
-Updated 2026-09-17. User selected direct Cloudflare hosting and authorized continued deployment work without phase confirmations. Git commits remain unapproved; none have been created.
+Updated 2026-09-17. User selected direct Cloudflare hosting and authorized continued deployment work without phase confirmations. The initial preview was committed and pushed with approval (5ac02fe). The user also approved committing and pushing the tested web release.
 
 - URL: https://relay-media-exchange.kiwanukaphil.workers.dev
 - Worker: `relay-media-exchange`
+- Web release version: `abb8d007-f788-4393-bc13-11f4e8fb1e58` (17 September 2026).
 - R2: `relay-media-originals` (private)
 - D1: `relay-media`, resource identity in `cloudflare.json`
-- Schema: `drizzle/0000_purple_chamber.sql` applied remotely once.
+- Schema: `drizzle/0000_purple_chamber.sql` applied remotely once; additive migrations 0001_late_beyonder.sql and 0002_lush_karma.sql are also applied. Never replay these files.
 - CORS: `r2-cors.json` applied for the exact Worker origin.
 - Initial spaces/invitations: seeded once from ignored `.sites-runtime/cloud-invitations.sql`. Raw invitation material is in ignored `.sites-runtime/cloud-invitations.json`, expires 24 hours after creation, and must not be printed or committed.
 - Live access tests: passed (`tests/hosted-access.mjs`). Anonymous users cannot access feeds/devices or create spaces.
@@ -15,7 +16,11 @@ Updated 2026-09-17. User selected direct Cloudflare hosting and authorized conti
 - Live direct-transfer tests passed: independent pairing, cross-session feed visibility, multipart R2 uploads, CORS preflight/exposed ETags, direct attachment downloads, matching SHA-256, and device revocation.
 - A 16 MiB verification file and test sender device are retained in the isolated `Relay verification` space. The owner's space is separate.
 
-## Handoff and remaining work
+## Web release and handoff
+
+Web validation details and reproducible checks: [docs/WEB-VALIDATION.md](../docs/WEB-VALIDATION.md). Hosted web and direct multipart verification passed after migration and deployment.
+
+The web release adds paginated/searchable feeds, separate image thumbnails, 100 GiB quotas with atomic reservations, Trash/restore/permanent deletion, upload cancellation/restart, download progress/cancellation, and invitation expiry feedback. Local API/integrity tests and Chrome, Edge, Firefox, and WebKit flows passed. Native source is unchanged in this phase.
 
 The owner bootstrap invitation has been opened in the user's Chrome browser to pair “My desktop”. New phones can join through that device's “Pair a device” action. The native Android preview passed real Galaxy S24+ tests for pairing, background multipart uploads, verified gallery/download saving, and force-stop recovery. The test phone is paired to the isolated verification space; use “Pair another space” to join the owner's QR invitation. iOS source requires Mac compilation and device validation. Detailed results: [mobile/VALIDATION.md](../mobile/VALIDATION.md).
 

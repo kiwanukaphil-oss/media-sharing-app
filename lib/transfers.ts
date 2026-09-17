@@ -1,11 +1,12 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { requestJson } from "./api-client";
+import { publishPreview } from "./previews";
 import type { Category, UploadSession } from "./contracts";
 
 export type Transfer = {
   id: string; deviceId: string; name: string; size: number; mime: string; category: Category;
-  hash?: string; partSize?: number; parts: { partNumber: number; etag: string }[];
+  hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
   state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
   progress: number; message?: string;
 };
@@ -38,6 +39,17 @@ export async function restoreTransfers(deviceId: string): Promise<Transfer[]> {
       const reading = db.transaction("transfers").objectStore("transfers").getAll();
       reading.onsuccess = () => resolve((reading.result as Transfer[]).filter(item => item.deviceId === deviceId && item.state !== "complete").map(item => ({ ...item, state: "needs-file", message: "Choose the same file to resume" })));
       reading.onerror = () => reject(reading.error);
+    });
+  } finally { db.close(); }
+}
+// Remove a manifest only after explicit cancellation or dismissing a completed transfer.
+export async function forgetTransfer(id: string) {
+  const db = await openTransferDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction("transfers", "readwrite");
+      transaction.objectStore("transfers").delete(id);
+      transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error);
     });
   } finally { db.close(); }
 }
@@ -84,11 +96,15 @@ export async function uploadOriginal(file: File, initial: Transfer, signal: Abor
   update({ state: "preparing" });
   try {
     const hash = await hashOriginal(file, signal);
-    if (current.hash && current.hash !== hash) throw new Error("This is a different file. Choose the original file to resume.");
+    if (current.hash && current.hash !== hash) {
+      update({ state: "needs-file", message: "This is a different file. Choose the original file to resume." });
+      await persistTransfer(current); return current;
+    }
     update({ hash });
     await persistTransfer(current);
     const session = await requestJson<UploadSession>("uploads", { method: "POST", signal, body: JSON.stringify({ id: current.id, name: current.name, mime: current.mime, size: current.size, category: current.category, sha256: hash }) });
-    update({ partSize: session.partSize, state: "sending" });
+    update({ partSize: session.partSize, state: "sending", uploadId: session.uploadId, ...(current.uploadId && session.uploadId && current.uploadId !== session.uploadId ? { parts: [], progress: 0 } : {}) });
+    await persistTransfer(current);
     const total = Math.ceil(file.size / session.partSize);
     if (session.status !== "ready") {
       for (let number = 1; number <= total; number++) {
@@ -114,6 +130,7 @@ export async function uploadOriginal(file: File, initial: Transfer, signal: Abor
       await requestJson(`uploads/${current.id}/complete`, { method: "POST", signal, body: JSON.stringify({ parts: current.parts }) });
     }
     update({ state: "complete", progress: 100 });
+    await publishPreview(file, current.id, signal);
   } catch (error) {
     update({ state: signal.aborted ? "paused" : "error", message: signal.aborted ? "Ready when you are" : error instanceof Error ? error.message : "Couldn't send this file. Please retry." });
   }

@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import { chromium, expect } from '@playwright/test';
+import { randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+
+const origin = process.env.RELAY_TEST_ORIGIN || 'http://localhost:5173';
+if (!['localhost', '127.0.0.1'].includes(new URL(origin).hostname)) throw new Error('Recovery fixtures require local storage.');
+const browser = await chromium.launch({ channel: 'chrome' });
+const context = await browser.newContext({ acceptDownloads: true });
+await context.addInitScript(() => { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined }); });
+const page = await context.newPage();
+const payload = randomBytes(16 * 1024 * 1024 + 128);
+const source = { name: 'recovery-original.raw', mimeType: 'application/octet-stream', buffer: payload };
+const uploaded = [];
+page.on('response', response => { if (response.url().includes('/bytes/') && response.ok()) uploaded.push(response.url().split('/').at(-1)); });
+try {
+  await page.goto(origin);
+  await page.getByRole('button', { name: 'Create shared space' }).click();
+  await expect(page.getByLabel('Search filenames')).toBeVisible();
+  let blocked;
+  const secondPart = new Promise(resolve => { blocked = resolve; });
+  await page.route('**/bytes/2', route => { blocked(); return route.abort('internetdisconnected'); });
+  await page.getByLabel('Choose original files', { exact: true }).setInputFiles(source);
+  await secondPart;
+  await page.getByRole('button', { name: 'Pause recovery-original.raw', exact: true }).click();
+  await expect(page.getByText('Paused', { exact: true })).toBeVisible();
+  await page.unroute('**/bytes/2');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Resume recovery-original.raw' })).toBeVisible();
+  await page.getByRole('button', { name: 'Resume recovery-original.raw' }).click();
+  const wrong = Buffer.from(payload); wrong[0] ^= 1;
+  await page.getByLabel('Choose file to resume').setInputFiles({ ...source, buffer: wrong });
+  await expect(page.getByText('This is a different file. Choose the original file to resume.')).toBeVisible();
+  await page.getByRole('button', { name: 'Resume recovery-original.raw' }).click();
+  await page.getByLabel('Choose file to resume').setInputFiles(source);
+  const card = page.locator('article').filter({ hasText: source.name });
+  await expect(card).toBeVisible({ timeout: 30000 });
+  assert.equal(uploaded.filter(part => part === '1').length, 1, 'Persisted first part must not upload again');
+  const pending = page.waitForEvent('download');
+  await card.getByRole('button', { name: 'Save to device' }).click();
+  assert.deepEqual(await readFile(await (await pending).path()), payload);
+  console.log('PASS: interrupted multipart upload, reload recovery, wrong-source rejection, completed-part reuse, exact-byte recovered download.');
+} finally { await browser.close(); }

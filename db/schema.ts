@@ -32,6 +32,9 @@ export const media = sqliteTable("media", {
   objectKey: text("object_key").notNull().unique(),
   uploadId: text("upload_id").notNull(),
   partSize: integer("part_size").notNull(),
-  status: text("status", { enum: ["uploading", "ready"] }).notNull(),
+  status: text("status", { enum: ["uploading", "ready", "deleting", "cancelling"] }).notNull(),
+  archivedAt: integer("archived_at"),
+  previewReady: integer("preview_ready").notNull().default(0),
+  previewSize: integer("preview_size").notNull().default(0),
   createdAt: integer("created_at").notNull(),
-}, table => [index("idx_media_space_status_created").on(table.spaceId, table.status, table.createdAt)]);
+}, table => [index("idx_media_space_status_created").on(table.spaceId, table.status, table.createdAt), index("idx_media_feed").on(table.spaceId, table.status, table.archivedAt, table.createdAt, table.id)]);

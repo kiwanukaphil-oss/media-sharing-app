@@ -2,6 +2,8 @@
 
 The app-specific setup, validation results, and remaining phase boundaries are in [RELAY.md](./RELAY.md).
 
+Open [Relay](https://relay-media-exchange.kiwanukaphil.workers.dev). The completed web-release checks and browser boundaries are recorded in [WEB-VALIDATION.md](./docs/WEB-VALIDATION.md).
+
 <!-- Retained starter reference below; candidate for removal after the hosting handoff. -->
 ## Starter reference
 

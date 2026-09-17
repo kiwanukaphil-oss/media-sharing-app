@@ -6,12 +6,12 @@ One shared chronological drop zone has two filters: **Originals** and **Final cu
 
 | Screen | Primary action | Result |
 | --- | --- | --- |
-| First connection | Scan a desktop invitation QR or open its link; Connect | Stores a device credential in secure OS storage. No account or password. |
+| First connection | Scan a desktop invitation QR or open its link; Connect | Stores a persistent HttpOnly browser session; native clients use secure OS storage. No account or password. |
 | Originals | Drop originals; select files in the system picker | Immediately queues selected original files. No separate confirmation screen. |
 | Original card | Save to device | Starts a verified native save, or browser download. |
 | Final cuts | Drop final cuts; select locally edited files | Publishes completed files to every paired device after upload assembly. |
 | Final card | Save to device | Saves locally through the same original-byte pipeline. |
-| Interrupted transfer | Resume | Reuses the persisted upload manifest or partial download. |
+| Interrupted transfer | Resume | Reselect the original after reload; reuse persisted upload parts. |
 
 The two-action constraint applies to normal **in-app** actions after pairing and permissions. Selecting multiple files, operating an OS camera, choosing a save directory, and answering OS permission prompts cannot have an unconditional two-tap total. The app must accurately describe these exceptions instead of suppressing required system consent.
 
@@ -45,7 +45,7 @@ flowchart LR
 
 Preserving the entire byte sequence preserves embedded EXIF, encoded video, color profiles, and other embedded metadata. R2 does not guarantee integrity merely because a URL is signed: validation is a separate responsibility. The current server checks object size, not the whole-object SHA-256; the source and verified download clients perform hashing. Browser-managed downloads do not expose a completion/hash check to the app.
 
-Keep previews separate from originals. A later thumbnail service can generate lightweight display assets, but every Save action must reference the immutable original object. Never regenerate an original from a decoded bitmap, canvas, preview, or edited Photos representation.
+Keep previews separate from originals. The web client generates bounded JPEG thumbnails for supported small images, stored separately. Every Save action references the immutable original object. Never regenerate an original from a decoded bitmap, canvas, preview, or edited Photos representation.
 
 ## Local saving by platform
 
@@ -61,6 +61,8 @@ An existing device creates a short-lived, one-use invitation. The recipient rede
 
 ## Release boundaries
 
-The desktop app is deployed. Android has a locally installable preview; physical-device validation is recorded in [mobile/VALIDATION.md](../mobile/VALIDATION.md). The iOS implementation is source awaiting Mac validation. Dedicated native capture, original-library-resource selection, cache cleanup, pagination beyond 200 feed items, quota enforcement, and app-store distribution remain additional implementation work.
+The desktop app is deployed. Android has a locally installable preview; physical-device validation is recorded in [mobile/VALIDATION.md](../mobile/VALIDATION.md). The iOS implementation is source awaiting Mac validation. The web release includes cursor pagination, filename search, a 100 GiB quota including reservations/previews, Trash/restore, explicit permanent deletion, upload cancellation and restart. No completed original is deleted automatically. Dedicated native capture, original-resource selection, native cache cleanup, and app-store distribution remain separate work.
+
+Web flows passed Chrome, Edge, Firefox, and Playwright WebKit at desktop and 390 px widths. Background tab suspension and direct Photos import remain browser boundaries. WebKit automation does not replace physical Safari/iOS validation.
 
 References: [R2 presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/), [Android user-initiated transfers](https://developer.android.com/develop/background-work/background-tasks/uidt), [Apple background URLSession](https://developer.apple.com/documentation/foundation/downloading-files-in-the-background), [File System Access](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access).
