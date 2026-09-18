@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { build } from 'esbuild';
+const compiled = await build({ entryPoints: ['lib/transfers.ts'], bundle: true, platform: 'node', format: 'esm', write: false });
+const { hashOriginal } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
+const bytes = Buffer.alloc(3 * 1024 * 1024 + 17, 83);
+const file = new File([bytes], 'fixture.raw');
+const progress = [];
+assert.equal(await hashOriginal(file, new AbortController().signal, value => progress.push(value)), createHash('sha256').update(bytes).digest('hex'));
+assert.equal(progress[0], 0);
+assert.equal(progress.at(-1), 100);
+assert.ok(progress.some(value => value > 0 && value < 100));
+assert.deepEqual(progress, [...progress].sort((a, b) => a - b));
+const controller = new AbortController();
+await assert.rejects(hashOriginal(file, controller.signal, value => { if (value > 0) controller.abort(); }), { name: 'AbortError' });
+console.log('Preparation progress, original hash integrity and cancellation passed.');

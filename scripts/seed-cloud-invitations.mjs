@@ -3,6 +3,8 @@ import { mkdir, writeFile, access } from "node:fs/promises";
 
 // Generate bootstrap invitations without putting raw credentials in SQL, logs, or tracked files.
 async function prepareBootstrapInvitations() {
+  // Removal candidate: this pre-role bootstrap is retained as historical reference only.
+  if (!process.argv.includes('--legacy-schema-only')) throw new Error('Legacy bootstrap is disabled for role-aware spaces. Follow the operator recovery procedure instead.');
   const directory = new URL("../.sites-runtime/", import.meta.url);
   const output = new URL("cloud-invitations.json", directory);
   try { await access(output); console.log("Existing invitation material retained; nothing regenerated."); return; } catch {}

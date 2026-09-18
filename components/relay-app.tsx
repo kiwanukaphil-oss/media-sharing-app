@@ -2,13 +2,13 @@
 
 /* eslint-disable @next/next/no-img-element -- Authenticated thumbnails and local QR data URLs must bypass public image optimizers. */
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ImagePlus and Send are retained removal candidates from the earlier UI.
 import { ArrowDown, ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Check, CheckCheck, ChevronRight, CircleHelp, Clapperboard, Copy, FileImage, FileVideo, FolderDown, Grid2X2, ImagePlus, Laptop, Link2, LoaderCircle, MonitorSmartphone, Pause, Play, Plus, Radio, RefreshCw, Send, ShieldCheck, Smartphone, Upload, X } from "lucide-react";
 import QRCode from "qrcode";
 import { requestJson, RequestError } from "@/lib/api-client";
 import { formatBytes, MAX_FILE_SIZE, type Category, type Device, type MediaItem, type Session, type FeedPage, type StorageUsage } from "@/lib/contracts";
-import { persistTransfer, restoreTransfers, forgetTransfer, uploadOriginal, type Transfer } from "@/lib/transfers";
+import { persistTransfer, restoreTransfers, forgetTransfer, forgetDeviceTransfers, uploadOriginal, type Transfer } from "@/lib/transfers";
 import { saveVerifiedOriginal, supportsVerifiedSave } from "@/lib/downloads";
 
 type Filter = "all" | Category | "trash";
@@ -19,20 +19,22 @@ type RelayModelContext = { registerTool: (tool: { name: string; description: str
 // Native dialog supplies focus containment, Escape handling, and a modal accessibility tree.
 function ModalFrame({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => { dialog.current?.showModal(); }, []);
-  return <dialog ref={dialog} onClose={onClose} className="modal" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className="modal-heading"><h2>{title}</h2><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20} /></button></div>
+  return <dialog ref={dialog} aria-labelledby={titleId} onClose={onClose} className="modal" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="modal-heading"><h2 id={titleId}>{title}</h2><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20} /></button></div>
     {children}
   </dialog>;
 }
 
+// A stored video poster is for the grid; opening the file still provides its original player.
 function MediaPreview({ item, large = false }: { item: MediaItem; large?: boolean }) {
   const [failed, setFailed] = useState(false);
   const photo = /^image\/(jpeg|png|webp|gif|avif)$/.test(item.mime);
-  if (!failed && ((large && photo) || item.hasPreview)) return <img loading="lazy" decoding="async" onError={() => setFailed(true)} src={`/api/media/${item.id}/${large ? "preview" : "thumbnail"}`} alt={item.name} className="media-image" />;
-  if (!failed && large && /^video\/(mp4|webm|quicktime)$/.test(item.mime)) return <video controls playsInline preload="metadata" onError={() => setFailed(true)} src={`/api/media/${item.id}/preview`} className="media-image" />;
+  if (!failed && large && /^video\/(mp4|webm|quicktime)$/.test(item.mime)) return <video controls playsInline preload="metadata" aria-label={`Play ${item.name}`} poster={item.hasPreview ? `/api/media/${item.id}/thumbnail` : undefined} onError={() => setFailed(true)} src={`/api/media/${item.id}/preview`} className="media-image" />;
+  if (!failed && ((large && photo) || item.hasPreview)) return <img loading="lazy" decoding="async" onError={() => setFailed(true)} src={`/api/media/${item.id}/${large && photo ? "preview" : "thumbnail"}`} alt={item.name} className="media-image" />;
   const Icon = item.mime.startsWith("video/") ? FileVideo : FileImage;
-  return <div className={`file-preview ${item.mime.startsWith("video/") ? "video-preview" : "raw-preview"}`}><Icon size={large ? 56 : 38} strokeWidth={1.2} /><span>{item.name.split(".").pop()?.toUpperCase() || "ORIGINAL"}</span></div>;
+  return <div className={`file-preview ${item.mime.startsWith("video/") ? "video-preview" : "raw-preview"}`}><Icon size={large ? 56 : 38} strokeWidth={1.2} /><span>{item.name.split(".").pop()?.toUpperCase() || "ORIGINAL"}</span><small>{large ? "Preview unavailable. Save the original to open it." : "Original ready to save"}</small></div>;
 }
 
 // The working surface shares one durable feed; browser storage tracks only this device's queue.
@@ -44,6 +46,9 @@ export default function RelayApp() {
   const [total, setTotal] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [feedBusy, setFeedBusy] = useState(false);
+  const [loadedQuery, setLoadedQuery] = useState("");
+  const [feedFailure, setFeedFailure] = useState<{ query: string; message: string } | null>(null);
+  const [sessionFailure, setSessionFailure] = useState(false);
   const [search, setSearch] = useState("");
   const [storage, setStorage] = useState<StorageUsage | null>(null);
   const [online, setOnline] = useState(true);
@@ -62,6 +67,7 @@ export default function RelayApp() {
   const [qr, setQr] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [deviceAccessBusy, setDeviceAccessBusy] = useState(false);
   const [canCreateSpace, setCanCreateSpace] = useState(false);
   const [verifiedSaveAvailable, setVerifiedSaveAvailable] = useState(false);
   const [savingVerified, setSavingVerified] = useState(false);
@@ -77,21 +83,30 @@ export default function RelayApp() {
   const runningTransfers = useRef(new Set<string>());
   const cancelledTransfers = useRef(new Set<string>());
   const dragDepth = useRef(0);
-  const feedQuery = useRef("category=all");
+  const feedQuery = useRef("category=all&q=");
   const pageDepth = useRef(1);
   const feedRevision = useRef(0);
 
   // Refresh every loaded page with stable cursors, keeping filters and cross-device changes consistent.
   const refreshFeed = useCallback(async () => {
     const revision = ++feedRevision.current;
-    let cursor: string | null = null; const collected: MediaItem[] = []; let result: FeedPage;
-    for (let page = 0; page < pageDepth.current; page++) {
-      result = await requestJson<FeedPage>(`feed?${feedQuery.current}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
-      collected.push(...result.items); cursor = result.nextCursor;
-      if (!cursor) break;
+    const query = feedQuery.current;
+    try {
+      let cursor: string | null = null; const collected: MediaItem[] = []; let result: FeedPage;
+      for (let page = 0; page < pageDepth.current; page++) {
+        result = await requestJson<FeedPage>(`feed?${query}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+        collected.push(...result.items); cursor = result.nextCursor;
+        if (!cursor) break;
+      }
+      if (revision !== feedRevision.current) return;
+      setLoadedQuery(query); setFeedFailure(null);
+      setItems(collected); setCounts(result!.counts); setTotal(result!.total); setNextCursor(cursor); setOnline(true);
+      setSession(current => current && current.role !== result!.role ? { ...current, role: result!.role } : current);
+    } catch (failure) {
+      if (revision !== feedRevision.current) return;
+      setFeedFailure({ query, message: failure instanceof Error ? failure.message : "Couldn't load files." });
+      throw failure;
     }
-    if (revision !== feedRevision.current) return;
-    setItems(collected); setCounts(result!.counts); setTotal(result!.total); setNextCursor(cursor); setOnline(true);
   }, []);
   async function loadMore() {
     setFeedBusy(true); pageDepth.current++;
@@ -105,7 +120,7 @@ export default function RelayApp() {
   }, []);
   // Recover the paired session and unfinished manifests without creating a space implicitly.
   const loadSession = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setSessionFailure(false); setError("");
     try {
       const response = await fetch("/api/session");
       if (response.status === 401) {
@@ -118,9 +133,9 @@ export default function RelayApp() {
       if (!response.ok) throw new Error(body.error);
       const current = body as Session;
       setSession(current);
-      await Promise.all([refreshFeed(), refreshDevices(), refreshStorage()]);
       setTransfers(await restoreTransfers(current.deviceId));
-    } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't open this space."); }
+      await Promise.all([refreshFeed(), refreshDevices(), refreshStorage()]);
+    } catch (failure) { setSessionFailure(true); setError(failure instanceof Error ? failure.message : "Couldn't open this space."); }
     finally { setLoading(false); }
   }, [refreshDevices, refreshFeed, refreshStorage]);
 
@@ -138,7 +153,7 @@ export default function RelayApp() {
   useEffect(() => {
     if (!session) return;
     const timer = setInterval(() => { if (document.visibilityState === "visible") void refreshFeed().catch(failure => {
-      setOnline(false);
+      setOnline(navigator.onLine);
       if (failure instanceof RequestError && failure.status === 401) { setSession(null); setItems([]); setError(failure.message); }
     }); }, 10000);
     return () => clearInterval(timer);
@@ -148,7 +163,7 @@ export default function RelayApp() {
     const timer = setTimeout(() => {
       feedQuery.current = new URLSearchParams({ category: filter, q: search }).toString();
       pageDepth.current = 1; setFeedBusy(true);
-      void refreshFeed().catch(failure => setError(failure.message)).finally(() => setFeedBusy(false));
+      void refreshFeed().catch(() => {}).finally(() => setFeedBusy(false));
     }, search ? 250 : 0);
     return () => clearTimeout(timer);
   }, [filter, search, session, refreshFeed]);
@@ -217,7 +232,7 @@ export default function RelayApp() {
   }
   // Persist source manifests before queueing so reloads can recover unfinished work.
   async function selectOriginals(selected: FileList | File[]) {
-    if (!session) return;
+    if (!session || filter === "trash") return;
     for (const file of Array.from(selected)) {
       if (!file.size || file.size > MAX_FILE_SIZE) { setError(`${file.name}: choose a file between 1 byte and 100 GB.`); continue; }
       const transfer: Transfer = { id: crypto.randomUUID(), deviceId: session.deviceId, name: file.name, size: file.size, mime: file.type || "application/octet-stream", category: filter === "final" ? "final" : "original", parts: [], state: "queued", progress: 0 };
@@ -243,8 +258,38 @@ export default function RelayApp() {
     finally { setInviteBusy(false); }
   }
   async function disconnectDevice(id: string) {
-    try { await requestJson(`devices/${id}`, { method: "DELETE" }); await refreshDevices(); }
+    const target = devices.find(device => device.id === id);
+    if (!target || !window.confirm(`Disconnect ${target.name}? It will need a new invitation to return. Download links already issued may work for up to one hour.`)) return;
+    setDeviceAccessBusy(true); setError("");
+    try { await requestJson(`devices/${id}`, { method: "DELETE" }); await refreshDevices(); setNotice("Device disconnected."); }
     catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't disconnect this device."); }
+    finally { setDeviceAccessBusy(false); }
+  }
+  // Ownership changes are explicit; the server atomically prevents removal of the final owner.
+  async function changeDeviceRole(target: Device) {
+    const role = target.role === "owner" ? "member" : "owner";
+    if (!window.confirm(`Make ${target.name} ${role === "owner" ? "an owner" : "a member"}? ${role === "owner" ? "Owners can remove shared files, invite devices, and manage access." : "Members can upload and save files, but cannot manage shared files or access."}`)) return;
+    setDeviceAccessBusy(true); setError("");
+    try {
+      await requestJson(`devices/${target.id}/role`, { method: "PUT", body: JSON.stringify({ role }) });
+      await refreshDevices(); setNotice(`Device is now ${role === "owner" ? "an owner" : "a member"}.`);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't change this device's role."); }
+    finally { setDeviceAccessBusy(false); }
+  }
+  // Revoke access before clearing local state; stop queued work so it cannot repopulate the private manifest store.
+  async function disconnectThisDevice() {
+    if (!session || !window.confirm("Disconnect this device? You will need a new invitation to return. Unfinished transfers will stop; their reservations can be cancelled from Storage on another owner device. Files already shared stay available.")) return;
+    setDeviceAccessBusy(true); setError("");
+    try {
+      await requestJson("session", { method: "DELETE" });
+      controllers.current.forEach(controller => controller.abort());
+      download?.controller.abort();
+      await Promise.allSettled([...transferTasks.current.values()]);
+      try { await forgetDeviceTransfers(session.deviceId); }
+      catch { /* Access is already revoked; browser storage may be unavailable. */ }
+      window.location.replace("/");
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't disconnect. Please retry."); }
+    finally { setDeviceAccessBusy(false); }
   }
   async function saveOriginal(item: MediaItem) {
     setModal(null);
@@ -296,56 +341,88 @@ export default function RelayApp() {
       await persistTransfer(restarted); updateTransfer(restarted); resumeTransfer(restarted);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't restart this transfer."); }
   }
-  const visibleItems = items;
+  const desiredQuery = new URLSearchParams({ category: filter, q: search }).toString();
+  const feedReady = loadedQuery === desiredQuery;
+  const currentFeedFailure = feedFailure?.query === desiredQuery ? feedFailure.message : "";
+  const visibleItems = feedReady ? items : [];
   const activeTransfers = transfers.filter(item => item.state !== "complete");
   const originalCount = counts.original;
   const finalCount = counts.final;
   const pageTitle = filter === "all" ? "Shared drop zone" : filter === "original" ? "Originals" : filter === "trash" ? "Trash" : "Final cuts";
   const invitationRequired = !session && !invitation && !canCreateSpace;
+  const isOwner = session?.role === "owner";
+  const isLastOwner = isOwner && !devices.some(device => !device.current && device.role === "owner");
 
-  return <div className="app-shell" onDragEnter={event => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); dragDepth.current++; setDragging(true); } }} onDragOver={event => event.preventDefault()} onDragLeave={event => { event.preventDefault(); dragDepth.current--; if (dragDepth.current <= 0) setDragging(false); }} onDrop={event => { event.preventDefault(); dragDepth.current = 0; setDragging(false); if (session) void selectOriginals(event.dataTransfer.files); }}>
+  return <div className={`app-shell ${transfers.length || download ? "has-transfers" : ""}`} onDragEnter={event => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); dragDepth.current++; setDragging(true); } }} onDragOver={event => event.preventDefault()} onDragLeave={event => { event.preventDefault(); dragDepth.current--; if (dragDepth.current <= 0) setDragging(false); }} onDrop={event => { event.preventDefault(); dragDepth.current = 0; setDragging(false); if (session) void selectOriginals(event.dataTransfer.files); }}>
+    <a className="skip-link" href="#main-content">Skip to content</a>
     <aside className="sidebar">
       <Link href="/" className="wordmark" aria-label="Relay home"><span className="brand-icon"><ArrowLeftRight size={22} strokeWidth={2.4} /></span>relay<span className="brand-dot">.</span></Link>
       <div className="space-label"><span className="space-avatar">{(session?.space.name || "Your space").slice(0, 1).toUpperCase()}</span><div><strong>{session?.space.name || "Your shared space"}</strong><span>{session ? "Connected workspace" : "A little less back and forth"}</span></div></div>
       <p className="nav-label">WORKSPACE</p>
       <nav aria-label="Shared media">
-        <button className={`nav-item ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}><Grid2X2 size={18} />All files<span>{counts.all}</span></button>
-        <button className={`nav-item ${filter === "original" ? "active" : ""}`} onClick={() => setFilter("original")}><FileImage size={18} />Originals<span>{originalCount}</span></button>
-        <button className={`nav-item ${filter === "final" ? "active" : ""}`} onClick={() => setFilter("final")}><Clapperboard size={18} />Final cuts<span>{finalCount}</span></button>
+        <button aria-pressed={filter === "all"} className={`nav-item ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}><Grid2X2 size={18} />All files<span>{counts.all}</span></button>
+        <button aria-pressed={filter === "original"} className={`nav-item ${filter === "original" ? "active" : ""}`} onClick={() => setFilter("original")}><FileImage size={18} />Originals<span>{originalCount}</span></button>
+        <button aria-pressed={filter === "final"} className={`nav-item ${filter === "final" ? "active" : ""}`} onClick={() => setFilter("final")}><Clapperboard size={18} />Final cuts<span>{finalCount}</span></button>
       </nav>
-      <button className={`nav-item ${filter === "trash" ? "active" : ""}`} onClick={() => setFilter("trash")}><FolderDown size={18} />Trash<span>{counts.trash}</span></button><button className="nav-item" disabled={!session} onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}><ShieldCheck size={18} />Storage<span>{storage ? formatBytes(storage.used) : ""}</span></button><div className="nav-divider" />
+      <button aria-pressed={filter === "trash"} className={`nav-item ${filter === "trash" ? "active" : ""}`} onClick={() => setFilter("trash")}><FolderDown size={18} />Trash<span>{counts.trash}</span></button><button className="nav-item" disabled={!session} onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}><ShieldCheck size={18} />Storage<span>{storage ? formatBytes(storage.used) : ""}</span></button><div className="nav-divider" />
       <button className="nav-item" disabled={!session} onClick={() => { setModal("devices"); void refreshDevices().catch(() => setError("Couldn't refresh connected devices.")); }}><MonitorSmartphone size={18} />Connected devices<span>{devices.length || "—"}</span></button>
       <div className="sidebar-bottom"><div className="quality-note"><ShieldCheck size={20} /><div><strong>Every detail, intact.</strong><p>Your files. Original quality.</p></div></div><button className="nav-item" onClick={() => setModal("help")}><CircleHelp size={18} />How Relay works<ArrowUpRight size={15} /></button><div className="device-footer"><Laptop size={17} /><span>{devices.find(device => device.current)?.name || "This device"}</span><span className={`status-dot ${session ? "online" : ""}`} /></div></div>
     </aside>
 
     <div className="workspace">
-      <header className="topbar"><div className="breadcrumb">Workspace<ChevronRight size={14} /><strong>{filter === "all" ? "All files" : pageTitle}</strong></div><div className="topbar-right"><span className="connection"><span className={`status-dot ${session ? "online" : ""}`} />{session ? online ? "Connected" : "Reconnecting" : "Not paired"}</span><button className="button secondary compact" disabled={!session} onClick={() => setModal("devices")}><Plus size={16} />Pair a device</button></div></header>
-      <main>
-        <div className="page-heading"><div><div className="eyebrow"><span className="small-line" />LESS SENDING. MORE CREATING.</div><h1>{pageTitle}<span className="title-dot">.</span></h1><p>{filter === "final" ? "The finished work, ready for its next stop." : "From the shop floor to your next great idea."}</p></div><button className="button primary" disabled={!session || session.transport === "unconfigured"} onClick={() => fileInput.current?.click()}><Plus size={18} />{filter === "final" ? "Drop final cuts" : "Add files"}</button></div>
+      <header className="topbar"><div className="breadcrumb"><span title={session?.space.name}>{session?.space.name || "Workspace"}</span><ChevronRight size={14} /><strong>{filter === "all" ? "All files" : pageTitle}</strong></div><div className="topbar-right"><button className="icon-button mobile-help" aria-label="How Relay works" onClick={() => setModal("help")}><CircleHelp size={20} /></button><span className="connection"><span className={`status-dot ${session ? "online" : ""}`} />{session ? online ? "Connected" : "Reconnecting" : "Not paired"}</span><button className="button secondary compact" disabled={!session} onClick={() => setModal("devices")}><MonitorSmartphone size={16} />{isOwner ? "Pair a device" : "Devices"}</button></div></header>
+      <main id="main-content" tabIndex={-1}>
+        <div className="page-heading"><div><div className="eyebrow"><span className="small-line" />LESS SENDING. MORE CREATING.</div><h1>{pageTitle}<span className="title-dot">.</span></h1><p>{filter === "trash" ? "Restore removed files or free up shared storage." : filter === "final" ? "The finished work, ready for its next stop." : "From the shop floor to your next great idea."}</p></div>{filter !== "trash" && <button className="button primary" disabled={!session || session.transport === "unconfigured"} onClick={() => fileInput.current?.click()}><Plus size={18} />{filter === "final" ? "Drop final cuts" : "Add files"}</button>}</div>
         {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError("")}><X size={17} /></button></div>}
         {!online && session && <div className="error-banner" role="status">Connection interrupted. Your queue is retained; resume sending when you are back online.</div>}
         {session?.transport === "local" && <div className="local-note"><span className="status-dot" />Local workspace · files stay on this computer until hosting is connected.</div>}
         {session?.transport === "unconfigured" && <div className="error-banner">File transfers need their storage connection. Existing originals have not been changed.</div>}
-        {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={25} /><p>Opening your space…</p></div> : invitationRequired ?
+        {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={25} /><p>Opening your space…</p></div> : sessionFailure && !session ? <section className="loading-panel"><p>Couldn&apos;t open your space.</p><button className="button secondary" onClick={() => void loadSession()}>Try again</button></section> : invitationRequired ?
           <section className="welcome-panel"><div className="welcome-symbol"><Link2 size={32} /></div><span className="pill">YOUR FILES STAY IN YOUR CIRCLE</span><h2>Bring this device along.</h2><p>Open an invitation link or scan a code from a connected device.</p><button className="button secondary" onClick={() => setModal("help")}><CircleHelp size={17} />How Relay works</button><small>No passwords. No new accounts.</small></section> : !session ?
           <section className="welcome-panel"><div className="welcome-symbol"><ArrowLeftRight size={32} /></div><span className="pill">A SHARED SPACE, WITHOUT THE FUSS</span><h2>{invitation ? "You're one step away." : "Good work starts with a drop."}</h2><p>{invitation ? "Give this device a name. You'll stay connected." : "Connect once. Move photos and videos whenever you need."}</p><form onSubmit={connectSpace}>{!invitation && <label>Space name<input required maxLength={60} value={spaceName} onChange={event => setSpaceName(event.target.value)} /></label>}<label>This device<input required maxLength={60} value={deviceName} onChange={event => setDeviceName(event.target.value)} /></label><button className="button primary" disabled={connecting}>{connecting ? <LoaderCircle size={18} className="spin" /> : <ArrowUpRight size={18} />}{invitation ? "Join shared space" : "Create shared space"}</button></form><small>No passwords. No new accounts.</small></section> : <>
-          <button className={`drop-zone ${dragging ? "dragging" : ""}`} disabled={session.transport === "unconfigured"} onClick={() => fileInput.current?.click()}><span className="drop-icon"><Upload size={25} strokeWidth={1.6} /></span><span className="drop-copy"><strong>Drop it here. Pick it up anywhere.</strong><span>Drag photos and videos here, or <b>browse files</b></span></span><span className="drop-quality"><ShieldCheck size={15} />Original files, always</span></button>
-          <div className="web-tools"><label className="search-field"><span className="visually-hidden">Search filenames</span><input type="search" placeholder="Find a file…" value={search} onChange={event => setSearch(event.target.value)} /></label><button className="button secondary compact" onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}>Storage</button><button className="button secondary compact" onClick={() => setFilter(filter === "trash" ? "all" : "trash")}>{filter === "trash" ? "Back to files" : `Trash (${counts.trash})`}</button></div><div className="feed-toolbar"><div className="filter-tabs" aria-label="File categories">{(["all", "original", "final"] as Filter[]).map(value => <button key={value} aria-pressed={filter === value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{value === "all" ? "All files" : value === "original" ? "Originals" : "Final cuts"}<span>{value === "all" ? counts.all : value === "original" ? originalCount : finalCount}</span></button>)}</div><span className="sort-label">Newest first<ArrowDown size={14} /></span></div>
-          {visibleItems.length ? <><div className="feed-label"><span>{filter === "trash" ? "REMOVED FILES · RESTORE ANYTIME" : "RECENT DROPS"}</span><span aria-live="polite">{visibleItems.length} of {total} files{feedBusy ? " · Updating…" : ""}</span></div><div className="media-grid">{visibleItems.map(item => <article className="media-card" key={item.id}><button className="media-cover" onClick={() => setModal(item)} aria-label={`Preview ${item.name}`}><MediaPreview item={item} /><span className={`category-badge ${item.category}`}>{item.category === "final" ? <CheckCheck size={12} /> : <ShieldCheck size={12} />}{item.category === "final" ? "Final cut" : "Original"}</span>{item.mime.startsWith("video/") && <span className="play-badge"><Play size={14} fill="currentColor" /></span>}</button><div className="media-card-body"><h3 title={item.name}>{item.name}</h3><p>{formatBytes(item.size)}<span>·</span>{item.deviceName}</p><div className="card-bottom"><span>{new Date(item.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span><button className="save-button" disabled={savingVerified} onClick={() => void saveOriginal(item)}><ArrowDownToLine size={15} />Save to device</button></div><div className="file-actions">{filter === "trash" ? <><button className="text-button" onClick={() => void changeMedia(item, "restore")}>Restore</button><button className="text-button danger" onClick={() => void changeMedia(item, "delete")}>Delete permanently</button></> : <button className="text-button" onClick={() => void changeMedia(item, "archive")}>Move to Trash</button>}</div></div></article>)}</div>{nextCursor && <div className="load-more"><button className="button secondary" disabled={feedBusy} onClick={() => void loadMore()}>{feedBusy ? "Loading…" : "Load more files"}</button></div>}</> : <section className="empty-feed"><div className="empty-art" aria-hidden="true"><span className="art-card back"><Clapperboard size={31} strokeWidth={1.2} /></span><span className="art-card front"><FileImage size={35} strokeWidth={1.2} /><span /><span /></span><span className="art-arrow"><ArrowDown size={18} /></span></div><h2>{search ? "No matching files." : filter === "trash" ? "Nothing in Trash." : filter === "final" ? "Ready for the final touch." : "A fresh space for your next idea."}</h2><p>{search ? "Try a different filename or clear your search." : filter === "trash" ? "Removed files appear here until you restore or permanently delete them." : filter === "final" ? "Drop your finished edits here. Everyone can save the original export." : "Drop your first photos or videos above. They'll be right here for every connected device."}</p><span className="empty-footnote"><ShieldCheck size={14} />No compression. No extra steps.</span></section>}
+          {filter !== "trash" && <button className={`drop-zone ${dragging ? "dragging" : ""}`} disabled={session.transport === "unconfigured"} onClick={() => fileInput.current?.click()}><span className="drop-icon"><Upload size={25} strokeWidth={1.6} /></span><span className="drop-copy"><strong>Drop it here. Pick it up anywhere.</strong><span>Drag photos and videos here, or <b>browse files</b></span></span><span className="drop-quality"><ShieldCheck size={15} />Original files, always</span></button>}
+          <div className="web-tools"><label className="search-field"><span className="visually-hidden">Search filenames</span><input type="search" placeholder="Find a file…" value={search} onChange={event => setSearch(event.target.value)} />{search && <button className="icon-button clear-search" aria-label="Clear search" onClick={() => setSearch("")}><X size={17} /></button>}</label><button className="button secondary compact mobile-utility" onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}>Storage</button><button className={`button secondary compact ${filter === "trash" ? "" : "mobile-utility"}`} onClick={() => setFilter(filter === "trash" ? "all" : "trash")}>{filter === "trash" ? "Back to files" : `Trash (${counts.trash})`}</button></div><div className="feed-toolbar"><div className="filter-tabs" aria-label="File categories">{(["all", "original", "final"] as Filter[]).map(value => <button key={value} aria-pressed={filter === value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{value === "all" ? "All files" : value === "original" ? "Originals" : "Final cuts"}<span>{value === "all" ? counts.all : value === "original" ? originalCount : finalCount}</span></button>)}</div><span className="sort-label">Newest first<ArrowDown size={14} /></span></div>
+          {currentFeedFailure && <div className="error-banner" role="alert"><span>Couldn&apos;t refresh files. {currentFeedFailure}</span><button className="button secondary compact" disabled={feedBusy} onClick={() => { setFeedBusy(true); void refreshFeed().catch(() => {}).finally(() => setFeedBusy(false)); }}>Retry loading files</button></div>}
+          {!feedReady ? <section className="loading-panel" role="status">{currentFeedFailure ? <p>Your files will appear when the connection recovers.</p> : <><LoaderCircle className="spin" size={25} /><p>Loading files...</p></>}</section> : visibleItems.length ? <><div className="feed-label"><span>{filter === "trash" ? "REMOVED FILES · RESTORE ANYTIME" : "RECENT DROPS"}</span><span aria-live="polite">{visibleItems.length} of {total} files{feedBusy ? " · Updating…" : ""}</span></div><div className="media-grid">{visibleItems.map(item => <article className="media-card" key={item.id}><button className="media-cover" onClick={() => setModal(item)} aria-label={`Preview ${item.name}`}><MediaPreview item={item} /><span className={`category-badge ${item.category}`}>{item.category === "final" ? <CheckCheck size={12} /> : <ShieldCheck size={12} />}{item.category === "final" ? "Final cut" : "Original"}</span>{item.mime.startsWith("video/") && <span className="play-badge"><Play size={14} fill="currentColor" /></span>}</button><div className="media-card-body"><h3 title={item.name}>{item.name}</h3><p>{formatBytes(item.size)}<span>·</span>{item.deviceName}</p><div className="card-bottom"><span>{new Date(item.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span><button className="save-button" disabled={savingVerified} onClick={() => void saveOriginal(item)}><ArrowDownToLine size={15} />Save to device</button></div><div className="file-actions">{isOwner && (filter === "trash" ? <><button className="text-button" onClick={() => void changeMedia(item, "restore")}>Restore</button><button className="text-button danger" onClick={() => void changeMedia(item, "delete")}>Delete permanently</button></> : <button className="text-button" onClick={() => void changeMedia(item, "archive")}>Move to Trash</button>)}</div></div></article>)}</div>{nextCursor && <div className="load-more"><button className="button secondary" disabled={feedBusy} onClick={() => void loadMore()}>{feedBusy ? "Loading…" : "Load more files"}</button></div>}</> : <section className="empty-feed"><div className="empty-art" aria-hidden="true"><span className="art-card back"><Clapperboard size={31} strokeWidth={1.2} /></span><span className="art-card front"><FileImage size={35} strokeWidth={1.2} /><span /><span /></span><span className="art-arrow"><ArrowDown size={18} /></span></div><h2>{search ? "No matching files." : filter === "trash" ? "Nothing in Trash." : filter === "final" ? "Ready for the final touch." : "A fresh space for your next idea."}</h2><p>{search ? "Try a different filename or clear your search." : filter === "trash" ? "Removed files appear here until you restore or permanently delete them." : filter === "final" ? "Drop your finished edits here. Everyone can save the original export." : "Drop your first photos or videos above. They'll be right here for every connected device."}</p><span className="empty-footnote"><ShieldCheck size={14} />No compression. No extra steps.</span></section>}
           <footer className="feed-footer"><span><ArrowLeftRight size={14} />A simple handoff. A little more flow.</span><span>Originals in. Originals out.</span></footer>
         </>}
       </main>
     </div>
 
-    <input ref={fileInput} className="visually-hidden" type="file" multiple aria-label="Choose original files" onChange={event => { if (event.target.files) void selectOriginals(event.target.files); event.target.value = ""; }} />
-    <input ref={resumeInput} className="visually-hidden" type="file" aria-label="Choose file to resume" onChange={event => { const file = event.target.files?.[0]; const target = resumeTarget.current; if (file && target) { if (file.size !== target.size) setError("Choose the same original file to resume."); else scheduleTransfer(file, target); } event.target.value = ""; }} />
-    {dragging && session && <div className="drop-overlay"><Upload size={52} /><h2>Let it drop.</h2><p>{filter === "final" ? "Send your final cuts" : "Send your originals"}</p></div>}
-    {(transfers.length > 0 || download) && <section className="transfer-tray" aria-label="File transfers"><div className="tray-heading"><strong>{activeTransfers.length ? <><Radio size={16} />{activeTransfers.length} {activeTransfers.length === 1 ? "transfer" : "transfers"}</> : <><CheckCheck size={17} />{download ? "Saving original" : "All files delivered"}</>}</strong><button className="icon-button" aria-label="Dismiss completed transfers" onClick={() => { for (const transfer of transfers.filter(item => item.state === "complete")) void forgetTransfer(transfer.id); setTransfers(current => current.filter(item => item.state !== "complete")); }}><X size={16} /></button></div><div className="transfer-list">{download && <div className="transfer-row"><ArrowDownToLine size={21} /><div className="transfer-information"><strong>{download.name}</strong><div><span>Saving and verifying</span><span>{download.progress}%</span></div><progress max={100} value={download.progress} aria-label="Download progress" /></div><button className="icon-button" aria-label="Cancel download" onClick={() => download.controller.abort()}><X size={17} /></button></div>}{transfers.map(transfer => <div className="transfer-row" key={transfer.id}><div className="transfer-file-icon"><FileImage size={21} /></div><div className="transfer-information"><strong>{transfer.name}</strong><div><span>{statusLabels[transfer.state]}</span><span>{transfer.state === "sending" ? `${transfer.progress}%` : formatBytes(transfer.size)}</span></div><progress max={100} value={transfer.progress} aria-label={`${transfer.name} progress`} />{transfer.message && <p>{transfer.message}</p>}</div>{transfer.state === "complete" ? <Check size={19} className="success-icon" /> : ["sending", "preparing", "queued"].includes(transfer.state) ? <button className="icon-button" aria-label={`Pause ${transfer.name}`} onClick={() => controllers.current.get(transfer.id)?.abort()}><Pause size={17} /></button> : <div className="transfer-actions"><button className="icon-button" aria-label={`Resume ${transfer.name}`} onClick={() => resumeTransfer(transfer)}><Play size={17} /></button>{transfer.state === "error" && <button className="icon-button" aria-label={`Restart ${transfer.name}`} onClick={() => void restartTransfer(transfer)}><RefreshCw size={16} /></button>}<button className="icon-button" aria-label={`Cancel ${transfer.name}`} onClick={() => void cancelUpload(transfer.id, transfer.name)}><X size={15} /></button></div>}</div>)}</div>{activeTransfers.length > 0 && <p className="tray-note">Keep this tab open while sending.</p>}</section>}
+    <input ref={fileInput} tabIndex={-1} className="visually-hidden" type="file" multiple aria-label="Choose original files" onChange={event => { if (event.target.files) void selectOriginals(event.target.files); event.target.value = ""; }} />
+    <input ref={resumeInput} tabIndex={-1} className="visually-hidden" type="file" aria-label="Choose file to resume" onChange={event => { const file = event.target.files?.[0]; const target = resumeTarget.current; if (file && target) { if (file.size !== target.size) setError("Choose the same original file to resume."); else scheduleTransfer(file, target); } event.target.value = ""; }} />
+    {dragging && session && filter !== "trash" && <div className="drop-overlay"><Upload size={52} /><h2>Let it drop.</h2><p>{filter === "final" ? "Send your final cuts" : "Send your originals"}</p></div>}
+    {(transfers.length > 0 || download) && <section className="transfer-tray" aria-label="File transfers"><div className="tray-heading"><strong>{activeTransfers.length ? <><Radio size={16} />{activeTransfers.length} {activeTransfers.length === 1 ? "transfer" : "transfers"}</> : <><CheckCheck size={17} />{download ? "Saving original" : "All files delivered"}</>}</strong><button className="icon-button" aria-label="Dismiss completed transfers" onClick={() => { for (const transfer of transfers.filter(item => item.state === "complete")) void forgetTransfer(transfer.id); setTransfers(current => current.filter(item => item.state !== "complete")); }}><X size={16} /></button></div><div className="transfer-list">{download && <div className="transfer-row"><ArrowDownToLine size={21} /><div className="transfer-information"><strong>{download.name}</strong><div><span>Saving and verifying</span><span>{download.progress}%</span></div><progress max={100} value={download.progress} aria-label="Download progress" /></div><button className="icon-button" aria-label="Cancel download" onClick={() => download.controller.abort()}><X size={17} /></button></div>}{transfers.map(transfer => <div className="transfer-row" key={transfer.id}><div className="transfer-file-icon"><FileImage size={21} /></div><div className="transfer-information"><strong>{transfer.name}</strong><div><span>{statusLabels[transfer.state]}</span><span>{transfer.state === "preparing" ? `${transfer.preparationProgress ?? 0}%` : transfer.state === "sending" ? `${transfer.progress}%` : formatBytes(transfer.size)}</span></div><progress max={100} value={transfer.state === "preparing" ? transfer.preparationProgress ?? 0 : transfer.progress} aria-label={`${transfer.name} ${transfer.state === "preparing" ? "preparation " : ""}progress`} />{transfer.message && <p>{transfer.message}</p>}</div>{transfer.state === "complete" ? <Check size={19} className="success-icon" /> : ["sending", "preparing", "queued"].includes(transfer.state) ? <button className="icon-button" aria-label={`Pause ${transfer.name}`} onClick={() => controllers.current.get(transfer.id)?.abort()}><Pause size={17} /></button> : <div className="transfer-actions"><button className="icon-button" aria-label={`Resume ${transfer.name}`} onClick={() => resumeTransfer(transfer)}><Play size={17} /></button>{transfer.state === "error" && <button className="icon-button" aria-label={`Restart ${transfer.name}`} onClick={() => void restartTransfer(transfer)}><RefreshCw size={16} /></button>}<button className="icon-button" aria-label={`Cancel ${transfer.name}`} onClick={() => void cancelUpload(transfer.id, transfer.name)}><X size={15} /></button></div>}</div>)}</div>{activeTransfers.length > 0 && <p className="tray-note">Keep this tab open while sending.</p>}</section>}
     {notice && <div className="toast" role="status"><Check size={17} />{notice}</div>}
 
-    {modal === "devices" && <ModalFrame title="Your connected devices" onClose={() => setModal(null)}>{error && <p role="alert" className="error-banner">{error}</p>}<p className="modal-intro">One space. Everything you need to keep things moving.</p><div className="device-list">{devices.map(device => <div key={device.id} className="device-row"><span className="device-symbol">{/phone|iphone|android/i.test(device.name) ? <Smartphone size={22} /> : <Laptop size={22} />}</span><div><strong>{device.name}</strong><p>{device.current ? "This device" : "Connected to this space"}</p></div>{device.current ? <span className="pill">YOU</span> : <button className="text-button" onClick={() => void disconnectDevice(device.id)}>Disconnect</button>}</div>)}</div><div className="pair-panel"><Link2 size={22} /><h3>Bring another device along.</h3><p>Scan a code or open an invitation link. No account needed.</p>{qr ? <><img className={clock >= inviteExpiresAt ? "expired-qr" : ""} src={qr} width={200} height={200} alt="Scan to join this shared space" /><p className="small-muted">{clock >= inviteExpiresAt ? "Invitation expired. Create a new one below." : `Single use · ${Math.ceil((inviteExpiresAt - clock) / 60000)} min remaining`}</p><button className="button secondary" disabled={clock >= inviteExpiresAt} onClick={() => { void navigator.clipboard.writeText(inviteLink).then(() => setNotice("Invitation link copied.")).catch(() => setError("Couldn't copy. Select the invitation link below.")); }}><Copy size={16} />Copy invitation link</button><input className="invite-url" readOnly value={inviteLink} aria-label="Invitation link" onFocus={event => event.target.select()} /><button className="text-button" disabled={inviteBusy} onClick={() => void createInvitation()}><RefreshCw size={13} />Create a new invitation</button></> : <button className="button primary" disabled={inviteBusy} onClick={() => void createInvitation()}>{inviteBusy ? <LoaderCircle size={16} className="spin" /> : <Plus size={16} />}Pair a device</button>}{session?.transport === "local" && <p className="small-muted">This local link works only on this computer. Phone pairing needs a hosted address.</p>}</div></ModalFrame>}
-    {modal === "storage" && <ModalFrame title="Your shared storage" onClose={() => setModal(null)}>{error && <p role="alert" className="error-banner">{error}</p>}{storage ? <><p className="modal-intro">{formatBytes(storage.used)} of {formatBytes(storage.limit)} used. Originals stay until you choose to remove them.</p><progress className="storage-meter" max={storage.limit} value={storage.used} aria-label="Shared storage used" /><p className="small-muted">{formatBytes(storage.reserved)} reserved for unfinished uploads · {formatBytes(storage.trash)} in Trash. Trash continues to use storage.</p><button className="button secondary" onClick={() => { setModal(null); setFilter("trash"); }}>Open Trash</button><h3 className="storage-heading">Unfinished uploads</h3>{storage.uploads.length ? storage.uploads.map(upload => <div className="device-row" key={upload.id}><div><strong>{upload.name}</strong><p>{formatBytes(upload.size)} · {upload.deviceName}</p></div><button className="text-button danger" onClick={() => void cancelUpload(upload.id, upload.name)}>Cancel upload</button></div>) : <p className="small-muted">No storage is reserved for unfinished transfers.</p>}</> : <p>Loading storage…</p>}</ModalFrame>}
-    {modal === "help" && <ModalFrame title="A simple way to pass it on." onClose={() => setModal(null)}><div className="help-step"><span>01</span><div><h3>Drop your originals.</h3><p>Add files or drag them into your shared space. Relay sends the original bytes, without re-encoding.</p></div></div><div className="help-step"><span>02</span><div><h3>Save. Then make it yours.</h3><p>Save to device starts an original-file download. Edit locally in whichever tools you love.</p></div></div><div className="help-step"><span>03</span><div><h3>Drop the final cut.</h3><p>Open Final cuts and add your export. It is immediately available once the transfer finishes.</p></div></div><div className="help-note"><ShieldCheck size={20} /><p>Keep this browser tab open during uploads. After a reload, choose the same file to resume. Browser downloads go to Downloads or the location you select. Direct saving to Photos requires the native mobile app.</p></div></ModalFrame>}
-    {modal && typeof modal === "object" && <ModalFrame title={modal.name} onClose={() => setModal(null)}><div className="detail-preview"><MediaPreview item={modal} large /></div><div className="detail-metadata"><span>{modal.category === "final" ? "Final cut" : "Original"}</span><span>{formatBytes(modal.size)}</span><span>{modal.mime}</span></div><p className="small-muted">Shared by {modal.deviceName}</p><details className="integrity-details"><summary>Original file fingerprint</summary><code>{modal.sha256}</code><p>SHA-256 of the file selected for upload. Browser-managed downloads do not verify this automatically.</p></details><button className="button primary full-width" disabled={savingVerified} onClick={() => void saveOriginal(modal)}><FolderDown size={18} />Save original to device</button>{/* Removal candidate: the main Save action now performs verified saving. false && verifiedSaveAvailable && <button className="button secondary full-width save-as-button" disabled={savingVerified} onClick={() => void saveAsOriginal(modal)}>{savingVerified ? <LoaderCircle size={17} className="spin" /> : <ShieldCheck size={17} />}{savingVerified ? "Saving and checking original…" : "Save as… with file verification"}</button> */}</ModalFrame>}
+    {modal === "devices" && <ModalFrame title="Your connected devices" onClose={() => setModal(null)}>
+      {error && <p role="alert" className="error-banner">{error}</p>}
+      <p className="modal-intro">{isOwner ? "You are an owner. Manage who can use this shared space." : "You are a member. Upload, browse, and save files; an owner manages access and shared-file removal."}</p>
+      <div className="device-list">{devices.map(device => <div key={device.id} className="device-row">
+        <span className="device-symbol">{/phone|iphone|android/i.test(device.name) ? <Smartphone size={22} /> : <Laptop size={22} />}</span>
+        <div><strong>{device.name}</strong><p>{device.role === "owner" ? "Owner" : "Member"}{device.current ? " · This device" : ""}</p></div>
+        {device.current ? <span className="pill">YOU</span> : isOwner && <div className="device-actions">
+          <button className="text-button" disabled={deviceAccessBusy} onClick={() => void changeDeviceRole(device)}>{device.role === "owner" ? "Make member" : "Make owner"}</button>
+          <button className="text-button danger" disabled={deviceAccessBusy} onClick={() => void disconnectDevice(device.id)}>Disconnect</button>
+        </div>}
+      </div>)}</div>
+      {isOwner && <div className="pair-panel"><Link2 size={22} /><h3>Bring another device along.</h3>
+        <p>Invited devices join as members. They can upload and save every file in this space. Only owners manage access and remove shared files.</p>
+        {qr ? <><img className={clock >= inviteExpiresAt ? "expired-qr" : ""} src={qr} width={200} height={200} alt="Scan to join this shared space" />
+          <p className="small-muted">{clock >= inviteExpiresAt ? "Invitation expired. Create a new one below." : `Single use · ${Math.ceil((inviteExpiresAt - clock) / 60000)} min remaining`}</p>
+          <button className="button secondary" disabled={clock >= inviteExpiresAt} onClick={() => { void navigator.clipboard.writeText(inviteLink).then(() => setNotice("Invitation link copied.")).catch(() => setError("Couldn't copy. Select the invitation link below.")); }}><Copy size={16} />Copy invitation link</button>
+          <input className="invite-url" readOnly value={inviteLink} aria-label="Invitation link" onFocus={event => event.target.select()} />
+          <button className="text-button" disabled={inviteBusy} onClick={() => void createInvitation()}><RefreshCw size={13} />Create a new invitation</button>
+        </> : <button className="button primary" disabled={inviteBusy} onClick={() => void createInvitation()}>{inviteBusy ? <LoaderCircle size={16} className="spin" /> : <Plus size={16} />}Pair a device</button>}
+        {session?.transport === "local" && <p className="small-muted">This local link works only on this computer. Phone pairing needs a hosted address.</p>}
+      </div>}
+      <div className="device-access-note"><p className="small-muted">Original files keep their metadata, which may include location. Disconnecting a device blocks new access; download links already issued may work for up to one hour.</p>
+        {isLastOwner && <p className="small-muted">Keep another trusted device as an owner before disconnecting this one. It can help you recover access if this browser is lost or cleared.</p>}
+        <button className="button secondary full-width" disabled={deviceAccessBusy || isLastOwner} onClick={() => void disconnectThisDevice()}>{deviceAccessBusy ? "Updating access…" : "Disconnect this device"}</button>
+      </div>
+    </ModalFrame>}
+    {modal === "storage" && <ModalFrame title="Your shared storage" onClose={() => setModal(null)}>{error && <p role="alert" className="error-banner">{error}</p>}{storage ? <><p className="modal-intro">{formatBytes(storage.used)} of {formatBytes(storage.limit)} used. Originals stay until you choose to remove them.</p><progress className="storage-meter" max={storage.limit} value={storage.used} aria-label="Shared storage used" /><p className="small-muted">{formatBytes(storage.reserved)} reserved for unfinished uploads · {formatBytes(storage.trash)} in Trash. Trash continues to use storage.</p><button className="button secondary" onClick={() => { setModal(null); setFilter("trash"); }}>Open Trash</button><h3 className="storage-heading">Unfinished uploads</h3>{storage.uploads.length ? storage.uploads.map(upload => <div className="device-row" key={upload.id}><div><strong>{upload.name}</strong><p>{formatBytes(upload.size)} · {upload.deviceName}</p></div>{Boolean(upload.canCancel) && <button className="text-button danger" onClick={() => void cancelUpload(upload.id, upload.name)}>Cancel upload</button>}</div>) : <p className="small-muted">No storage is reserved for unfinished transfers.</p>}</> : <p>Loading storage…</p>}</ModalFrame>}
+    {modal === "help" && <ModalFrame title="A simple way to pass it on." onClose={() => setModal(null)}><div className="help-step"><span>01</span><div><h3>Drop your originals.</h3><p>Add files or drag them into your shared space. Relay sends the original bytes, without re-encoding.</p></div></div><div className="help-step"><span>02</span><div><h3>Save. Then make it yours.</h3><p>Save to device starts an original-file download. Edit locally in whichever tools you love.</p></div></div><div className="help-step"><span>03</span><div><h3>Drop the final cut.</h3><p>Open Final cuts and add your export. It is immediately available once the transfer finishes.</p></div></div><p className="modal-intro">Everyone paired to a space can view and save its files. Originals keep their metadata, including any embedded location. Only owners can invite devices or remove shared files.</p><div className="help-note"><ShieldCheck size={20} /><p>Keep this browser tab open during uploads. After a reload, choose the same file to resume. Browser downloads go to Downloads or the location you select. Direct saving to Photos requires the native mobile app.</p></div></ModalFrame>}
+    {modal && typeof modal === "object" && <ModalFrame title={modal.name} onClose={() => setModal(null)}><div className="detail-preview"><MediaPreview key={modal.id} item={modal} large /></div><div className="detail-metadata"><span>{modal.category === "final" ? "Final cut" : "Original"}</span><span>{formatBytes(modal.size)}</span><span>{modal.mime}</span></div><p className="small-muted">Shared by {modal.deviceName}</p><details className="integrity-details"><summary>Original file fingerprint</summary><code>{modal.sha256}</code><p>SHA-256 of the file selected for upload. Browser-managed downloads do not verify this automatically.</p></details><button className="button primary full-width" disabled={savingVerified} onClick={() => void saveOriginal(modal)}><FolderDown size={18} />Save original to device</button>{/* Removal candidate: the main Save action now performs verified saving. false && verifiedSaveAvailable && <button className="button secondary full-width save-as-button" disabled={savingVerified} onClick={() => void saveAsOriginal(modal)}>{savingVerified ? <LoaderCircle size={17} className="spin" /> : <ShieldCheck size={17} />}{savingVerified ? "Saving and checking original…" : "Save as… with file verification"}</button> */}</ModalFrame>}
   </div>;
 }

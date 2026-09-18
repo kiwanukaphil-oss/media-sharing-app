@@ -10,6 +10,7 @@ export const devices = sqliteTable("devices", {
   spaceId: text("space_id").notNull().references(() => spaces.id),
   name: text("name").notNull(),
   tokenHash: text("token_hash").notNull().unique(),
+  role: text("role", { enum: ["owner", "member"] }).notNull().default("member"),
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
   revokedAt: integer("revoked_at"),
@@ -17,6 +18,7 @@ export const devices = sqliteTable("devices", {
 export const invitations = sqliteTable("invitations", {
   tokenHash: text("token_hash").primaryKey(),
   spaceId: text("space_id").notNull().references(() => spaces.id),
+  createdBy: text("created_by").references(() => devices.id),
   expiresAt: integer("expires_at").notNull(),
   redeemedAt: integer("redeemed_at"),
 });

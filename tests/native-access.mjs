@@ -7,6 +7,9 @@ const native = (path, token, method = 'GET', body, extra = {}) => fetch(`${origi
 
 // Exercise native credential issuance, Origin enforcement, one-use invitations, and revocation.
 async function verifyNativeAccess() {
+  const verificationSession = await web('session').then(response => response.json());
+  assert.equal(verificationSession.space?.name, 'Relay verification', 'Use only the isolated verification space.');
+  assert.equal(verificationSession.role, 'owner', 'The verification credential must be an owner after migration.');
   assert.equal((await native('native/connect', '', 'POST', { name: 'Uninvited phone' })).status, 403);
   const invite = await web('invitations', 'POST').then(response => response.json());
   const payload = { name: 'Native API verification', invitation: invite.token };
@@ -20,7 +23,7 @@ async function verifyNativeAccess() {
   const session = await native('session', token).then(response => response.json());
   assert.ok(session.deviceId);
   assert.equal((await native('feed', token)).status, 200);
-  assert.equal((await native('invitations', token, 'POST')).status, 200);
+  assert.equal((await native('invitations', token, 'POST')).status, 403, 'Invited native devices are members.');
   assert.equal((await native('invitations', token, 'POST', undefined, { Origin: 'https://untrusted.example' })).status, 403);
   assert.equal((await native('feed', 'invalid', 'GET', undefined, { Cookie: cookie })).status, 401);
   assert.equal((await web(`devices/${session.deviceId}`, 'DELETE')).status, 200);

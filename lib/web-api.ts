@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError, bucket, database, requireMedia, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
+import { ApiError, bucket, database, requireMedia, requireOwner, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
 import type { MediaItem } from "./contracts";
 
 // Stable keyset pagination avoids duplicates when a new drop arrives between page requests.
@@ -31,15 +31,16 @@ export async function readFeed(request: Request, device: ActiveDevice) {
     COUNT(CASE WHEN archived_at IS NULL AND category = 'original' THEN 1 END) AS original,
     COUNT(CASE WHEN archived_at IS NULL AND category = 'final' THEN 1 END) AS final,
     COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS trash FROM media WHERE space_id = ? AND status IN ('ready','deleting')`).bind(device.space_id).first();
-  return Response.json({ items, total: total?.count || 0, counts, nextCursor: result.results.length > limit && last ? btoa(JSON.stringify({ createdAt: last.createdAt, id: last.id })) : null });
+  return Response.json({ items, role: device.role, total: total?.count || 0, counts, nextCursor: result.results.length > limit && last ? btoa(JSON.stringify({ createdAt: last.createdAt, id: last.id })) : null });
 }
 
 export async function readStorage(device: ActiveDevice) {
   const usage = await database().prepare(`SELECT COALESCE(SUM(size + preview_size),0) AS used,
     COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling') THEN size ELSE 0 END),0) AS reserved,
     COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ?`).bind(device.space_id).first();
-  const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName
-    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling') ORDER BY media.created_at LIMIT 100`).bind(device.space_id).all();
+  const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
+    (media.device_id = ? OR ? = 'owner') AS canCancel
+    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.space_id).all();
   return Response.json({ ...usage, limit: spaceLimitBytes(), uploads: uploads.results });
 }
 
@@ -96,14 +97,19 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     return new Response(object.body, { headers: { "Content-Type": "image/jpeg", "Content-Length": String(object.size) } });
   }
   if (resource === "media" && id && (action === "archive" || action === "restore") && method === "POST") {
+    requireOwner(device);
     const item = await requireMedia(device, id);
     if (item.status !== "ready") throw new ApiError(409, "This transfer is not ready.");
     await database().prepare("UPDATE media SET archived_at = ? WHERE id = ? AND status = 'ready'").bind(action === "archive" ? Date.now() : null, id).run();
     return Response.json({ changed: true });
   }
-  if (resource === "media" && id && !action && method === "DELETE") return permanentlyDelete(await requireMedia(device, id));
+  if (resource === "media" && id && !action && method === "DELETE") {
+    requireOwner(device);
+    return permanentlyDelete(await requireMedia(device, id));
+  }
   if (resource === "uploads" && id && !action && method === "DELETE") {
     const item = await requireMedia(device, id);
+    if (item.device_id !== device.id) requireOwner(device);
     if (!["uploading", "cancelling"].includes(item.status)) throw new ApiError(409, "This file has already arrived. Refresh your feed.");
     const cancelled = await database().prepare("UPDATE media SET status = 'cancelling' WHERE id = ? AND status = 'uploading'").bind(id).run();
     if (item.status === "uploading" && !cancelled.meta.changes) throw new ApiError(409, "This file finished arriving. Refresh the feed.");

@@ -2,6 +2,8 @@
 
 This document distinguishes deployed safeguards from operational checks still awaiting activation or real-device access. Production is on Cloudflare Workers, D1 and private R2; the native apps are outside this phase.
 
+The subsequent local owner/member implementation, migration, recovery procedure and pending sign-off are in [PHASE-1-READINESS.md](./PHASE-1-READINESS.md). It is not yet deployed; the deployed-version evidence below remains historical.
+
 Hardening deployed on 17 September 2026 as version `279fd194-3c83-4ea2-8ea4-1ed4bb0199d9`. The deployed version and 100% allocation were read back from Cloudflare. The owner approved committing and publishing this hardening release and its automated checks.
 
 ## Request and storage controls

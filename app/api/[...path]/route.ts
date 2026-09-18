@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { webAction } from "@/lib/web-api";
+import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
-import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, sessionCookie, signedObjectUrl, storageMode, tokenHash, uploadSchema } from "@/lib/server";
+import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, requireOwner, sessionCookie, signedObjectUrl, storageMode, tokenHash, uploadSchema } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 const deviceName = z.string().trim().min(1).max(60);
@@ -38,13 +39,16 @@ async function connectDevice(request: Request, nativeClient = false) {
   let spaceId = crypto.randomUUID();
   if (input.invitation) {
     const invitationHash = await tokenHash(input.invitation);
-    const invitation = await database().prepare("SELECT space_id FROM invitations WHERE token_hash = ? AND expires_at > ? AND redeemed_at IS NULL").bind(invitationHash, now).first<{ space_id: string }>();
+    const eligibleInvitation = `token_hash = ? AND expires_at > ? AND redeemed_at IS NULL AND EXISTS (
+      SELECT 1 FROM devices AS issuer WHERE issuer.id = invitations.created_by AND issuer.space_id = invitations.space_id
+      AND issuer.role = 'owner' AND issuer.revoked_at IS NULL AND issuer.expires_at > ?)`;
+    const invitation = await database().prepare(`SELECT space_id FROM invitations WHERE ${eligibleInvitation}`).bind(invitationHash, now, now).first<{ space_id: string }>();
     if (!invitation) throw new ApiError(410, "This invitation expired or was already used. Get a new link from a connected device.");
     spaceId = invitation.space_id;
     const results = await database().batch([
       database().prepare(`INSERT INTO devices (id, space_id, name, token_hash, created_at, expires_at)
-        SELECT ?, space_id, ?, ?, ?, ? FROM invitations WHERE token_hash = ? AND expires_at > ? AND redeemed_at IS NULL`)
-        .bind(deviceId, input.name, hash, now, now + 31536000000, invitationHash, now),
+        SELECT ?, space_id, ?, ?, ?, ? FROM invitations WHERE ${eligibleInvitation}`)
+        .bind(deviceId, input.name, hash, now, now + 31536000000, invitationHash, now, now),
       database().prepare("UPDATE invitations SET redeemed_at = ? WHERE token_hash = ? AND redeemed_at IS NULL").bind(now, invitationHash),
     ]);
     if (!results[0].meta.changes) throw new ApiError(410, "This invitation was already used. Request a new one.");
@@ -53,7 +57,7 @@ async function connectDevice(request: Request, nativeClient = false) {
     if (!isLocal(request) && String(process.env.ALLOW_SPACE_CREATION) !== "true") throw new ApiError(403, "Use an invitation from a connected device.");
     await database().batch([
       database().prepare("INSERT INTO spaces (id, name, created_at) VALUES (?, ?, ?)").bind(spaceId, input.spaceName || "Our shared space", now),
-      database().prepare("INSERT INTO devices (id, space_id, name, token_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)").bind(deviceId, spaceId, input.name, hash, now, now + 31536000000),
+      database().prepare("INSERT INTO devices (id, space_id, name, token_hash, role, created_at, expires_at) VALUES (?, ?, ?, ?, 'owner', ?, ?)").bind(deviceId, spaceId, input.name, hash, now, now + 31536000000),
     ]);
   }
   if (nativeClient) return Response.json({ connected: true, token });
@@ -65,7 +69,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   const method = request.method;
   if (resource === "health" && !id && method === "GET") {
     if (storageMode(request) === "unconfigured") throw new ApiError(503, "Service temporarily unavailable.");
-    await Promise.all([database().prepare("SELECT id, preview_size FROM media LIMIT 1").all(), bucket().head("_relay_health_probe")]);
+    await Promise.all([database().prepare("SELECT id, preview_size FROM media LIMIT 1").all(), database().prepare("SELECT role FROM devices LIMIT 1").all(), database().prepare("SELECT created_by FROM invitations LIMIT 1").all(), bucket().head("_relay_health_probe")]);
     return Response.json({ status: "ok" });
   }
   if (resource === "native" && id === "connect" && method === "POST") return connectDevice(request, true);
@@ -75,7 +79,11 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   await limitDeviceRequest(request, device.id, resource, id, action);
   const webResponse = await webAction(request, device, resource, id, action);
   if (webResponse) return webResponse;
-  if (resource === "session" && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name }, deviceId: device.id, transport: storageMode(request) });
+  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name }, deviceId: device.id, role: device.role, transport: storageMode(request) });
+  if (resource === "session" && !id && method === "DELETE") {
+    await changeDeviceAccess(device, device.id);
+    return Response.json({ disconnected: true }, { headers: { "Set-Cookie": expiredSessionCookie(request) } });
+  }
   /* Legacy feed query retained as a removal candidate; paginated reads are served by webAction.
   if (resource === "legacy-feed-disabled" && method === "GET") {
     const result = await database().prepare(`SELECT media.id, media.name, media.mime, media.size, media.sha256, media.category,
@@ -85,18 +93,28 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   }
   */
   if (resource === "devices" && method === "GET") {
-    const result = await database().prepare("SELECT id, name, created_at AS createdAt FROM devices WHERE space_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at").bind(device.space_id, Date.now()).all<{ id: string; name: string; createdAt: number }>();
+    const result = await database().prepare("SELECT id, name, role, created_at AS createdAt FROM devices WHERE space_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at").bind(device.space_id, Date.now()).all<{ id: string; name: string; role: "owner" | "member"; createdAt: number }>();
     return Response.json({ devices: result.results.map(item => ({ ...item, current: item.id === device.id })) });
   }
-  if (resource === "devices" && id && method === "DELETE") {
-    if (id === device.id) throw new ApiError(400, "Keep this device connected while managing other devices.");
-    await database().prepare("UPDATE devices SET revoked_at = ? WHERE id = ? AND space_id = ?").bind(Date.now(), id, device.space_id).run();
+  if (resource === "devices" && id && !action && method === "DELETE") {
+    if (id === device.id) throw new ApiError(400, "Use Disconnect this device to leave this space.");
+    await changeDeviceAccess(device, id);
     return Response.json({ disconnected: true });
   }
+  if (resource === "devices" && id && action === "role" && method === "PUT") {
+    requireOwner(device);
+    const { role } = await readJson(request, z.object({ role: z.enum(["owner", "member"]) }));
+    await changeDeviceAccess(device, id, role);
+    return Response.json({ changed: true });
+  }
   if (resource === "invitations" && method === "POST") {
+    requireOwner(device);
     const token = newToken();
     const expiresAt = Date.now() + 10 * 60 * 1000;
-    await database().prepare("INSERT INTO invitations (token_hash, space_id, expires_at) VALUES (?, ?, ?)").bind(await tokenHash(token), device.space_id, expiresAt).run();
+    const created = await database().prepare(`INSERT INTO invitations (token_hash, space_id, created_by, expires_at)
+      SELECT ?, space_id, id, ? FROM devices WHERE id = ? AND role = 'owner' AND revoked_at IS NULL AND expires_at > ?`)
+      .bind(await tokenHash(token), expiresAt, device.id, Date.now()).run();
+    if (!created.meta.changes) throw new ApiError(403, "Owner access has changed. Refresh this space.");
     return Response.json({ token, expiresAt });
   }
   if (resource === "uploads" && !id && method === "POST") {

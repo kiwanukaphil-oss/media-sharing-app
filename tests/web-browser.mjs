@@ -35,15 +35,15 @@ async function verifyBrowser(engine, options, label) {
     await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Move to Trash' }).click();
     await expect(card).toHaveCount(0);
-    await page.locator('.web-tools').getByRole('button', { name: 'Trash (1)', exact: true }).click();
+    await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
     await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Restore', exact: true }).click();
     await page.getByRole('button', { name: 'Back to files' }).click();
     await expect(card).toBeVisible();
-    await page.locator('.filter-tabs').getByRole('button', { name: /Final cuts/ }).click();
+    await page.locator('.sidebar').getByRole('button', { name: /Final cuts/ }).click();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'finished-export.mov', mimeType: 'video/quicktime', buffer: payload });
     await expect(page.locator('article').filter({ hasText: 'finished-export.mov' })).toBeVisible();
-    await page.locator('.web-tools').getByRole('button', { name: 'Storage', exact: true }).click();
+    await page.locator('.sidebar').getByRole('button', { name: /^Storage/ }).click();
     await expect(page.getByRole('dialog')).toContainText('100.0 GB');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -65,6 +65,9 @@ async function verifyBrowser(engine, options, label) {
   } finally { await browser.close(); }
 }
 
-for (const [engine, options, label] of [[chromium, { channel: 'chrome' }, 'chrome'], [chromium, { channel: 'msedge' }, 'edge'], [firefox, {}, 'firefox'], [webkit, {}, 'webkit']]) {
+const browserTargets = process.env.CI
+  ? [[chromium, {}, 'chromium'], [firefox, {}, 'firefox'], [webkit, {}, 'webkit']]
+  : [[chromium, { channel: 'chrome' }, 'chrome'], [chromium, { channel: 'msedge' }, 'edge'], [firefox, {}, 'firefox'], [webkit, {}, 'webkit']];
+for (const [engine, options, label] of browserTargets) {
   await verifyBrowser(engine, options, label);
 }

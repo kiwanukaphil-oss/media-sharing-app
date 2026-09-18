@@ -11,7 +11,11 @@ if (!hosted) {
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname));
   const connected = await api('connect', 'POST', { name: 'Load fixture', spaceName: 'Isolated bounded load' });
   assert.equal(connected.status, 200); cookie = connected.headers.get('set-cookie').split(';')[0];
-} else assert.equal((await api('session').then(r => r.json())).space.name, 'Relay verification');
+} else {
+  const session = await api('session').then(response => response.json());
+  assert.equal(session.space.name, 'Relay verification');
+  assert.equal(session.role, 'owner', 'The verification credential must be an owner after migration.');
+}
 const latencies = [];
 const concurrency = hosted ? 5 : 20;
 const requests = hosted ? 50 : 200;

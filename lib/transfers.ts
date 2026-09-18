@@ -8,7 +8,7 @@ export type Transfer = {
   id: string; deviceId: string; name: string; size: number; mime: string; category: Category;
   hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
   state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
-  progress: number; message?: string;
+  progress: number; preparationProgress?: number; message?: string;
 };
 
 function openTransferDatabase(): Promise<IDBDatabase> {
@@ -53,15 +53,40 @@ export async function forgetTransfer(id: string) {
     });
   } finally { db.close(); }
 }
+// Remove this device's private queue metadata after sign-out without touching other device manifests.
+export async function forgetDeviceTransfers(deviceId: string) {
+  const db = await openTransferDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction("transfers", "readwrite");
+      const cursor = transaction.objectStore("transfers").openCursor();
+      cursor.onsuccess = () => {
+        const record = cursor.result;
+        if (!record) return;
+        if ((record.value as Transfer).deviceId === deviceId) record.delete();
+        record.continue();
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } finally { db.close(); }
+}
+
 // Hash bounded chunks rather than materializing a multi-gigabyte original in memory.
-export async function hashOriginal(file: File, signal: AbortSignal) {
+export async function hashOriginal(file: File, signal: AbortSignal, onProgress?: (progress: number) => void) {
   const hash = sha256.create();
   const chunkSize = 1024 * 1024;
+  let reported = -1;
+  onProgress?.(0);
   for (let offset = 0; offset < file.size; offset += chunkSize) {
     signal.throwIfAborted();
     hash.update(new Uint8Array(await file.slice(offset, offset + chunkSize).arrayBuffer()));
+    const progress = Math.round(Math.min(file.size, offset + chunkSize) / file.size * 100);
+    if (progress !== reported) { onProgress?.(progress); reported = progress; }
     if (offset % (8 * chunkSize) === 0) await new Promise(resolve => setTimeout(resolve, 0));
   }
+  signal.throwIfAborted();
   return bytesToHex(hash.digest());
 }
 // XMLHttpRequest exposes real bytes sent; aborting leaves completed multipart parts reusable.
@@ -93,9 +118,9 @@ function sendPart(url: string, blob: Blob, signal: AbortSignal, onProgress: (sen
 export async function uploadOriginal(file: File, initial: Transfer, signal: AbortSignal, onChange: (transfer: Transfer) => void) {
   let current: Transfer = { ...initial, parts: [...initial.parts], state: "preparing", message: undefined };
   const update = (patch: Partial<Transfer>) => { current = { ...current, ...patch }; onChange(current); };
-  update({ state: "preparing" });
+  update({ state: "preparing", preparationProgress: 0 });
   try {
-    const hash = await hashOriginal(file, signal);
+    const hash = await hashOriginal(file, signal, preparationProgress => update({ preparationProgress }));
     if (current.hash && current.hash !== hash) {
       update({ state: "needs-file", message: "This is a different file. Choose the original file to resume." });
       await persistTransfer(current); return current;

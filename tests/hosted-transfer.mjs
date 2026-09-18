@@ -27,6 +27,8 @@ async function verifyHostedHandoff() {
     await writeFile(".sites-runtime/cloud-test-session.json", JSON.stringify({ origin, cookie: sender }), { mode: 0o600 });
   }
   const session = await requestApi("session", sender).then(response => response.json());
+  assert.equal(session.space?.name, "Relay verification", "Use only the isolated verification space.");
+  assert.equal(session.role, "owner", "The verification credential must be an owner after migration.");
   assert.equal(session.transport, "direct", "Cloud tests must exercise direct-to-bucket transport.");
   const inviteResponse = await requestApi("invitations", sender, "POST");
   assert.equal(inviteResponse.status, 200);

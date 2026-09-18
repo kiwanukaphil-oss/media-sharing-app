@@ -52,13 +52,16 @@ export async function readJson<T extends z.ZodTypeAny>(request: Request, schema:
   try { return schema.parse(JSON.parse(raw)); }
   catch { throw new ApiError(400, "Some details are missing or invalid. Please try again."); }
 }
-export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string };
+export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member" };
+export function requireOwner(device: ActiveDevice) {
+  if (device.role !== "owner") throw new ApiError(403, "Only a space owner can do this.");
+}
 // Authenticate every API request against a revocable, hashed device credential.
 export async function requireDevice(request: Request): Promise<ActiveDevice> {
   const authorization = request.headers.get("Authorization");
   const token = authorization ? authorization.match(/^Bearer ([a-f0-9]{64})$/)?.[1] : request.headers.get("Cookie")?.split(";").map(part => part.trim()).find(part => part.startsWith("relay_device="))?.slice(13);
   if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new ApiError(401, "Connect this device to continue.");
-  const device = await database().prepare(`SELECT devices.id, devices.space_id, devices.name, spaces.name AS space_name
+  const device = await database().prepare(`SELECT devices.id, devices.space_id, devices.name, devices.role, spaces.name AS space_name
     FROM devices JOIN spaces ON spaces.id = devices.space_id
     WHERE devices.token_hash = ? AND devices.revoked_at IS NULL AND devices.expires_at > ?`)
     .bind(await tokenHash(token), Date.now()).first<ActiveDevice>();

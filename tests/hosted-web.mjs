@@ -24,6 +24,7 @@ const fixtureName = `web-release-${randomUUID()}.png`;
 try {
   const session = await (await context.request.get(`${origin}/api/session`)).json();
   assert.equal(session.space.name, 'Relay verification', 'Never mutate the owner workspace in release tests');
+  assert.equal(session.role, 'owner', 'The verification credential must be an owner after migration.');
   await page.goto(origin);
   await expect(page.getByLabel('Search filenames')).toBeVisible();
   const png = await page.evaluate(() => {
@@ -65,14 +66,14 @@ try {
   await page.screenshot({ path: '.sites-runtime/browser-results/hosted-web-phone.png', fullPage: true });
   await card.getByRole('button', { name: 'Move to Trash' }).click();
   await expect(card).toHaveCount(0);
-  await page.locator('.web-tools').getByRole('button', { name: /^Trash/ }).click();
+  await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Restore', exact: true }).click();
   await page.getByRole('button', { name: 'Back to files' }).click();
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Move to Trash' }).click();
   await expect(card).toHaveCount(0);
-  await page.locator('.web-tools').getByRole('button', { name: /^Trash/ }).click();
+  await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
   await card.getByRole('button', { name: 'Delete permanently' }).click();
   await expect(card).toHaveCount(0);
   console.log('PASS hosted web: real direct R2 image upload, thumbnail, verified streaming bytes (test writable), Firefox attachment download, 100 GiB quota, responsive UI, trash/restore and explicit test-fixture deletion.');
