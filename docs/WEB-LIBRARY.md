@@ -1,6 +1,6 @@
 # Web library and file organisation
 
-Deployed on 18 September 2026 after user approval, as Worker version `16ec7bee-77c3-47db-b142-1bde072af82c` at 100% allocation. The source commit was approved after production verification. Repository push remains pending.
+Deployed on 18 September 2026 after user approval, as Worker version `16ec7bee-77c3-47db-b142-1bde072af82c` at 100% allocation. The source commit was approved after production verification. Release commit `051ee68` was pushed to `origin/main` after user approval.
 
 ## Behaviour
 

@@ -1,6 +1,6 @@
 # Relay
 
-The web library release is live: albums, direct-to-album uploads, bulk organisation, date browsing, and individual/bulk renaming. See [WEB-LIBRARY.md](./docs/WEB-LIBRARY.md) for behaviour, local/production validation, boundaries, and migration evidence. Deployed on 18 September 2026 as `16ec7bee-77c3-47db-b142-1bde072af82c`; the source commit was approved after production verification. Repository push remains pending.
+The web library release is live: albums, direct-to-album uploads, bulk organisation, date browsing, and individual/bulk renaming. See [WEB-LIBRARY.md](./docs/WEB-LIBRARY.md) for behaviour, local/production validation, boundaries, and migration evidence. Deployed on 18 September 2026 as `16ec7bee-77c3-47db-b142-1bde072af82c`; the source commit was approved after production verification. Release commit `051ee68` was pushed to `origin/main` after user approval.
 
 A working desktop web implementation of the shared media drop zone, deployed directly to Cloudflare at https://relay-media-exchange.kiwanukaphil.workers.dev, with a separate native Android preview in [mobile](./mobile/README.md). The responsive web layout and native app are distinct clients. Architecture and UX details are in [docs/PRODUCT-ARCHITECTURE.md](./docs/PRODUCT-ARCHITECTURE.md); resource details are in [deploy/STATUS.md](./deploy/STATUS.md).
 
