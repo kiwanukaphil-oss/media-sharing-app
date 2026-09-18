@@ -3,7 +3,10 @@ export type MediaItem = {
   id: string; name: string; mime: string; size: number; sha256: string;
   category: Category; createdAt: number; deviceName: string;
   hasPreview?: boolean; archivedAt?: number | null;
+  originalName?: string; capturedAt?: string | null; uploadBatch?: string | null; revision?: number;
 };
+export type Album = { id: string; name: string; description: string; createdAt: number; archivedAt: number | null; deletedAt: number | null; revision: number; count: number };
+export type RenameEntry = { id: string; name: string; expectedRevision: number };
 export type FeedPage = { items: MediaItem[]; nextCursor: string | null; counts: { all: number; original: number; final: number; trash: number }; total: number; role: DeviceRole };
 export type StorageUsage = { used: number; reserved: number; trash: number; limit: number; uploads: { id: string; name: string; size: number; createdAt: number; deviceName: string; canCancel: boolean }[] };
 export type DeviceRole = "owner" | "member";

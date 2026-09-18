@@ -1,5 +1,13 @@
 # Direct Cloudflare deployment
 
+## Current web library release — 18 September 2026
+
+User approved production deployment of the tested library release. Worker version `16ec7bee-77c3-47db-b142-1bde072af82c` is live at 100%, verified by deployment read-back. The immediately preceding live version was `f48b60d3-a077-4d7f-bcac-22fe4bf5553e`.
+
+Production already had migration 0003. Only migration `0004_confused_magik.sql` was applied in this release, after capturing a recovery bookmark/export and verifying an isolated restore. Existing resource IDs and secrets were preserved. Live health, library/rename browser checks, original-byte saves and cross-session multipart transfers passed. All seven pre-release media records were checked for unchanged names, storage keys and integrity metadata. Details are in [WEB-LIBRARY.md](../docs/WEB-LIBRARY.md). The source commit was approved after production verification. Repository push remains pending.
+
+The earlier release notes below are retained as historical evidence; their version and schema statements describe those earlier deployments.
+
 Updated 2026-09-17. User selected direct Cloudflare hosting and authorized continued deployment work without phase confirmations. The initial preview was committed and pushed with approval (5ac02fe). The user also approved committing and pushing the tested web release.
 
 - URL: https://relay-media-exchange.kiwanukaphil.workers.dev

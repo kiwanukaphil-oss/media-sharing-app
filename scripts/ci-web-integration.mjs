@@ -56,9 +56,9 @@ try {
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   } else if (browserChecks) {
-    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser']) await runIntegrationTest(name);
+    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser']) await runIntegrationTest(name);
   } else {
-    for (const name of ['transfer-integration', 'web-management', 'device-permissions']) await runIntegrationTest(name);
+    for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   }

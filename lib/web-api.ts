@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { libraryAction, requireAlbum } from "./library-api";
 import { ApiError, bucket, database, requireMedia, requireOwner, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
 import type { MediaItem } from "./contracts";
 
@@ -13,25 +14,46 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   const values: (string | number)[] = [device.space_id];
   let where = `media.space_id = ? AND media.status ${category === "trash" ? "IN ('ready', 'deleting')" : "= 'ready'"} AND media.archived_at IS ${category === "trash" ? "NOT " : ""}NULL`;
   if (category === "original" || category === "final") { where += " AND media.category = ?"; values.push(category); }
-  if (search) { where += " AND instr(lower(media.name), lower(?)) > 0"; values.push(search); }
+  const album = query.get("album");
+  if (album === "unorganised") where += " AND NOT EXISTS (SELECT 1 FROM album_media am JOIN albums a ON a.id = am.album_id WHERE am.media_id = media.id AND a.deleted_at IS NULL)";
+  else if (album) { await requireAlbum(device, album); where += " AND EXISTS (SELECT 1 FROM album_media WHERE media_id = media.id AND album_id = ?)"; values.push(album); }
+  if (search) { where += " AND (instr(lower(media.name), lower(?)) > 0 OR instr(lower(COALESCE(media.original_name, media.name)), lower(?)) > 0)"; values.push(search, search); }
+  const dateMode = query.get("dateMode") || "uploaded";
+  if (!["uploaded", "captured"].includes(dateMode)) throw new ApiError(400, "Unknown date mode.");
+  const dateColumn = dateMode === "captured" ? "COALESCE(media.captured_at, strftime('%Y-%m-%dT%H:%M:%S', media.created_at / 1000, 'unixepoch'))" : "strftime('%Y-%m-%dT%H:%M:%S', media.created_at / 1000, 'unixepoch')";
+  for (const [key, operator] of [["from", ">="], ["to", "<="]]) {
+    const date = query.get(key);
+    if (date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(new Date(date).getTime()) || new Date(date).toISOString().slice(0, 10) !== date) throw new ApiError(400, "Choose a valid date.");
+      where += ` AND substr(${dateColumn}, 1, 10) ${operator} ?`; values.push(date);
+    }
+  }
+  if (query.get("from") && query.get("to") && query.get("from")! > query.get("to")!) throw new ApiError(400, "The start date must be before the end date.");
+  const batch = query.get("batch");
+  if (batch) { if (!z.string().uuid().safeParse(batch).success) throw new ApiError(400, "Invalid upload batch."); where += " AND media.upload_batch = ?"; values.push(batch); }
+  const sort = query.get("sort") || "newest";
+  if (!["newest", "oldest"].includes(sort)) throw new ApiError(400, "Unknown sort order.");
+  const direction = sort === "oldest" ? "ASC" : "DESC";
+  const comparison = sort === "oldest" ? ">" : "<";
+  const sortColumn = dateMode === "captured" ? `COALESCE(CAST(strftime('%s', media.captured_at) AS INTEGER) * 1000, media.created_at)` : "media.created_at";
   const total = await database().prepare(`SELECT COUNT(*) AS count FROM media WHERE ${where}`).bind(...values).first<{ count: number }>();
   if (query.has("cursor")) {
     try {
-      const cursor = z.object({ createdAt: z.number().int().nonnegative(), id: z.string().uuid() }).parse(JSON.parse(atob(query.get("cursor")!)));
-      where += " AND (media.created_at < ? OR (media.created_at = ? AND media.id < ?))";
+      const cursor = z.object({ createdAt: z.number().int(), id: z.string().uuid() }).parse(JSON.parse(atob(query.get("cursor")!)));
+      where += ` AND (${sortColumn} ${comparison} ? OR (${sortColumn} = ? AND media.id ${comparison} ?))`;
       values.push(cursor.createdAt, cursor.createdAt, cursor.id);
     } catch { throw new ApiError(400, "This page link is invalid. Refresh the feed."); }
   }
   const result = await database().prepare(`SELECT media.id, media.name, media.mime, media.size, media.sha256, media.category,
-    media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
-    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY media.created_at DESC, media.id DESC LIMIT ?`).bind(...values, limit + 1).all<MediaItem>();
+    COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
+    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(...values, limit + 1).all<MediaItem & { sortValue: number }>();
   const items = result.results.slice(0, limit);
   const last = items.at(-1);
   const counts = await database().prepare(`SELECT COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS "all",
     COUNT(CASE WHEN archived_at IS NULL AND category = 'original' THEN 1 END) AS original,
     COUNT(CASE WHEN archived_at IS NULL AND category = 'final' THEN 1 END) AS final,
     COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS trash FROM media WHERE space_id = ? AND status IN ('ready','deleting')`).bind(device.space_id).first();
-  return Response.json({ items, role: device.role, total: total?.count || 0, counts, nextCursor: result.results.length > limit && last ? btoa(JSON.stringify({ createdAt: last.createdAt, id: last.id })) : null });
+  return Response.json({ items, role: device.role, total: total?.count || 0, counts, nextCursor: result.results.length > limit && last ? btoa(JSON.stringify({ createdAt: last.sortValue, id: last.id })) : null });
 }
 
 export async function readStorage(device: ActiveDevice) {
@@ -86,6 +108,8 @@ async function permanentlyDelete(item: UploadRow) {
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
 export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string): Promise<Response | null> {
   const method = request.method;
+  const libraryResponse = await libraryAction(request, device, resource, id);
+  if (libraryResponse) return libraryResponse;
   if (resource === "feed" && method === "GET") return readFeed(request, device);
   if (resource === "storage" && method === "GET") return readStorage(device);
   if (resource === "media" && id && action === "thumbnail" && method === "PUT") return writeThumbnail(request, device, id);
@@ -100,7 +124,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     requireOwner(device);
     const item = await requireMedia(device, id);
     if (item.status !== "ready") throw new ApiError(409, "This transfer is not ready.");
-    await database().prepare("UPDATE media SET archived_at = ? WHERE id = ? AND status = 'ready'").bind(action === "archive" ? Date.now() : null, id).run();
+    await database().prepare("UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready'").bind(action === "archive" ? Date.now() : null, id).run();
     return Response.json({ changed: true });
   }
   if (resource === "media" && id && !action && method === "DELETE") {

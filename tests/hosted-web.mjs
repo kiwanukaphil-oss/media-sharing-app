@@ -66,14 +66,14 @@ try {
   await page.screenshot({ path: '.sites-runtime/browser-results/hosted-web-phone.png', fullPage: true });
   await card.getByRole('button', { name: 'Move to Trash' }).click();
   await expect(card).toHaveCount(0);
-  await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
+  await page.locator('.web-tools').getByRole('button', { name: /^Trash/ }).click();
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Restore', exact: true }).click();
   await page.getByRole('button', { name: 'Back to files' }).click();
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Move to Trash' }).click();
   await expect(card).toHaveCount(0);
-  await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
+  await page.locator('.web-tools').getByRole('button', { name: /^Trash/ }).click();
   await card.getByRole('button', { name: 'Delete permanently' }).click();
   await expect(card).toHaveCount(0);
   console.log('PASS hosted web: real direct R2 image upload, thumbnail, verified streaming bytes (test writable), Firefox attachment download, 100 GiB quota, responsive UI, trash/restore and explicit test-fixture deletion.');

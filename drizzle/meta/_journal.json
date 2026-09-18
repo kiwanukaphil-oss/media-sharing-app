@@ -29,6 +29,13 @@
       "when": 1789667798434,
       "tag": "0003_device_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789716630706,
+      "tag": "0004_confused_magik",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { AwsClient } from "aws4fetch";
 import { z } from "zod";
+import { validCaptureDate } from "./library-names";
 import { MAX_FILE_SIZE, PART_SIZE } from "./contracts";
 
 export class ApiError extends Error {
@@ -97,6 +98,7 @@ export const uploadSchema = z.object({
   mime: z.string().max(150).regex(/^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/),
   size: z.number().int().positive().max(MAX_FILE_SIZE), sha256: z.string().regex(/^[a-f0-9]{64}$/),
   category: z.enum(["original", "final"]),
+  albumId: z.string().uuid().optional(), capturedAt: z.string().refine(validCaptureDate).optional(), uploadBatch: z.string().uuid().optional(),
 });
 // Reuse a caller's stable upload ID after interrupted requests rather than creating duplicates.
 export async function initializeUpload(device: ActiveDevice, input: z.infer<typeof uploadSchema>) {
@@ -106,16 +108,24 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
     if (!["ready", "uploading"].includes(existing.status) || existing.archived_at) throw new ApiError(409, "This original was removed from the feed.");
     return { id: existing.id, partSize: existing.part_size, status: existing.status, uploadId: existing.upload_id };
   }
+  if (input.albumId) {
+    const album = await database().prepare("SELECT id FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL").bind(input.albumId, device.space_id).first();
+    if (!album) throw new ApiError(409, "The upload album is unavailable or archived. Choose an active album.");
+  }
   const key = `${device.space_id}/${input.id}/original`;
   const upload = await bucket().createMultipartUpload(key, {
     httpMetadata: { contentType: input.mime, contentDisposition: attachmentName(input.name) },
     customMetadata: { sha256: input.sha256, filename: input.name },
   });
   try {
-    const reserved = await database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at)
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?
-      WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?`)
-      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), device.space_id, input.size, spaceLimitBytes()).run();
+    const reservation = database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at, original_name, captured_at, upload_batch)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?
+      WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?
+      AND (? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL))`)
+      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, device.space_id, input.size, spaceLimitBytes(), input.albumId || null, input.albumId || null, device.space_id);
+    const statements = [reservation];
+    if (input.albumId) statements.push(database().prepare("INSERT INTO album_media (album_id, media_id) SELECT ?, id FROM media WHERE id = ? AND space_id = ?").bind(input.albumId, input.id, device.space_id));
+    const [reserved] = await database().batch(statements);
     if (!reserved.meta.changes) throw new ApiError(507, "This space has reached its 100 GB limit. Empty Trash or cancel unfinished uploads in Storage to make room.");
   } catch (error) {
     await upload.abort();

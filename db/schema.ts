@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const spaces = sqliteTable("spaces", {
   id: text("id").primaryKey(),
@@ -28,6 +28,10 @@ export const media = sqliteTable("media", {
   deviceId: text("device_id").notNull().references(() => devices.id),
   name: text("name").notNull(),
   mime: text("mime").notNull(),
+  originalName: text("original_name"),
+  capturedAt: text("captured_at"),
+  uploadBatch: text("upload_batch"),
+  revision: integer("revision").notNull().default(0),
   size: integer("size").notNull(),
   sha256: text("sha256").notNull(),
   category: text("category", { enum: ["original", "final"] }).notNull(),
@@ -40,3 +44,19 @@ export const media = sqliteTable("media", {
   previewSize: integer("preview_size").notNull().default(0),
   createdAt: integer("created_at").notNull(),
 }, table => [index("idx_media_space_status_created").on(table.spaceId, table.status, table.createdAt), index("idx_media_feed").on(table.spaceId, table.status, table.archivedAt, table.createdAt, table.id)]);
+
+export const albums = sqliteTable("albums", {
+  id: text("id").primaryKey(),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  archivedAt: integer("archived_at"),
+  deletedAt: integer("deleted_at"),
+  revision: integer("revision").notNull().default(0),
+}, table => [index("idx_albums_space").on(table.spaceId, table.deletedAt, table.archivedAt)]);
+
+export const albumMedia = sqliteTable("album_media", {
+  albumId: text("album_id").notNull().references(() => albums.id, { onDelete: "cascade" }),
+  mediaId: text("media_id").notNull().references(() => media.id, { onDelete: "cascade" }),
+}, table => [primaryKey({ columns: [table.albumId, table.mediaId] }), index("idx_album_media_file").on(table.mediaId)]);

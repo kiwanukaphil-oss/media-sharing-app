@@ -1,11 +1,13 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { requestJson } from "./api-client";
+import { readCaptureDate } from "./capture-date";
 import { publishPreview } from "./previews";
 import type { Category, UploadSession } from "./contracts";
 
 export type Transfer = {
   id: string; deviceId: string; name: string; size: number; mime: string; category: Category;
+  albumId?: string; albumName?: string; capturedAt?: string; uploadBatch?: string;
   hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
   state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
   progress: number; preparationProgress?: number; message?: string;
@@ -125,9 +127,9 @@ export async function uploadOriginal(file: File, initial: Transfer, signal: Abor
       update({ state: "needs-file", message: "This is a different file. Choose the original file to resume." });
       await persistTransfer(current); return current;
     }
-    update({ hash });
+    update({ hash, capturedAt: current.capturedAt || await readCaptureDate(file) });
     await persistTransfer(current);
-    const session = await requestJson<UploadSession>("uploads", { method: "POST", signal, body: JSON.stringify({ id: current.id, name: current.name, mime: current.mime, size: current.size, category: current.category, sha256: hash }) });
+    const session = await requestJson<UploadSession>("uploads", { method: "POST", signal, body: JSON.stringify({ id: current.id, name: current.name, mime: current.mime, size: current.size, category: current.category, sha256: hash, albumId: current.albumId, capturedAt: current.capturedAt, uploadBatch: current.uploadBatch }) });
     update({ partSize: session.partSize, state: "sending", uploadId: session.uploadId, ...(current.uploadId && session.uploadId && current.uploadId !== session.uploadId ? { parts: [], progress: 0 } : {}) });
     await persistTransfer(current);
     const total = Math.ceil(file.size / session.partSize);

@@ -55,6 +55,9 @@ async function verifyBrowser(engine, options, label) {
     await page.screenshot({ path: `.sites-runtime/browser-results/${label}-phone.png`, fullPage: true });
     await page.reload();
     await expect(page.getByLabel('Search filenames')).toBeVisible();
+    // Deep links now retain the Final cuts view across reloads; All files remains explicitly available.
+    await expect(page.locator('article')).toHaveCount(1);
+    await page.locator('.filter-tabs').getByRole('button', { name: /^All files/ }).click();
     await expect(page.locator('article')).toHaveCount(2);
     await context.setOffline(true);
     await expect(page.getByText(/Connection interrupted. Your queue/)).toBeVisible();

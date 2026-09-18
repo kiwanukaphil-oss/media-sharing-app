@@ -1,5 +1,7 @@
 # Relay
 
+The web library release is live: albums, direct-to-album uploads, bulk organisation, date browsing, and individual/bulk renaming. See [WEB-LIBRARY.md](./docs/WEB-LIBRARY.md) for behaviour, local/production validation, boundaries, and migration evidence. Deployed on 18 September 2026 as `16ec7bee-77c3-47db-b142-1bde072af82c`; the source commit was approved after production verification. Repository push remains pending.
+
 A working desktop web implementation of the shared media drop zone, deployed directly to Cloudflare at https://relay-media-exchange.kiwanukaphil.workers.dev, with a separate native Android preview in [mobile](./mobile/README.md). The responsive web layout and native app are distinct clients. Architecture and UX details are in [docs/PRODUCT-ARCHITECTURE.md](./docs/PRODUCT-ARCHITECTURE.md); resource details are in [deploy/STATUS.md](./deploy/STATUS.md).
 
 ## Implemented
@@ -25,10 +27,12 @@ npm run build
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_purple_chamber.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_late_beyonder.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_lush_karma.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_device_roles.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0004_confused_magik.sql
 npm run dev
 ```
 
-Apply each migration once per local database. For this checkout all three migrations have already been applied. Open the exact address printed by the server (normally http://localhost:5173). Create a space and choose files. A second browser profile can redeem an invitation to test another device on this computer.
+Apply each migration once per local database. For this checkout all five migrations have already been applied locally. Open the exact address printed by the server (normally http://localhost:5173). Create a space and choose files. A second browser profile can redeem an invitation to test another device on this computer.
 
 The bundled npm wrapper failed on this Windows installation. The working fallback was to run the installed npm JavaScript entry point directly:
 
