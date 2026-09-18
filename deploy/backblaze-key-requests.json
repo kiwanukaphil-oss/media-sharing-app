@@ -1,0 +1,20 @@
+{
+  "endpoint": "/b2api/v4/b2_create_key",
+  "bucketName": "relay-backups-20260918-a72c",
+  "requests": [
+    {
+      "accountId": "d7f8576be9c1",
+      "keyName": "relay-backup-upload-only",
+      "capabilities": ["writeFiles"],
+      "bucketIds": ["6d377f58d5e7b62bae090c11"],
+      "namePrefix": "relay/"
+    },
+    {
+      "accountId": "d7f8576be9c1",
+      "keyName": "relay-restore-read-only",
+      "capabilities": ["listFiles", "readFiles"],
+      "bucketIds": ["6d377f58d5e7b62bae090c11"],
+      "namePrefix": "relay/"
+    }
+  ]
+}

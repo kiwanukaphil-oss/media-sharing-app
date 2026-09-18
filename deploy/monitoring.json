@@ -1,0 +1,61 @@
+{
+  "monitors": [
+    {
+      "pronounceable_name": "Relay - homepage",
+      "url": "https://relay-media-exchange.kiwanukaphil.workers.dev/",
+      "monitor_type": "expected_status_code",
+      "expected_status_codes": [200],
+      "check_frequency": 180,
+      "request_timeout": 15,
+      "confirmation_period": 180,
+      "recovery_period": 180,
+      "verify_ssl": true,
+      "follow_redirects": false,
+      "email": true,
+      "sms": false,
+      "call": false,
+      "push": false
+    },
+    {
+      "pronounceable_name": "Relay - API health status",
+      "url": "https://relay-media-exchange.kiwanukaphil.workers.dev/api/health",
+      "monitor_type": "expected_status_code",
+      "expected_status_codes": [200],
+      "check_frequency": 180,
+      "request_timeout": 15,
+      "confirmation_period": 180,
+      "recovery_period": 180,
+      "verify_ssl": true,
+      "follow_redirects": false,
+      "email": true,
+      "sms": false,
+      "call": false,
+      "push": false
+    },
+    {
+      "pronounceable_name": "Relay - API health content",
+      "url": "https://relay-media-exchange.kiwanukaphil.workers.dev/api/health",
+      "monitor_type": "keyword",
+      "required_keyword": "\"status\":\"ok\"",
+      "check_frequency": 180,
+      "request_timeout": 15,
+      "confirmation_period": 180,
+      "recovery_period": 180,
+      "verify_ssl": true,
+      "follow_redirects": false,
+      "email": true,
+      "sms": false,
+      "call": false,
+      "push": false
+    }
+  ],
+  "backupHeartbeat": {
+    "name": "Relay - daily verified backup",
+    "period": 86400,
+    "grace": 7200,
+    "email": true,
+    "sms": false,
+    "call": false,
+    "push": false
+  }
+}

@@ -1,0 +1,108 @@
+name: Daily verified backup
+on:
+  workflow_dispatch:
+  schedule:
+    # 00:00 UTC = 03:00 Africa/Nairobi. GitHub schedules are best effort.
+    - cron: '0 0 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: relay-daily-backup
+  cancel-in-progress: false
+jobs:
+  inventory:
+    if: github.repository == 'kiwanukaphil-oss/media-sharing-app' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: relay-backup-verify
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Prepare encrypted destination inventory
+        env:
+          B2_READER_KEY_JSON: ${{ secrets.B2_READER_KEY_JSON }}
+          BACKUP_INDEX_ENCRYPTION_KEY: ${{ secrets.BACKUP_INDEX_ENCRYPTION_KEY }}
+        run: |
+          mkdir -p work
+          node scripts/backup-index.mjs work/backup-index.enc
+      - name: Transfer only encrypted inventory
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: encrypted-backup-index
+          path: work/backup-index.enc
+          retention-days: 1
+          if-no-files-found: error
+  copy:
+    needs: inventory
+    runs-on: ubuntu-latest
+    environment: relay-backup-copy
+    timeout-minutes: 75
+    outputs:
+      snapshot_id: ${{ steps.backup.outputs.snapshot_id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: encrypted-backup-index
+          path: work
+      - name: Copy a consistent recovery snapshot
+        id: backup
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
+          R2_READ_ACCESS_KEY_ID: ${{ secrets.R2_READ_ACCESS_KEY_ID }}
+          R2_READ_SECRET_ACCESS_KEY: ${{ secrets.R2_READ_SECRET_ACCESS_KEY }}
+          B2_WRITER_KEY_JSON: ${{ secrets.B2_WRITER_KEY_JSON }}
+          BACKUP_INDEX_ENCRYPTION_KEY: ${{ secrets.BACKUP_INDEX_ENCRYPTION_KEY }}
+          RELAY_BACKUP_INDEX_FILE: work/backup-index.enc
+        run: node --disable-warning=ExperimentalWarning scripts/relay-backup.mjs create
+  verify:
+    needs: copy
+    runs-on: ubuntu-latest
+    environment: relay-backup-verify
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Restore and verify from Backblaze
+        env:
+          B2_READER_KEY_JSON: ${{ secrets.B2_READER_KEY_JSON }}
+          SNAPSHOT_ID: ${{ needs.copy.outputs.snapshot_id }}
+        run: node --disable-warning=ExperimentalWarning scripts/relay-backup.mjs verify "$SNAPSHOT_ID"
+      - name: Report verified success
+        env:
+          BETTER_STACK_BACKUP_HEARTBEAT_URL: ${{ secrets.BETTER_STACK_BACKUP_HEARTBEAT_URL }}
+          SNAPSHOT_ID: ${{ needs.copy.outputs.snapshot_id }}
+        run: node scripts/backup-heartbeat.mjs success ".sites-runtime/operations/backups/$SNAPSHOT_ID/restore-verification.json" "$SNAPSHOT_ID"
+  report-failure:
+    needs: [inventory, copy, verify]
+    if: >-
+      always() && github.repository == 'kiwanukaphil-oss/media-sharing-app' && github.ref == 'refs/heads/main' &&
+      (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    runs-on: ubuntu-latest
+    environment: relay-backup-alerts
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Report unsuccessful backup
+        env:
+          BETTER_STACK_BACKUP_HEARTBEAT_URL: ${{ secrets.BETTER_STACK_BACKUP_HEARTBEAT_URL }}
+        run: node scripts/backup-heartbeat.mjs failure

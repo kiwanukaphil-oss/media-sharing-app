@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { checkDatabase, completedOriginals, sanitizeRestoredAccess } from '../scripts/relay-backup.mjs';
+import { backupBucketId, validateFileDigest, validateKeyScope } from '../scripts/backup-storage.mjs';
+
+// A restored fixture includes Trash, an unfinished upload, a live device, and a redeemable invitation.
+function recoveryFixture() {
+  const database = new DatabaseSync(':memory:');
+  database.exec(`
+    CREATE TABLE spaces(id TEXT PRIMARY KEY);
+    CREATE TABLE devices(id TEXT PRIMARY KEY, space_id TEXT REFERENCES spaces(id), revoked_at INTEGER, expires_at INTEGER);
+    CREATE TABLE invitations(id TEXT PRIMARY KEY, expires_at INTEGER, redeemed_at INTEGER);
+    CREATE TABLE media(id TEXT PRIMARY KEY, object_key TEXT, size INTEGER, sha256 TEXT, status TEXT,
+      archived_at INTEGER, preview_ready INTEGER, preview_size INTEGER);
+    INSERT INTO spaces VALUES('space');
+    INSERT INTO devices VALUES('device','space',NULL,9999999999999);
+    INSERT INTO invitations VALUES('invite',9999999999999,NULL);
+    INSERT INTO media VALUES('trash','space/original',4,'${'a'.repeat(64)}','ready',123,1,10);
+    INSERT INTO media VALUES('pending','space/pending',4,'${'b'.repeat(64)}','uploading',NULL,0,0);
+  `);
+  return database;
+}
+
+test('complete originals include Trash and exclude unfinished uploads', () => {
+  const database = recoveryFixture();
+  try { assert.deepEqual(completedOriginals(database).map(row => row.id), ['trash']); }
+  finally { database.close(); }
+});
+
+test('restoration invalidates device and invitation access while preserving records', () => {
+  const database = recoveryFixture();
+  try {
+    sanitizeRestoredAccess(database, 12345);
+    assert.equal(database.prepare('SELECT revoked_at FROM devices').get().revoked_at, 12345);
+    assert.equal(database.prepare('SELECT expires_at FROM invitations').get().expires_at, 0);
+    assert.equal(database.prepare("SELECT status FROM media WHERE id='pending'").get().status, 'cancelling');
+    assert.equal(database.prepare('SELECT SUM(preview_size) AS n FROM media').get().n, 0);
+    assert.equal(database.prepare('SELECT COUNT(*) AS n FROM devices').get().n, 1);
+    checkDatabase(database);
+  } finally { database.close(); }
+});
+
+test('broken relationships fail restore validation', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("PRAGMA foreign_keys=OFF; UPDATE devices SET space_id='missing'");
+    assert.throws(() => checkDatabase(database), /relationship/);
+  } finally { database.close(); }
+});
+
+test('incorrect bytes cannot pass file verification', () => {
+  assert.throws(() => validateFileDigest({ size: 4, sha256: 'a' }, { size: 4, sha256: 'b' }), /mismatch/);
+  assert.throws(() => validateFileDigest({ size: 3, sha256: 'a' }, { size: 4, sha256: 'a' }), /mismatch/);
+});
+
+test('credentials with deletion or broader bucket access are rejected', () => {
+  const allowed = { capabilities: ['writeFiles'], buckets: [{ id: backupBucketId }], namePrefix: 'relay/' };
+  assert.doesNotThrow(() => validateKeyScope(allowed, 'writer'));
+  assert.throws(() => validateKeyScope({ ...allowed, capabilities: ['writeFiles', 'deleteFiles'] }, 'writer'), /scope/);
+  assert.throws(() => validateKeyScope({ ...allowed, buckets: [] }, 'writer'), /scope/);
+  assert.throws(() => validateKeyScope({ ...allowed, namePrefix: '' }, 'writer'), /scope/);
+});
