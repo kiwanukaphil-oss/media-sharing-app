@@ -46,6 +46,21 @@ try {
   const imageCard = page.locator('article').filter({ hasText: 'Ceramic collection' });
   await expect(videoCard.locator('img')).toBeVisible({ timeout: 30000 });
   await expect(imageCard.locator('img')).toBeVisible();
+  // The gallery viewer preserves ordering, keyboard focus, metadata access, and image zoom.
+  await imageCard.getByRole('button', { name: /^Preview / }).click();
+  await expect(page.locator('.viewer-details')).toBeHidden();
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await expect(page.locator('.viewer-stage')).toHaveClass(/is-zoomed/);
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  await page.getByRole('button', { name: 'File details', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Original file fingerprint');
+  const names = await page.locator('article h3').allTextContents();
+  const currentIndex = names.indexOf('Ceramic collection - studio original.png');
+  const direction = currentIndex < names.length - 1 ? 1 : -1;
+  await page.keyboard.press(direction === 1 ? 'ArrowRight' : 'ArrowLeft');
+  await expect(page.locator('.viewer-file h2')).toHaveText(names[currentIndex + direction]);
+  await page.keyboard.press('Escape');
+  await expect(imageCard.getByRole('button', { name: /^Preview / })).toBeFocused();
   await videoCard.getByRole('button', { name: 'Preview Studio process.webm', exact: true }).click();
   const video = page.locator('dialog video');
   await expect(video).toHaveAttribute('poster', /\/thumbnail$/);
@@ -68,6 +83,16 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `No overflow at ${width}px`);
     await expect(page.locator('.filter-tabs').getByRole('button', { name: /Final cuts/ })).toBeVisible();
     if (width === 390) await page.screenshot({ path: 'outputs/phase-3/mobile.png', fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Workspace navigation' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Open navigation', exact: true })).toBeFocused();
+    await imageCard.getByRole('button', { name: /^Preview / }).click();
+    assert.equal(await page.evaluate(() => document.querySelector('.media-viewer').scrollWidth > innerWidth), false, `Viewer fits ${width}px`);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'List view', exact: true }).click();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `List fits ${width}px`);
+    await page.getByRole('button', { name: 'Grid view', exact: true }).click();
   }
   await page.route('**/thumbnail', route => route.abort());
   await page.reload();

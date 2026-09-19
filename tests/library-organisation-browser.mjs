@@ -1,3 +1,4 @@
+import { chooseWorkspaceOption } from './browser-controls.mjs';
 import assert from 'node:assert/strict';
 import { chromium, firefox, webkit, expect } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
@@ -24,16 +25,31 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByLabel('Description', { exact: true }).fill('Originals and finished work from our September shoot.');
     await page.getByRole('button', { name: 'Create album', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'September product shoot.' })).toBeVisible();
-    const albumId = await page.getByLabel('Browse library').inputValue();
+    // The styled listbox supports keyboard dismissal and returns focus to its trigger.
+    const sort = page.getByRole('combobox', { name: 'Sort', exact: true });
+    await sort.click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(sort).toBeFocused();
+    await sort.press('ArrowDown');
+    await expect(page.getByRole('option', { name: 'Newest first', exact: true })).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(page.getByRole('option', { name: 'Oldest first', exact: true })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(sort).toHaveAttribute('data-value', 'oldest');
+    await chooseWorkspaceOption(page, 'Sort', 'newest');
+    const albumId = await page.getByLabel('Browse library').getAttribute('data-value');
+    await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles([
       { name: 'camera-one.raw', mimeType: 'application/octet-stream', buffer: bytes },
       { name: 'camera-two.raw', mimeType: 'application/octet-stream', buffer: bytes },
     ]);
     // Changing the view while transfers run must not change their persisted destination.
-    await page.getByLabel('Browse library').selectOption('unorganised');
+    await chooseWorkspaceOption(page, 'Browse library', 'unorganised');
     await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
     await expect(page.locator('article')).toHaveCount(0);
-    await page.getByLabel('Browse library').selectOption(albumId);
+    await chooseWorkspaceOption(page, 'Browse library', albumId);
     await expect(page.locator('article')).toHaveCount(2);
     await page.getByRole('button', { name: 'Dismiss completed transfers' }).click();
     await page.locator('article').filter({ hasText: 'camera-one.raw' }).getByRole('button', { name: 'Rename', exact: true }).click();
@@ -51,7 +67,10 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByRole('button', { name: 'Clear search', exact: true }).click();
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.locator('article h3').filter({ hasText: 'camera-one.raw' })).toBeVisible();
-    await page.getByRole('button', { name: 'Select loaded files (2)', exact: true }).click();
+    await page.locator('article input[type="checkbox"]').first().check();
+    await expect(page.getByRole('checkbox', { name: 'Select loaded files (2)', exact: true })).toBeChecked({ indeterminate: true });
+    await page.getByRole('checkbox', { name: 'Select loaded files (2)', exact: true }).check();
+    await expect(page.locator('article input[type="checkbox"]:checked')).toHaveCount(2);
     await page.getByRole('button', { name: 'Rename selected', exact: true }).click();
     await page.getByLabel('Name prefix', { exact: true }).fill('September shoot');
     await expect(page.getByRole('dialog').locator('tbody tr')).toHaveCount(2);
@@ -62,33 +81,38 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByLabel('Album name', { exact: true }).fill('Portfolio');
     await page.getByRole('button', { name: 'Create album', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Portfolio.' })).toBeVisible();
-    const portfolioId = await page.getByLabel('Browse library').inputValue();
-    await page.getByLabel('Browse library').selectOption(albumId);
+    const portfolioId = await page.getByLabel('Browse library').getAttribute('data-value');
+    await chooseWorkspaceOption(page, 'Browse library', albumId);
     await expect(page.locator('article')).toHaveCount(2);
-    await page.getByRole('button', { name: 'Select loaded files (2)', exact: true }).click();
-    await page.getByLabel('Destination album', { exact: true }).selectOption(portfolioId);
+    await page.locator('article input[type="checkbox"]').first().check();
+    await page.getByRole('checkbox', { name: 'Select loaded files (2)', exact: true }).check();
     await page.getByRole('button', { name: 'Add to album', exact: true }).click();
+    await chooseWorkspaceOption(page, 'Destination album', portfolioId);
+    await page.getByRole('dialog').getByRole('button', { name: 'Add to album', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: '2 files added to album' })).toBeVisible();
-    await page.getByLabel('Browse library').selectOption(portfolioId);
+    await chooseWorkspaceOption(page, 'Browse library', portfolioId);
     await expect(page.locator('article')).toHaveCount(2);
-    await page.getByRole('button', { name: 'Select loaded files (2)', exact: true }).click();
+    await page.locator('article input[type="checkbox"]').first().check();
+    await page.getByRole('checkbox', { name: 'Select loaded files (2)', exact: true }).check();
     await page.getByRole('button', { name: 'Remove from album', exact: true }).click();
     await expect(page.locator('article')).toHaveCount(0);
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.locator('article')).toHaveCount(2);
     await page.locator('article').first().getByRole('button', { name: /^Preview / }).click();
+    await page.getByRole('button', { name: 'File details', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('Uploaded name');
     await page.getByRole('button', { name: 'Correct capture date', exact: true }).click();
     await page.getByLabel('Date taken', { exact: true }).fill('2024-09-18T14:30');
     await page.getByRole('button', { name: 'Save capture date', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByLabel('Dates', { exact: true }).selectOption('captured');
+    await chooseWorkspaceOption(page, 'Dates', 'captured');
     await page.getByLabel('From', { exact: true }).fill('2024-09-18');
     await page.getByLabel('To', { exact: true }).fill('2024-09-18');
     await expect(page.locator('article')).toHaveCount(1);
     await page.reload();
     await expect(page.locator('article')).toHaveCount(1);
-    await expect(page.getByLabel('Browse library')).toHaveValue(portfolioId);
+    await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', portfolioId);
+    await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByRole('button', { name: 'Clear date / batch filters', exact: true }).click();
     await expect(page.locator('article')).toHaveCount(2);
     await page.getByRole('button', { name: 'Manage album', exact: true }).click();
@@ -97,9 +121,17 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeEnabled();
     await page.locator('.sidebar').getByRole('button', { name: /^All files/ }).click();
-    await expect(page.getByLabel('Browse library')).toHaveValue('');
+    await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', '');
     await page.goBack();
-    await expect(page.getByLabel('Browse library')).toHaveValue(portfolioId);
+    await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', portfolioId);
+    // Removing the grouping is immediate and undoable; both originals remain in the library.
+    await page.getByRole('button', { name: 'Manage album', exact: true }).click();
+    await page.getByRole('button', { name: 'Remove album', exact: true }).click();
+    await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', '');
+    await expect(page.locator('article')).toHaveCount(2);
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await chooseWorkspaceOption(page, 'Browse library', portfolioId);
+    await expect(page.locator('article')).toHaveCount(2);
     await page.getByRole('button', { name: 'List view', exact: true }).click();
     await page.screenshot({ path: `outputs/library/${label}-desktop.png`, fullPage: true });
     for (const width of [320, 390, 768]) {
@@ -110,13 +142,16 @@ async function verifyOrganisation(engine, options, label) {
     }
     assert.deepEqual(errors, []);
     console.log(`PASS ${label}: albums, captured upload destination, rename/undo, original-name search, renamed byte-identical download, bulk previews/renames/membership, capture dates, deep-link reload, archive/undo, responsive layouts.`);
+  } catch (failure) {
+    await page.screenshot({ path: `outputs/library/${label}-failure.png`, fullPage: true }).catch(() => {});
+    console.error(`${label} failed in: ${await page.locator('main').innerText().catch(() => 'Page unavailable')}`);
+    throw failure;
   } finally { await browser.close(); }
 }
 
-if (process.env.CI) await verifyOrganisation(chromium, {}, 'chromium');
-else {
-  await verifyOrganisation(chromium, { channel: 'chrome' }, 'chrome');
-  await verifyOrganisation(chromium, { channel: 'msedge' }, 'edge');
+const browserTargets = process.env.CI
+  ? [[chromium, {}, 'chromium'], [firefox, {}, 'firefox'], [webkit, {}, 'webkit']]
+  : [[chromium, { channel: 'chrome' }, 'chrome'], [chromium, { channel: 'msedge' }, 'edge'], [firefox, {}, 'firefox'], [webkit, {}, 'webkit']];
+for (const [engine, options, label] of browserTargets) {
+  if (!process.env.RELAY_BROWSER || process.env.RELAY_BROWSER === label) await verifyOrganisation(engine, options, label);
 }
-await verifyOrganisation(firefox, {}, 'firefox');
-await verifyOrganisation(webkit, {}, 'webkit');

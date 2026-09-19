@@ -37,7 +37,7 @@ try {
   await page.getByLabel('Description', { exact: true }).fill('Isolated production verification fixture. Retained for review.');
   await page.getByRole('button', { name: 'Create album', exact: true }).click();
   await expect(page.getByRole('heading', { name: `${albumName}.` })).toBeVisible({ timeout: 15000 });
-  const albumId = await page.getByLabel('Browse library').inputValue();
+  const albumId = await page.getByLabel('Browse library').getAttribute('data-value');
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: originalName, mimeType: 'application/octet-stream', buffer: bytes });
   const card = page.locator('article').filter({ hasText: originalName });
   await expect(card).toBeVisible({ timeout: 60000 });
@@ -58,7 +58,7 @@ try {
   const capturedFeed = await api(`feed?album=${albumId}&dateMode=captured&from=2026-09-17&to=2026-09-17`);
   assert.equal((await capturedFeed.json()).items[0].id, item.id);
   await page.reload();
-  await expect(page.getByLabel('Browse library')).toHaveValue(albumId);
+  await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', albumId);
   await expect(page.locator('article h3')).toHaveText(`${renamedStem}.raw`);
   await page.screenshot({ path: 'outputs/library-release/hosted-library.png', fullPage: true });
   const fallbackBrowser = await firefox.launch();

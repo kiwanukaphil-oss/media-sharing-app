@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { FolderPlus, Pencil, Undo2, X } from "lucide-react";
+import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
+import { WorkspaceSelect } from "./workspace-select";
 import { requestJson } from "@/lib/api-client";
 import { numberedFilename, splitFilename, validFilename } from "@/lib/library-names";
 import type { Album, MediaItem, RenameEntry } from "@/lib/contracts";
@@ -13,6 +14,9 @@ type Props = {
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
   refresh: () => Promise<void>; renameItems: MediaItem[]; onRename: (items: MediaItem[]) => void;
   dateItem: MediaItem | null; onDate: (item: MediaItem | null) => void;
+  children: React.ReactNode;
+  viewControls: React.ReactNode;
+  feedback: { message: string; setMessage: Dispatch<SetStateAction<string>>; undo: (() => Promise<unknown>) | null; setUndo: Dispatch<SetStateAction<(() => Promise<unknown>) | null>> };
 };
 
 // Native dialogs provide focus containment and return focus to the invoking control.
@@ -32,8 +36,11 @@ export function LibraryTools(props: Props) {
   const [targetAlbum, setTargetAlbum] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
-  const [message, setMessage] = useState("");
-  const [undo, setUndo] = useState<(() => Promise<unknown>) | null>(null);
+  const { message, setMessage, undo, setUndo } = props.feedback;
+  const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterPanelId = useId();
+  const activeFilterCount = Number(Boolean(query.from || query.to)) + Number(Boolean(query.batch)) + Number(query.dateMode === "captured");
   const activeAlbum = albums.find(album => album.id === query.album);
   const activeAlbums = albums.filter(album => !album.archivedAt);
 
@@ -55,7 +62,8 @@ export function LibraryTools(props: Props) {
     const inverse = { add: "remove", remove: "add", trash: "restore", restore: "trash" }[action];
     const files = result.files.filter(file => changed.has(file.id)).map(file => ({ id: file.id, expectedRevision: file.revision }));
     setUndo(files.length ? () => () => requestJson("library/organise", { method: "POST", body: JSON.stringify({ action: inverse, albumId: albumId || undefined, files }) }) : null);
-    setMessage(`${files.length} ${files.length === 1 ? "file" : "files"} ${action === "add" ? "added to album" : action === "remove" ? "removed from album; still in the library" : action === "trash" ? "moved to Trash" : "restored"}.`);
+    setMessage(`${files.length} ${files.length === 1 ? "file" : "files"} ${action === "add" ? "added to album" : action === "remove" ? "removed from album" : action === "trash" ? "moved to Trash" : "restored"}.`);
+    setAlbumPickerOpen(false);
     props.onClearSelection();
   }
 
@@ -67,7 +75,7 @@ export function LibraryTools(props: Props) {
     setAlbumEditor(null);
   }
 
-  // Album removal keeps media and memberships; its inverse restores the grouping without moving bytes.
+  // Album removal keeps media and memberships; immediate Undo replaces a blocking confirmation.
   async function updateAlbum(album: Album, patch: Partial<{ name: string; description: string; archived: boolean; deleted: boolean }>) {
     const previous = { name: album.name, description: album.description, archived: Boolean(album.archivedAt), deleted: false };
     await requestJson(`albums/${album.id}`, { method: "PUT", body: JSON.stringify({ ...previous, ...patch, expectedRevision: album.revision }) });
@@ -93,42 +101,48 @@ export function LibraryTools(props: Props) {
   }
 
   return <section className="library-tools" aria-label="Library organisation">
-    <div className="library-location">
-      <label>Browse<select aria-label="Browse library" value={query.album} onChange={event => onQuery({ ...query, album: event.target.value })}>
-        <option value="">All files</option><option value="unorganised">Unorganised</option>
-        <optgroup label="Albums">{activeAlbums.map(album => <option key={album.id} value={album.id}>{album.name} ({album.count})</option>)}</optgroup>
-        {albums.some(album => album.archivedAt) && <optgroup label="Archived albums">{albums.filter(album => album.archivedAt).map(album => <option key={album.id} value={album.id}>{album.name} ({album.count})</option>)}</optgroup>}
-      </select></label>
-      {isOwner && <button className="button secondary compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor("new"); }}><FolderPlus size={17} />New album</button>}
-      {isOwner && activeAlbum && <button className="button secondary compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={16} />Manage album</button>}
+    <div className="library-command-row">
+      {props.children}
+      <button className="button secondary compact filter-toggle" aria-expanded={filtersOpen} aria-controls={filterPanelId} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={16} />Filters{activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}</button>
+      <div className="library-sort"><WorkspaceSelect label="Sort" value={query.sort} onChange={sort => onQuery({ ...query, sort })} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} /></div>
+      {props.viewControls}
+      {isOwner && <button className="button compact new-album-button" aria-label="New album" title="New album" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor("new"); }}><FolderPlus size={17} /><span>New album</span></button>}
     </div>
-    {activeAlbum && <p className="library-context">{activeAlbum.description || "Everyone in this space can view and save these files."}{activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}</p>}
-    {query.album === "unorganised" && <p className="library-context">Files that are not in an album yet. Adding them to an album keeps them in All files.</p>}
+    <div id={filterPanelId} className="library-filter-panel" hidden={!filtersOpen}>
+    <div className="library-location">
+      <div className="filter-field"><span>Browse</span><WorkspaceSelect label="Browse library" value={query.album} onChange={album => onQuery({ ...query, album })} options={[{ value: "", label: "All files" }, { value: "unorganised", label: "Unorganised" }, ...albums.map(album => ({ value: album.id, label: `${album.name} (${album.count})`, group: album.archivedAt ? "Archived albums" : "Albums" }))]} /></div>
+    </div>
     <div className="library-filters">
-      <label>Dates<select aria-label="Dates" value={query.dateMode} onChange={event => onQuery({ ...query, dateMode: event.target.value })}><option value="uploaded">Date uploaded (UTC)</option><option value="captured">Date taken</option></select></label>
-      <label>From<input type="date" value={query.from} max={query.to || undefined} onChange={event => onQuery({ ...query, from: event.target.value })} /></label>
-      <label>To<input type="date" value={query.to} min={query.from || undefined} onChange={event => onQuery({ ...query, to: event.target.value })} /></label>
-      <label>Sort<select aria-label="Sort" value={query.sort} onChange={event => onQuery({ ...query, sort: event.target.value })}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+      <div className="filter-field"><span>Dates</span><WorkspaceSelect label="Dates" value={query.dateMode} onChange={dateMode => onQuery({ ...query, dateMode })} options={[{ value: "uploaded", label: "Date uploaded (UTC)" }, { value: "captured", label: "Date taken" }]} /></div>
+      <label>From<input type="date" data-empty={!query.from} value={query.from} max={query.to || undefined} onChange={event => onQuery({ ...query, from: event.target.value })} /></label>
+      <label>To<input type="date" data-empty={!query.to} value={query.to} min={query.from || undefined} onChange={event => onQuery({ ...query, to: event.target.value })} /></label>
       {(query.from || query.to || query.batch) && <button className="text-button" onClick={() => onQuery({ ...query, from: "", to: "", batch: "" })}>Clear date / batch filters</button>}
     </div>
     {query.dateMode === "captured" && <p className="library-context">Camera date where available; otherwise date uploaded (UTC). Missing dates are labelled on each file.</p>}
-    {query.batch && <p className="library-context">Showing one upload batch.</p>}
-    {isOwner && <div className="selection-toolbar" aria-label="Bulk file actions">
-      <button className="text-button" disabled={!props.loadedCount || busy} onClick={props.onSelectLoaded}>Select loaded files ({Math.min(props.loadedCount, 100)})</button>
-      {!!selected.length && <><strong>{selected.length} selected</strong><button className="text-button" onClick={props.onClearSelection}>Clear selection</button>
-        <select aria-label="Destination album" value={targetAlbum} onChange={event => setTargetAlbum(event.target.value)}><option value="">Choose album…</option>{activeAlbums.map(album => <option key={album.id} value={album.id}>{album.name}</option>)}</select>
-        <button className="button secondary compact" disabled={busy || !targetAlbum || selected.some(file => file.archivedAt)} onClick={() => void performMutation(() => organiseSelection("add"))}>Add to album</button>
-        {activeAlbum && <button className="text-button" disabled={busy} onClick={() => void performMutation(() => organiseSelection("remove"))}>Remove from album</button>}
-        {!selected.some(file => file.archivedAt) && <button className="text-button" disabled={busy} onClick={() => { setFailure(""); onRename(selected); }}>Rename selected</button>}
-        <button className="text-button" disabled={busy} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"}</button>
+    </div>
+    {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Everyone in this space can view and save these files."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{isOwner && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
+    {activeFilterCount > 0 && <div className="active-library-filters" aria-label="Active filters">
+      {query.dateMode === "captured" && <button className="filter-chip" onClick={() => onQuery({ ...query, dateMode: "uploaded" })}>Date taken<X size={13} /></button>}
+      {(query.from || query.to) && <button className="filter-chip" onClick={() => onQuery({ ...query, from: "", to: "" })}>{query.from || "Any start"} – {query.to || "Any end"}<X size={13} /></button>}
+      {query.batch && <button className="filter-chip" onClick={() => onQuery({ ...query, batch: "" })}>Upload batch<X size={13} /></button>}
+      <button className="text-button" onClick={() => onQuery({ ...query, dateMode: "uploaded", from: "", to: "", batch: "" })}>Clear all filters</button>
+    </div>}
+    {isOwner && <div className={`selection-toolbar${selected.length ? " has-selection" : ""}`} aria-label="Bulk file actions">
+      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>
+        <button className="icon-button" title="Add to album" aria-label="Add to album" disabled={busy || selected.some(file => file.archivedAt)} onClick={() => { setTargetAlbum(""); setAlbumPickerOpen(true); }}><FolderPlus size={19} /></button>
+        {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
+        {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
+        <button className="icon-button bulk-trash" title={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} aria-label={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} disabled={busy} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? <Undo2 size={19} /> : <Trash2 size={19} />}</button>
+        <button className="icon-button clear-selection" title="Clear selection" aria-label="Clear selection" disabled={busy} onClick={props.onClearSelection}><X size={18} /></button>
       </>}
     </div>}
-    {message && <div className="library-feedback" role="status"><span>{message}</span>{undo && <button className="text-button" disabled={busy} onClick={() => void performMutation(async () => { await undo(); setUndo(null); setMessage("Change undone."); })}><Undo2 size={16} />Undo</button>}</div>}
+    {message && <div className="library-feedback" role="status"><span>{message}</span>{undo && <button className="text-button" disabled={busy} onClick={() => void performMutation(async () => { await undo(); setUndo(null); setMessage("Change undone."); })}><Undo2 size={16} />Undo</button>}<button className="icon-button" aria-label="Dismiss feedback" title="Dismiss" disabled={busy} onClick={() => { setMessage(""); setUndo(null); }}><X size={15} /></button></div>}
+    {albumPickerOpen && <LibraryDialog title="Add to album" close={() => { if (!busy) setAlbumPickerOpen(false); }}><div className="library-form"><p>{selected.length} {selected.length === 1 ? "file" : "files"}. Originals stay in All files.</p><WorkspaceSelect label="Destination album" value={targetAlbum} onChange={setTargetAlbum} options={[{ value: "", label: "Choose album…" }, ...activeAlbums.map(album => ({ value: album.id, label: album.name }))]} disabled={busy} />{!activeAlbums.length && <p>Create an album first, then add your selection.</p>}{failure && <p role="alert" className="error-banner">{failure}</p>}<button className="button primary" disabled={busy || !targetAlbum || !selected.length} onClick={() => void performMutation(() => organiseSelection("add"))}>Add to album</button></div></LibraryDialog>}
     {failure && !albumEditor && !renameItems.length && !dateItem && <p className="error-banner" role="alert">{failure}</p>}
     {albumEditor && <LibraryDialog title={albumEditor === "new" ? "New album" : "Manage album"} close={() => { if (!busy) setAlbumEditor(null); }}>
       <AlbumForm album={albumEditor === "new" ? null : albumEditor} busy={busy} failure={failure} save={(name, description) => void performMutation(() => saveAlbum(name, description))} />
       {albumEditor !== "new" && <div className="album-management"><button className="button secondary" disabled={busy} onClick={() => void performMutation(async () => { await updateAlbum(albumEditor, { archived: !albumEditor.archivedAt }); setAlbumEditor(null); })}>{albumEditor.archivedAt ? "Unarchive album" : "Archive album"}</button>
-        <button className="text-button danger" disabled={busy} onClick={() => { if (window.confirm(`Remove album “${albumEditor.name}”? Its files stay in the library.`)) void performMutation(async () => { await updateAlbum(albumEditor, { deleted: true }); setAlbumEditor(null); }); }}>Remove album</button></div>}
+        <button className="text-button danger" disabled={busy} onClick={() => void performMutation(async () => { await updateAlbum(albumEditor, { deleted: true }); setAlbumEditor(null); })}>Remove album</button></div>}
     </LibraryDialog>}
     {!!renameItems.length && <LibraryDialog title={renameItems.length === 1 ? "Rename file" : `Rename ${renameItems.length} files`} close={() => { if (!busy) onRename([]); }}><RenameForm items={renameItems} busy={busy} failure={failure} save={files => void performMutation(() => saveRenames(files))} /></LibraryDialog>}
     {dateItem && <LibraryDialog title="Correct capture date" close={() => { if (!busy) onDate(null); }}><form className="library-form" onSubmit={event => { event.preventDefault(); const value = String(new FormData(event.currentTarget).get("capturedAt") || ""); void performMutation(() => saveCaptureDate(value ? value.length === 16 ? `${value}:00` : value : null)); }}>

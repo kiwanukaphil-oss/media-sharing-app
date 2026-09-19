@@ -33,6 +33,11 @@ async function verifyBrowser(engine, options, label) {
     await expect(page.getByText('No matching files.')).toBeVisible();
     await page.getByLabel('Search filenames').fill('');
     await expect(card).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Rename', exact: true })).toBeVisible();
+    await card.getByRole('button', { name: 'Move to Trash' }).click();
+    await expect(card).toHaveCount(0);
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Move to Trash' }).click();
     await expect(card).toHaveCount(0);
     await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
@@ -40,6 +45,19 @@ async function verifyBrowser(engine, options, label) {
     await card.getByRole('button', { name: 'Restore', exact: true }).click();
     await page.getByRole('button', { name: 'Back to files' }).click();
     await expect(card).toBeVisible();
+    // Permanent deletion is a separate, cancellable action; ordinary Trash remains recoverable.
+    await card.getByRole('button', { name: 'Move to Trash' }).click();
+    await expect(card).toHaveCount(0);
+    await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
+    await card.getByRole('button', { name: 'Delete permanently', exact: true }).click();
+    const confirmation = page.locator('.action-confirmation');
+    await expect(confirmation).toContainText('This cannot be undone');
+    await expect(confirmation.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(confirmation).toHaveCount(0);
+    await expect(card.getByRole('button', { name: 'Delete permanently', exact: true })).toBeFocused();
+    await card.getByRole('button', { name: 'Restore', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to files' }).click();
     await page.locator('.sidebar').getByRole('button', { name: /Final cuts/ }).click();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'finished-export.mov', mimeType: 'video/quicktime', buffer: payload });
     await expect(page.locator('article').filter({ hasText: 'finished-export.mov' })).toBeVisible();

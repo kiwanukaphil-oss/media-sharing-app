@@ -37,14 +37,15 @@ try {
   await page.unroute('**/api/feed?*');
   await page.getByRole('button', { name: 'Retry loading files' }).click();
   await expect(page.getByText('Ready for the final touch.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Trash (0)', exact: true }).click();
+  await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+  await page.locator('.sidebar').getByRole('button', { name: /^Trash/ }).click();
   await expect(page.getByText('Nothing in Trash.', { exact: true })).toBeVisible();
   await expect(page.locator('.drop-zone')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add files', exact: true })).toHaveCount(0);
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'trash-guard.raw', mimeType: 'application/octet-stream', buffer: Buffer.from('do not upload') });
   await expect(page.getByRole('region', { name: 'File transfers' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Back to files' }).click();
-  await expect(page.locator('.drop-zone')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add your first files' })).toBeVisible();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Mobile layout must not overflow.');
   assert.deepEqual(errors, []);
   console.log('Usability checks passed: mobile help/focus, delayed feed, error recovery, Trash upload guard, mobile width.');

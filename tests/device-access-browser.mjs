@@ -43,6 +43,7 @@ try {
   await owner.getByRole('button', { name: /Connected devices/ }).click();
   const memberRow = ownerDialog.locator('.device-row').filter({ hasText: 'Member browser fixture' });
   await memberRow.getByRole('button', { name: 'Make owner', exact: true }).click();
+  await owner.locator('.action-confirmation').getByRole('button', { name: 'Make owner', exact: true }).click();
   await expect(memberRow.getByRole('button', { name: 'Make member', exact: true })).toBeVisible();
   await expect(ownerDialog.getByRole('button', { name: 'Disconnect this device', exact: true })).toBeEnabled();
   await member.reload();
@@ -51,6 +52,7 @@ try {
   await expect(memberDialog).toContainText('You are an owner');
   const oldCookie = (await memberContext.cookies()).find(cookie => cookie.name === 'relay_device');
   await memberDialog.getByRole('button', { name: 'Disconnect this device', exact: true }).click();
+  await member.locator('.action-confirmation').getByRole('button', { name: 'Disconnect this device', exact: true }).click();
   await expect(member.getByRole('button', { name: 'Create shared space', exact: true })).toBeVisible();
   assert.equal((await memberContext.cookies()).some(cookie => cookie.name === 'relay_device'), false);
   const revoked = await ownerContext.request.get(`${origin}/api/feed`, { headers: { Cookie: `relay_device=${oldCookie.value}` } });
