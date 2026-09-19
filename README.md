@@ -1,5 +1,7 @@
 # Relay
 
+For current development progress, completed phases, release evidence and blockers, see the [living development roadmap](./docs/DEVELOPMENT-ROADMAP.md).
+
 The app-specific setup, validation results, and remaining phase boundaries are in [RELAY.md](./RELAY.md).
 
 Open [Relay](https://relay-media-exchange.kiwanukaphil.workers.dev). The completed web-release checks and browser boundaries are recorded in [WEB-VALIDATION.md](./docs/WEB-VALIDATION.md).

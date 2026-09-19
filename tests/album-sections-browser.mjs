@@ -1,11 +1,13 @@
-import { chromium, expect } from '@playwright/test';
+import { chromium, firefox, webkit, expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { chooseWorkspaceOption } from './browser-controls.mjs';
 
 const origin = process.env.RELAY_TEST_ORIGIN || 'http://127.0.0.1:8794';
 if (!['localhost', '127.0.0.1'].includes(new URL(origin).hostname)) throw new Error('Isolated browser storage required.');
-const browser = await chromium.launch(process.env.CI ? {} : { channel: 'chrome' });
+const engineName = process.env.RELAY_SECTION_BROWSER || (process.env.CI ? 'chromium' : 'chrome');
+const engine = engineName === 'firefox' ? firefox : engineName === 'webkit' ? webkit : chromium;
+const browser = await engine.launch(engineName === 'chrome' ? { channel: 'chrome' } : {});
 const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
 const errors = []; page.on('pageerror', error => errors.push(error.message));
 try {
@@ -64,5 +66,5 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: 'outputs/sections/mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('PASS: template, custom section, queued destination, move/Undo, reorder, rename, remove/restore, deep link, keyboard and narrow layout.');
+  console.log(`PASS ${engineName}: template, custom section, queued destination, move/Undo, reorder, rename, remove/restore, deep link, keyboard, cover selection and narrow layout.`);
 } finally { await browser.close(); }

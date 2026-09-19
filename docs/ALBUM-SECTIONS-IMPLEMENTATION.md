@@ -1,6 +1,6 @@
 # Album sections implementation contract
 
-Status: implementation verified; production release pending under the user's 19 September 2026 autonomous execution authority. See the [roadmap](DEVELOPMENT-ROADMAP.md) for progress.
+Status: deployed and verified on 19 September 2026 under the user's 19 September 2026 autonomous execution authority. See the [roadmap](DEVELOPMENT-ROADMAP.md) for progress.
 
 ## Product decisions
 
@@ -24,11 +24,11 @@ D1 batch statements are transactional; any SQL failure rolls back the batch. For
 
 Baseline checks on 19 September 2026: web lint and TypeScript passed before implementation. Existing UI/interaction changes and product documents were preserved and pushed in `8820a84`. No fresh production recovery exercise or customer research is claimed by this record.
 
-## Remaining before phase closure
+## Verification and continuing boundaries
 
 - Implemented and checked: templates with exact-file previews (up to 100 files), cover choice, stable whole-list ordering, bulk move/Undo and queued destinations. Larger albums use empty templates and selected batches.
 - Passed: TypeScript, zero-warning lint, build, full API/security integration, pre-section migration fixtures, existing cross-browser transfer/organisation checks and new section browser journeys including cover selection.
 - Fresh production export restored in isolated SQLite/D1; both migrations rehearsed with original media and memberships unchanged. Desktop/mobile screenshots reviewed in `outputs/sections/`.
 - Legacy global categories remain behind secondary File labels controls; schema/category retirement remains a future compatibility decision.
-- Record deployment and post-release evidence separately from committed code.
+- Released code `78b7b96` as Worker `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%. GitHub CI, hosted section workflows and byte-identical download passed. Final production snapshot with section records restored in isolated SQLite and D1. See roadmap closeout for evidence and rollback limits.
 - Carry identity-provider and recovery-policy decisions into Phase 2; no paid service or user identity is provisioned by this phase.

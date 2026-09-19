@@ -7,17 +7,19 @@
 
 ## Current position
 
-Autonomous development is authorised, including incremental commits and pushes. Phase 0 is complete under standing execution authority. Phase 1 (custom sections) is in progress. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Autonomous development is authorised, including incremental commits and pushes. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has a prepared design and is blocked on the user-owned identity-provider setup. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**Next action:** Commit/push the verified section implementation, apply the rehearsed production migrations, deploy and verify in the isolated verification workspace. Phase 2 identity-provider setup is the next external dependency.
+**At a glance:** 2 phases complete; 11/47 parent work items complete; 1 external blocker. Code commit `78b7b96` is pushed and passed CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
+
+**Next action:** Resolve **B01**: select/access the managed identity-provider account for recoverable sign-in. Auth0 hosted sign-in is the recommended candidate; an existing provider can be used instead. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
 
 **Execution authority (19 September 2026):** The user instructed autonomous work, commits and pushes, stopping only for a blocker requiring their input. This supersedes the earlier per-phase confirmation and no-auto-commit preferences for this roadmap. Continue through resolved phases without repeated permission requests. Record assumptions and evidence; ask only when a material decision cannot be safely resolved. No provider purchase or irreversible data deletion is inferred from this authority.
 
 | Phase | Outcome | Status | Completed work items | Main dependency |
 | --- | --- | --- | --- | --- |
 | 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
-| 1 | Albums with custom sections | Ready for release | 5/6 | Migration and hosted verification |
-| 2 | People, recoverable accounts and personal/shared spaces | Not started | 0/7 | Phase 0; reconcile Phase 1 changes if already shipped |
+| 1 | Albums with custom sections | Done | 6/6 | Live; hosted and recovery checks passed |
+| 2 | People, recoverable accounts and personal/shared spaces | Blocked | 0/7 | B01: identity-provider account/setup |
 | 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
 | 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
@@ -63,7 +65,7 @@ These capabilities are documented in the existing implementation and release rec
 | Trash, revision checks and recovery paths | [Library API](../lib/library-api.ts), [Interaction polish](WEB-INTERACTION-POLISH.md) | No silent overwrites, scope widening or accidental permanent deletion. |
 | Documented monitoring and independent backup/restore activation | [Operations](OPERATIONS-ACTIVATION.md), [Backup and recovery](BACKUP-RECOVERY.md) | Extend coverage as the data model grows; verify current health before relying on a recovery point. |
 
-Current limitations: identities are device-based; albums are not privacy boundaries; Original/Final is a required global category; custom sections and version relationships are absent. Proposed personal spaces, restricted albums, guest requests and deliveries must not be described as available until released.
+Current limitations: identities remain device-based; albums and sections are not privacy boundaries; Original/Final remains a compatibility field behind secondary controls; version relationships are absent. Custom sections are now live. Proposed personal spaces, restricted albums, guest requests and deliveries must not be described as available until released.
 
 ## Product rules that guide every phase
 
@@ -98,14 +100,14 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Users organise events and projects in their own language without global Original/Final constraints.
 **Entry:** Phase 0 decisions; standing autonomous execution authority.
-**Status:** Ready for release. Owner: Codex. Authority: standing autonomous execution instruction.
+**Status:** Done. Owner: Codex. Authority: standing autonomous execution instruction. Released 19 September 2026; closeout below.
 
 - [x] **P1-01 — Review album/section experience.** Design desktop and narrow-screen navigation, All in this album, Unsectioned, Unorganised, counts, empty states and clear action labels. Review a concrete prototype before broad implementation.
 - [x] **P1-02 — Add section storage and APIs.** One level; unique names within an album; editable name, order and cover; section placement belongs to an album membership. Enforce same-album references and concurrency checks.
 - [x] **P1-03 — Build organisation workflows.** Create, rename, reorder, move and remove sections; support individual and bulk placement, keyboard/menu alternatives and Undo. Removing sections preserves files under Unsectioned; removing albums preserves files and access.
 - [x] **P1-04 — Bind uploads to destinations.** Capture space/album/section when queued; display the destination and handle destination deletion or revoked access without silently rerouting an upload.
 - [x] **P1-05 — Migrate categories safely.** Offer blank or optional Originals/Final cuts templates and an explicit per-album mapping preview. Retain legacy categories and unfiled content; flag global category UI for retirement only after compatibility is proven.
-- [ ] **P1-06 — Verify and release organisation.** Exercise migrations, multi-album isolation, concurrent edits, Undo, queued transfers and responsive/accessibility behaviour. Record release and regression evidence.
+- [x] **P1-06 — Verify and release organisation.** Exercise migrations, multi-album isolation, concurrent edits, Undo, queued transfers and responsive/accessibility behaviour. Record release and regression evidence.
 
 **Acceptance scenarios:** A file in Album A/Shortlist and Album B/References moves within A without changing B or original bytes. Section removal preserves all files. Navigating elsewhere does not redirect a queued upload. No section is represented as private. Existing clients remain compatible or receive an explicit supported response.
 
@@ -115,7 +117,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** One person can safely use several devices and spaces, with a recoverable private library.
 **Entry:** Phase 0; D05–D07 resolved for this scope; reconcile the current organisation schema.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** Blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; no identity feature is claimed complete.
 
 - [ ] **P2-01 — Select and review identity design.** Compare suitable authentication providers, recovery, passkey/sign-in options, costs and operational dependencies. Review the trust model before choosing; use mature authentication rather than custom cryptography.
 - [ ] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
@@ -195,7 +197,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 ## Phase 7 — Retrieval, media support and selective expansion
 
 **Outcome:** Improve discovery and media handling based on observed needs without weakening the core product.
-**Entry:** Prioritise each item after its prerequisites; separate confirmation for each release-sized scope.
+**Entry:** Prioritise each item after its prerequisites under standing execution authority; unresolved consent, purchasing or account-access requirements still need user input.
 **Status:** Not started. Owner: unassigned. Approval: not recorded.
 
 - [ ] **P7-01 — Better retrieval.** Permission-aware type/uploader/date/album/section filters and useful saved views. Requires identity/access foundations; may be brought forward after Phase 2 by recorded decision.
@@ -244,7 +246,13 @@ For identity or access changes, test loss of access during an open viewer, queue
 
 ## Risks, blockers and deferred scope
 
-Planning dependencies above are not incidents. No implementation blockers have been observed because feature implementation has not started.
+Planning dependencies are not incidents. The active external blocker is:
+
+| ID | Affected work | Required input | Owner | Opened | State |
+| --- | --- | --- | --- | --- | --- |
+| B01 | P2-01 and dependent identity/privacy/collaboration phases | Select or provide access to a user-owned identity-provider application. Recommended candidate: Auth0. Provider production settings and recovery policy must be verified; do not invent tenant details or put secrets in chat. | User; Codex continues integration afterward | 2026-09-19 | Awaiting response to setup question |
+
+The Phase 2 design is prepared. No personal accounts or private-space migration have been provisioned while this dependency is unresolved.
 
 | ID | Risk / response | Owner | State |
 | --- | --- | --- | --- |
@@ -272,6 +280,9 @@ Append concise entries; link to detailed evidence instead of pasting entire test
 | Date | Item | Completed / evidence | Outstanding / next action |
 | --- | --- | --- | --- |
 | 2026-09-19 | Planning documents | [Assessment](PRODUCT-DIRECTION-AND-PRIVACY.md) and phased roadmap created; local document links validated | Phase 0 decisions, feature approvals and all implementation items |
+| 2026-09-19 | P0-01?P0-05 | Product defaults and section implementation contract recorded; baseline `8820a84` pushed | Phase 1 implementation followed |
+| 2026-09-19 | P1-01?P1-06 | `78b7b96` pushed, CI passed, migrations and Worker release verified; full closeout below | Phase 2 provider dependency |
+| 2026-09-19 | P2-01 preparation | Identity/spaces proposal and provider setup requirements written | B01: awaiting user-owned provider selection/access |
 
 For subsequent entries use: `Date | work-item ID | concrete change and file/PR/test evidence | remaining work`. Record verification failures and material limitations as well as successes. Do not call work deployed without a release reference.
 
@@ -301,7 +312,7 @@ Next proposed phase and outstanding decision:
 | --- | --- | --- |
 | 2026-09-19 | Created the living guide; separated collaboration, restricted albums, deliveries and expansion into independently reviewable phases | User requested a phased development guide incorporating the product assessment and showing completed/outstanding work |
 
-Latest milestone: autonomous execution, commits and pushes authorised on 19 September 2026. Phase 0 contract recorded; Phase 1 implementation in progress. No section release claimed yet.
+Latest milestone: Phase 1 deployed and verified on 19 September 2026. Phase 2 design prepared; B01 is the only active external blocker.
 
 | 2026-09-19 | Autonomous execution authorised; Phase 0 started | User explicitly instructed continued work, commits and pushes, stopping only for blockers |
 
@@ -309,6 +320,28 @@ Latest milestone: autonomous execution, commits and pushes authorised on 19 Sept
 
 - `8820a84` pushed to `origin/main`: prior approved UI polish and planning baseline. Web lint and TypeScript passed.
 - Phase 0 closed by product/source review under standing authority; [section implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) records semantics, migration and tests.
-- Phase 1 implementation verified: section schema/APIs, bulk placement/Undo, queued destinations, templates, ordering and covers. Original/Final controls are secondary and retained for compatibility. Tests cover API regression, migration, browser journeys, keyboard/mobile and recovery. Production release remains outstanding.
+- Phase 1 implementation verified: section schema/APIs, bulk placement/Undo, queued destinations, templates, ordering and covers. Original/Final controls are secondary and retained for compatibility. Tests cover API regression, migration, browser journeys, keyboard/mobile and recovery. Production release and hosted verification passed.
 - Template preview intentionally maps at most 100 existing files per operation, matching bulk-selection limits. Larger albums can create empty template sections and move selected batches.
 - Fresh production export restored in isolated SQLite and D1; migrations rehearsed against it with all media records and memberships preserved. Private evidence: `.sites-runtime/sections-release/`.
+
+
+### Phase 0 closeout ? complete
+
+- Authority: user instruction to work autonomously, commit and push, 19 September 2026.
+- Completed: P0-01?P0-05; recommended D01?D04 defaults recorded in the [implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md).
+- Evidence: source/product review and baseline lint/TypeScript; no invented customer interviews or analytics. Baseline preserved in `8820a84`.
+- Non-deployable planning phase. Outstanding provider, ownership and retention decisions remain in Phase 2.
+
+### Phase 1 closeout ? complete
+
+- Completed: P1-01?P1-06; code `78b7b96`, pushed to `origin/main`.
+- [GitHub CI passed](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35431804584): verification and browser jobs.
+- Local verification: TypeScript, zero-warning lint, build, full API/security regression, migration preservation, backup/restore tests, existing Chrome/Edge/Firefox/WebKit workflows. New section journeys including cover choice also passed Chrome, Firefox and WebKit. Screenshots reviewed at desktop and 390 px.
+- Migration: `0005_album_sections.sql` and `0006_section_covers.sql`; fresh recovery export restored and both migrations rehearsed before application. Existing original media records and album memberships compared successfully after migration.
+- Release: standing execution authority; Worker `76609db5-810c-4c08-8968-6c8b4dcd97d7`, 100% allocation. Public entry, headers, readiness and anonymous-feed denial passed.
+- Hosted verification: `tests/hosted-sections.mjs` passed create, captured direct-R2 upload destination, move/Undo, remove/restore, deep-link reload and exact-byte download in **Relay verification** only. The first download check hit Chrome's OS picker; the test was corrected to exercise browser-managed download and passed. No product workaround was required.
+- Recovery: final production snapshot containing populated section records restored into isolated SQLite and D1 with integrity, foreign keys and all application table counts passing.
+- Limitations: template preview maps up to 100 files per operation; larger albums create empty sections and use selected batches. Original/Final schema remains for compatibility behind secondary File labels controls. Sections do not change permissions. WebKit automation is not physical Safari testing.
+- Recovery artifacts and logs remain private under `.sites-runtime/sections-release/`; screenshots under `outputs/sections/`. Tiny newly created hosted verification fixtures are retained as removal candidates, not deleted automatically.
+- Rollback: previous Worker `178f6f01-879f-4d50-90d6-fb3c06913dd5` can read the additive schema. Prefer a forward fix; old membership remove/re-add code does not preserve section placement, so old code is not a fully equivalent organisation rollback. Never drop section data to roll back the UI.
+- Next: P2-01, blocked on B01. [Identity/spaces design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) is ready for provider setup.
