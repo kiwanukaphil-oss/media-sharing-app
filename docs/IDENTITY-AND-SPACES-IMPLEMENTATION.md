@@ -1,6 +1,6 @@
 # Identity and personal/shared spaces: implementation proposal
 
-**Status:** Phase 2 preparation. Provider account/setup is pending user input. No account migration or new identity system has been released.
+**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Auth0 dashboard login/account creation is pending the user; account/session routes, migration and activation remain outstanding. No new identity system has been released.
 
 This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-IMPLEMENTATION.md) is released. Progress remains in the [roadmap](DEVELOPMENT-ROADMAP.md).
 
@@ -8,7 +8,7 @@ This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-
 
 Use a managed identity provider for recoverable person sign-in. Keep space membership, permissions, albums and original files in Relay's existing D1/R2 infrastructure. Do not move the media platform to an authentication vendor or infer people from existing device labels.
 
-**Recommended candidate: Auth0 hosted sign-in**, with the exact enabled authentication/recovery methods reviewed in the user's tenant. This allows a distinct sign-in flow without assuming this Vite/Vinext app supports another framework's authentication middleware. Email-based passwordless authentication and passkeys are documented provider capabilities; availability, production email delivery, plan terms and tenant configuration must be checked before selection and implementation. This recommendation is an architectural judgment, not a completed integration evaluation or purchasing decision.
+**Selected provider: Auth0 hosted sign-in**, with the exact enabled authentication/recovery methods still to be reviewed in the user's tenant. This allows a distinct sign-in flow without assuming this Vite/Vinext app supports another framework's authentication middleware. Email-based passwordless authentication and passkeys are documented provider capabilities; availability, production email delivery, plan terms and tenant configuration must be checked before activation. Provider selection does not constitute a purchasing decision.
 
 Alternative: Clerk, which documents email and passkey strategies and React sign-in components. Its component-led integration may be attractive, but it needs its own runtime, domain and production setup review. An existing user-owned provider should be considered before creating another account.
 
@@ -58,4 +58,33 @@ Trash retention, backup retention and account deletion are separate policies. Re
 7. Restore all new records into an isolated environment, verify relationships and prevent expired/revoked credentials from becoming usable.
 8. Verify keyboard, narrow-screen and recovery usability against the selected provider's actual configured flow.
 
-Implementation can proceed once the provider/account dependency is resolved. Nothing in this proposal authorises relabelling a shared album as private or migrating user ownership by guesswork.
+Provider preparation is implemented; tenant configuration and session integration can continue once dashboard access is available. Nothing in this proposal authorises relabelling a shared album as private or migrating user ownership by guesswork.
+
+## Prepared application settings
+
+Run `node scripts/auth0-setup.mjs` to print these public settings. This script does not create an Auth0 application or expose credentials.
+
+| Setting | Value |
+| --- | --- |
+| Application name | Relay Web |
+| Application type | Regular Web Application |
+| Token endpoint authentication | POST |
+| Signing algorithm | RS256 |
+| Allowed Callback URLs | `https://relay-media-exchange.kiwanukaphil.workers.dev/api/auth/callback` |
+| Allowed Logout URLs | `https://relay-media-exchange.kiwanukaphil.workers.dev/` |
+| Application Login URI | `https://relay-media-exchange.kiwanukaphil.workers.dev/api/auth/login` |
+
+These URLs are reserved for the planned account integration and are not operational login routes yet. Use exact URLs, not wildcards. Test settings should be in a separate development application/tenant with explicitly allowed local callback URLs.
+
+Required server settings are documented in [.env.example](../.env.example): `AUTH0_ENABLED=false`, tenant domain, client ID, client secret and fixed Relay origin. Keep client secrets in Worker secrets. The initial implementation accepts the provider-owned `*.auth0.com` tenant domain; custom domains require a separate issuer review. Local HTTP origins require an explicit test-only opt-in.
+
+## Implemented preparation and evidence
+
+- [Configuration validation](../lib/auth0-config.ts): disabled by default, complete required settings, fixed production HTTPS origin and provider-owned domain validation.
+- [OIDC adapter](../lib/auth0-client.ts): pinned `openid-client` 6.8.8; authorization code flow, PKCE S256, state, nonce, a browser-binding value and a ten-minute transaction lifetime. Requires RS256 signature verification as well as issuer, audience and expiry validation. Discovery endpoints must remain on the configured tenant origin. The adapter returns verified identity fields, not provider tokens.
+- [Protocol tests](../tests/auth0-client.mjs): a simulated provider issues real RSA-signed test tokens. Tests cover valid sign-in, wrong signing key/issuer/audience/nonce, missing ID token, expired or wrong-browser attempts, invalid redirect origins, wrong state, unverified email and provider code replay. These tests do not contact a live Auth0 tenant.
+- Tests are included in the web verification workflow. [Public setup generator](../scripts/auth0-setup.mjs) emits the exact dashboard settings without secrets.
+
+The adapter deliberately does not grant workspace access or merge accounts by email. It is not wired into production routes yet. Before activation, add server-side transaction storage with atomic consumption, an HttpOnly browser-binding cookie, person/session persistence, migration/claim rules, account/session endpoints, UI and corresponding integration/restore tests. The simulated provider's replay rejection is not a substitute for Relay's own one-time transaction consumption.
+
+Implementation references: [Auth0 authorization-code flow](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow/add-login-auth-code-flow), [openid-client](https://github.com/panva/openid-client). The client library supports Web API runtimes including Cloudflare Workers; a full Relay Worker/session integration check remains required.

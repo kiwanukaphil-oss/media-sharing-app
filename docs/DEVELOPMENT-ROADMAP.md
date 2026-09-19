@@ -7,11 +7,11 @@
 
 ## Current position
 
-Autonomous development is authorised, including incremental commits and pushes. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has a prepared design and is blocked on the user-owned identity-provider setup. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Autonomous development is authorised, including incremental commits and pushes. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has a tested Auth0 protocol adapter and prepared design; live integration is blocked on the user signing into the Auth0 dashboard. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; 1 external blocker. Code commit `78b7b96` is pushed and passed CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Resolve **B01**: select/access the managed identity-provider account for recoverable sign-in. Auth0 hosted sign-in is the recommended candidate; an existing provider can be used instead. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
+**Next action:** Resolve **B01**: sign into or create the user-owned Auth0 account in the open Chrome setup tab. The user selected Auth0 on 19 September 2026; provider selection is resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
 
 **Execution authority (19 September 2026):** The user instructed autonomous work, commits and pushes, stopping only for a blocker requiring their input. This supersedes the earlier per-phase confirmation and no-auto-commit preferences for this roadmap. Continue through resolved phases without repeated permission requests. Record assumptions and evidence; ask only when a material decision cannot be safely resolved. No provider purchase or irreversible data deletion is inferred from this authority.
 
@@ -19,7 +19,7 @@ Autonomous development is authorised, including incremental commits and pushes. 
 | --- | --- | --- | --- | --- |
 | 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
 | 1 | Albums with custom sections | Done | 6/6 | Live; hosted and recovery checks passed |
-| 2 | People, recoverable accounts and personal/shared spaces | Blocked | 0/7 | B01: identity-provider account/setup |
+| 2 | People, recoverable accounts and personal/shared spaces | Blocked | 0/7 | Auth0 adapter tested; B01: dashboard login |
 | 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
 | 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
@@ -117,7 +117,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** One person can safely use several devices and spaces, with a recoverable private library.
 **Entry:** Phase 0; D05–D07 resolved for this scope; reconcile the current organisation schema.
-**Status:** Blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; no identity feature is claimed complete.
+**Status:** Blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; protocol/configuration adapter tests pass, but live login, session storage and identity migration remain outstanding.
 
 - [ ] **P2-01 — Select and review identity design.** Compare suitable authentication providers, recovery, passkey/sign-in options, costs and operational dependencies. Review the trust model before choosing; use mature authentication rather than custom cryptography.
 - [ ] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
@@ -236,7 +236,7 @@ For identity or access changes, test loss of access during an open viewer, queue
 | D02 | Organisation semantics | One section level, optional templates, zero/one placement per album, many albums per asset | Resolved: recommended default / standing execution authority |
 | D03 | Default browsing scope | Active space only; general Shared library distinct from restricted content later | Resolved: recommended default / standing execution authority |
 | D04 | Cross-audience publication | Explicit verified independent copy initially; no automatic union of album audiences | Resolved: recommended default / standing execution authority |
-| D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Open / P2 implementation |
+| D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Auth0 selected; tenant/recovery setup pending / P2 implementation |
 | D06 | Ownership and offboarding | Shared work belongs to the space; personal work remains separate; explicit transfer/recovery | Proposed / P2 lifecycle design |
 | D07 | Retention and deletion | Document Trash, history, backups, account deletion and restore reconciliation separately | Open / P2 lifecycle design; revisit guest artifacts in P5 |
 | D08 | Restricted content and administrators | Explicit audited administrator grants; no access to members' personal spaces | Proposed / P4 design |
@@ -250,9 +250,9 @@ Planning dependencies are not incidents. The active external blocker is:
 
 | ID | Affected work | Required input | Owner | Opened | State |
 | --- | --- | --- | --- | --- | --- |
-| B01 | P2-01 and dependent identity/privacy/collaboration phases | Select or provide access to a user-owned identity-provider application. Recommended candidate: Auth0. Provider production settings and recovery policy must be verified; do not invent tenant details or put secrets in chat. | User; Codex continues integration afterward | 2026-09-19 | Awaiting response to setup question |
+| B01 | P2-01 and dependent identity/privacy/collaboration phases | Auth0 selected. User must sign into/create their Auth0 account in the open setup tab. Then configure the Relay Web application, production settings and recovery policy. Do not put secrets in chat. | User; Codex continues integration afterward | 2026-09-19 | Awaiting dashboard login/account creation |
 
-The Phase 2 design is prepared. No personal accounts or private-space migration have been provisioned while this dependency is unresolved.
+The Phase 2 design, exact Auth0 application settings, provider adapter and protocol tests are prepared. No personal accounts, runtime session routes or private-space migration have been provisioned while dashboard access is unresolved.
 
 | ID | Risk / response | Owner | State |
 | --- | --- | --- | --- |
@@ -312,7 +312,7 @@ Next proposed phase and outstanding decision:
 | --- | --- | --- |
 | 2026-09-19 | Created the living guide; separated collaboration, restricted albums, deliveries and expansion into independently reviewable phases | User requested a phased development guide incorporating the product assessment and showing completed/outstanding work |
 
-Latest milestone: Phase 1 deployed and verified on 19 September 2026. Phase 2 design prepared; B01 is the only active external blocker.
+Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 selected and protocol adapter tested; B01 (Auth0 dashboard login) is the only active external blocker.
 
 | 2026-09-19 | Autonomous execution authorised; Phase 0 started | User explicitly instructed continued work, commits and pushes, stopping only for blockers |
 
@@ -345,3 +345,13 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Phase 2 de
 - Recovery artifacts and logs remain private under `.sites-runtime/sections-release/`; screenshots under `outputs/sections/`. Tiny newly created hosted verification fixtures are retained as removal candidates, not deleted automatically.
 - Rollback: previous Worker `178f6f01-879f-4d50-90d6-fb3c06913dd5` can read the additive schema. Prefer a forward fix; old membership remove/re-add code does not preserve section placement, so old code is not a fully equivalent organisation rollback. Never drop section data to roll back the UI.
 - Next: P2-01, blocked on B01. [Identity/spaces design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) is ready for provider setup.
+
+
+### Auth0 preparation update ? 19 September 2026
+
+- User instructed ?proceed as recommended?: Auth0 hosted sign-in selected; no repeat provider-choice approval is needed.
+- Opened Auth0 dashboard in the Chrome **Relay sign-in** tab. It displays the Auth0 login screen; the user was asked to sign in/create their account there and report ready. Credentials and account terms stay in that browser flow.
+- Implemented `lib/auth0-config.ts`, `lib/auth0-client.ts`, a public setup-settings generator and protocol tests using a simulated provider with real RSA-signed tokens. Tests cover PKCE/state/nonce, issuer/audience/signatures, browser binding, expiry, bad redirects, missing tokens and provider code replay. Tests are wired into CI.
+- Local protocol tests, dependency audit (zero reported vulnerabilities), TypeScript, web lint and production build passed. This is preparatory code, not a live sign-in deployment.
+- `AUTH0_ENABLED=false` remains the documented default. Account routes, atomic transaction consumption, user/session persistence, legacy claims, recovery and live tenant verification are outstanding. P2-01 remains unchecked until the provider and recovery design are fully configured and reviewed.
+- [Exact public callback/logout settings and remaining integration work](IDENTITY-AND-SPACES-IMPLEMENTATION.md#prepared-application-settings).
