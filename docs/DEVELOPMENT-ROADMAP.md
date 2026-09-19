@@ -7,16 +7,16 @@
 
 ## Current position
 
-Autonomous development is authorised, including incremental commits and pushes. Phase 0 is in progress; Phase 1 (custom sections) is the first implementation milestone. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Autonomous development is authorised, including incremental commits and pushes. Phase 0 is complete under standing execution authority. Phase 1 (custom sections) is in progress. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**Next action:** Verify and commit the existing UI baseline, record the section implementation contract, then implement and test custom album sections.
+**Next action:** Commit/push the verified section implementation, apply the rehearsed production migrations, deploy and verify in the isolated verification workspace. Phase 2 identity-provider setup is the next external dependency.
 
 **Execution authority (19 September 2026):** The user instructed autonomous work, commits and pushes, stopping only for a blocker requiring their input. This supersedes the earlier per-phase confirmation and no-auto-commit preferences for this roadmap. Continue through resolved phases without repeated permission requests. Record assumptions and evidence; ask only when a material decision cannot be safely resolved. No provider purchase or irreversible data deletion is inferred from this authority.
 
 | Phase | Outcome | Status | Completed work items | Main dependency |
 | --- | --- | --- | --- | --- |
-| 0 | Agreed product contract and measurable baseline | In progress | 0/5 | Baseline and implementation contract |
-| 1 | Albums with custom sections | Not started | 0/6 | Phase 0 |
+| 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
+| 1 | Albums with custom sections | Ready for release | 5/6 | Migration and hosted verification |
 | 2 | People, recoverable accounts and personal/shared spaces | Not started | 0/7 | Phase 0; reconcile Phase 1 changes if already shipped |
 | 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
@@ -84,13 +84,13 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Implementation begins with agreed semantics and evidence rather than assumptions.
 **Entry:** Review the assessment and this roadmap.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** Done. Owner: Codex. Authority: autonomous execution instruction, 19 September 2026. Evidence: [implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md); product/source review, not customer interviews.
 
-- [ ] **P0-01 — Confirm audience and sequence.** Agree personal/small-group use as the initial focus, whether privacy needs bring Phase 2 forward, and the exact first release scope.
-- [ ] **P0-02 — Settle organisation and audience rules.** Resolve D01–D04 below with concrete scenarios, including multi-album placement and private-to-shared publication.
-- [ ] **P0-03 — Establish baseline evidence.** Inventory relevant routes, data relationships, supported clients and existing checks. Record current transfer, recovery and usability behaviour without exposing user content or credentials.
-- [ ] **P0-04 — Validate representative journeys.** Review solo transfer, family collection, creative handoff, sensitive media, mistaken deletion and lost-device recovery. Record whether evidence comes from product review or actual user research; do not conflate them.
-- [ ] **P0-05 — Approve first implementation contract.** Produce a concrete UX/data proposal, migration preview, test plan and rollback boundaries for the first feature phase. Identify dependencies and estimates only after scope is understood.
+- [x] **P0-01 — Confirm audience and sequence.** Agree personal/small-group use as the initial focus, whether privacy needs bring Phase 2 forward, and the exact first release scope.
+- [x] **P0-02 — Settle organisation and audience rules.** Resolve D01–D04 below with concrete scenarios, including multi-album placement and private-to-shared publication.
+- [x] **P0-03 — Establish baseline evidence.** Inventory relevant routes, data relationships, supported clients and existing checks. Record current transfer, recovery and usability behaviour without exposing user content or credentials.
+- [x] **P0-04 — Validate representative journeys.** Review solo transfer, family collection, creative handoff, sensitive media, mistaken deletion and lost-device recovery. Record whether evidence comes from product review or actual user research; do not conflate them.
+- [x] **P0-05 — Approve first implementation contract.** Produce a concrete UX/data proposal, migration preview, test plan and rollback boundaries for the first feature phase. Identify dependencies and estimates only after scope is understood.
 
 **Exit criteria:** D01–D04 have recorded outcomes; first-phase deliverables and acceptance scenarios are agreed; outstanding provider or retention decisions have owners and due-before milestones. Research requiring participant contact or analytics collection remains separately authorised.
 
@@ -98,13 +98,13 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Users organise events and projects in their own language without global Original/Final constraints.
 **Entry:** Phase 0 decisions; standing autonomous execution authority.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** Ready for release. Owner: Codex. Authority: standing autonomous execution instruction.
 
-- [ ] **P1-01 — Review album/section experience.** Design desktop and narrow-screen navigation, All in this album, Unsectioned, Unorganised, counts, empty states and clear action labels. Review a concrete prototype before broad implementation.
-- [ ] **P1-02 — Add section storage and APIs.** One level; unique names within an album; editable name, order and cover; section placement belongs to an album membership. Enforce same-album references and concurrency checks.
-- [ ] **P1-03 — Build organisation workflows.** Create, rename, reorder, move and remove sections; support individual and bulk placement, keyboard/menu alternatives and Undo. Removing sections preserves files under Unsectioned; removing albums preserves files and access.
-- [ ] **P1-04 — Bind uploads to destinations.** Capture space/album/section when queued; display the destination and handle destination deletion or revoked access without silently rerouting an upload.
-- [ ] **P1-05 — Migrate categories safely.** Offer blank or optional Originals/Final cuts templates and an explicit per-album mapping preview. Retain legacy categories and unfiled content; flag global category UI for retirement only after compatibility is proven.
+- [x] **P1-01 — Review album/section experience.** Design desktop and narrow-screen navigation, All in this album, Unsectioned, Unorganised, counts, empty states and clear action labels. Review a concrete prototype before broad implementation.
+- [x] **P1-02 — Add section storage and APIs.** One level; unique names within an album; editable name, order and cover; section placement belongs to an album membership. Enforce same-album references and concurrency checks.
+- [x] **P1-03 — Build organisation workflows.** Create, rename, reorder, move and remove sections; support individual and bulk placement, keyboard/menu alternatives and Undo. Removing sections preserves files under Unsectioned; removing albums preserves files and access.
+- [x] **P1-04 — Bind uploads to destinations.** Capture space/album/section when queued; display the destination and handle destination deletion or revoked access without silently rerouting an upload.
+- [x] **P1-05 — Migrate categories safely.** Offer blank or optional Originals/Final cuts templates and an explicit per-album mapping preview. Retain legacy categories and unfiled content; flag global category UI for retirement only after compatibility is proven.
 - [ ] **P1-06 — Verify and release organisation.** Exercise migrations, multi-album isolation, concurrent edits, Undo, queued transfers and responsive/accessibility behaviour. Record release and regression evidence.
 
 **Acceptance scenarios:** A file in Album A/Shortlist and Album B/References moves within A without changing B or original bytes. Section removal preserves all files. Navigating elsewhere does not redirect a queued upload. No section is represented as private. Existing clients remain compatible or receive an explicit supported response.
@@ -230,10 +230,10 @@ For identity or access changes, test loss of access during an open viewer, queue
 
 | ID | Decision | Recommended direction | Status / needed before |
 | --- | --- | --- | --- |
-| D01 | Primary users and sequence | Personal and small-group media first; sections next unless privacy is urgent | Proposed / P0 close |
-| D02 | Organisation semantics | One section level, optional templates, zero/one placement per album, many albums per asset | Proposed / P0 close |
-| D03 | Default browsing scope | Active space only; general Shared library distinct from restricted content later | Proposed / P0 close |
-| D04 | Cross-audience publication | Explicit verified independent copy initially; no automatic union of album audiences | Proposed / P0 close |
+| D01 | Primary users and sequence | Personal and small-group media first; sections next unless privacy is urgent | Resolved: recommended default / standing execution authority |
+| D02 | Organisation semantics | One section level, optional templates, zero/one placement per album, many albums per asset | Resolved: recommended default / standing execution authority |
+| D03 | Default browsing scope | Active space only; general Shared library distinct from restricted content later | Resolved: recommended default / standing execution authority |
+| D04 | Cross-audience publication | Explicit verified independent copy initially; no automatic union of album audiences | Resolved: recommended default / standing execution authority |
 | D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Open / P2 implementation |
 | D06 | Ownership and offboarding | Shared work belongs to the space; personal work remains separate; explicit transfer/recovery | Proposed / P2 lifecycle design |
 | D07 | Retention and deletion | Document Trash, history, backups, account deletion and restore reconciliation separately | Open / P2 lifecycle design; revisit guest artifacts in P5 |
@@ -301,6 +301,14 @@ Next proposed phase and outstanding decision:
 | --- | --- | --- |
 | 2026-09-19 | Created the living guide; separated collaboration, restricted albums, deliveries and expansion into independently reviewable phases | User requested a phased development guide incorporating the product assessment and showing completed/outstanding work |
 
-Latest milestone: autonomous execution, commits and pushes authorised on 19 September 2026. Feature implementation and release evidence will be recorded as completed.
+Latest milestone: autonomous execution, commits and pushes authorised on 19 September 2026. Phase 0 contract recorded; Phase 1 implementation in progress. No section release claimed yet.
 
 | 2026-09-19 | Autonomous execution authorised; Phase 0 started | User explicitly instructed continued work, commits and pushes, stopping only for blockers |
+
+### Current execution evidence
+
+- `8820a84` pushed to `origin/main`: prior approved UI polish and planning baseline. Web lint and TypeScript passed.
+- Phase 0 closed by product/source review under standing authority; [section implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) records semantics, migration and tests.
+- Phase 1 implementation verified: section schema/APIs, bulk placement/Undo, queued destinations, templates, ordering and covers. Original/Final controls are secondary and retained for compatibility. Tests cover API regression, migration, browser journeys, keyboard/mobile and recovery. Production release remains outstanding.
+- Template preview intentionally maps at most 100 existing files per operation, matching bulk-selection limits. Larger albums can create empty template sections and move selected batches.
+- Fresh production export restored in isolated SQLite and D1; migrations rehearsed against it with all media records and memberships preserved. Private evidence: `.sites-runtime/sections-release/`.

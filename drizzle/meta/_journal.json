@@ -36,6 +36,20 @@
       "when": 1789716630706,
       "tag": "0004_confused_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789805183734,
+      "tag": "0005_album_sections",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789805488038,
+      "tag": "0006_section_covers",
+      "breakpoints": true
     }
   ]
 }

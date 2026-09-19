@@ -2,15 +2,16 @@
 
 import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
+import { AlbumSections } from "./album-sections";
 import { WorkspaceSelect } from "./workspace-select";
 import { requestJson } from "@/lib/api-client";
 import { numberedFilename, splitFilename, validFilename } from "@/lib/library-names";
-import type { Album, MediaItem, RenameEntry } from "@/lib/contracts";
+import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contracts";
 
-export type LibraryQuery = { album: string; dateMode: string; from: string; to: string; sort: string; batch: string };
-export const emptyLibraryQuery: LibraryQuery = { album: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "" };
+export type LibraryQuery = { album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string };
+export const emptyLibraryQuery: LibraryQuery = { album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "" };
 type Props = {
-  albums: Album[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; isOwner: boolean;
+  albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; isOwner: boolean;
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
   refresh: () => Promise<void>; renameItems: MediaItem[]; onRename: (items: MediaItem[]) => void;
   dateItem: MediaItem | null; onDate: (item: MediaItem | null) => void;
@@ -55,12 +56,12 @@ export function LibraryTools(props: Props) {
   // Reverse only memberships actually changed, preserving files already present in the destination album.
   async function organiseSelection(action: "add" | "remove" | "trash" | "restore") {
     const albumId = action === "remove" ? query.album : targetAlbum;
-    const result = await requestJson<{ changed: { id: string }[]; files: { id: string; revision: number }[] }>("library/organise", {
+    const result = await requestJson<{ changed: { id: string; sectionId?: string | null }[]; files: { id: string; revision: number }[] }>("library/organise", {
       method: "POST", body: JSON.stringify({ action, albumId: albumId || undefined, files: selected.map(file => ({ id: file.id, expectedRevision: file.revision ?? 0 })) }),
     });
     const changed = new Set(result.changed.map(file => file.id));
     const inverse = { add: "remove", remove: "add", trash: "restore", restore: "trash" }[action];
-    const files = result.files.filter(file => changed.has(file.id)).map(file => ({ id: file.id, expectedRevision: file.revision }));
+    const files = result.files.filter(file => changed.has(file.id)).map(file => ({ id: file.id, expectedRevision: file.revision, ...(action === "remove" ? { sectionId: result.changed.find(changed => changed.id === file.id)?.sectionId ?? null } : {}) }));
     setUndo(files.length ? () => () => requestJson("library/organise", { method: "POST", body: JSON.stringify({ action: inverse, albumId: albumId || undefined, files }) }) : null);
     setMessage(`${files.length} ${files.length === 1 ? "file" : "files"} ${action === "add" ? "added to album" : action === "remove" ? "removed from album" : action === "trash" ? "moved to Trash" : "restored"}.`);
     setAlbumPickerOpen(false);
@@ -70,7 +71,7 @@ export function LibraryTools(props: Props) {
   async function saveAlbum(name: string, description: string) {
     if (albumEditor === "new") {
       const result = await requestJson<{ id: string }>("albums", { method: "POST", body: JSON.stringify({ name, description }) });
-      onQuery({ ...query, album: result.id }); setMessage("Album created. Drop files here to add them."); setUndo(null);
+      onQuery({ ...query, album: result.id, section: "" }); setMessage("Album created. Drop files here to add them."); setUndo(null);
     } else if (albumEditor) await updateAlbum(albumEditor, { name, description });
     setAlbumEditor(null);
   }
@@ -81,7 +82,7 @@ export function LibraryTools(props: Props) {
     await requestJson(`albums/${album.id}`, { method: "PUT", body: JSON.stringify({ ...previous, ...patch, expectedRevision: album.revision }) });
     setUndo(() => () => requestJson(`albums/${album.id}`, { method: "PUT", body: JSON.stringify({ ...previous, expectedRevision: album.revision + 1 }) }));
     setMessage(patch.deleted ? "Album removed. Its files remain in your library." : "Album updated.");
-    if (patch.deleted) onQuery({ ...query, album: "" });
+    if (patch.deleted) onQuery({ ...query, album: "", section: "" });
   }
 
   async function saveRenames(files: RenameEntry[]) {
@@ -110,7 +111,7 @@ export function LibraryTools(props: Props) {
     </div>
     <div id={filterPanelId} className="library-filter-panel" hidden={!filtersOpen}>
     <div className="library-location">
-      <div className="filter-field"><span>Browse</span><WorkspaceSelect label="Browse library" value={query.album} onChange={album => onQuery({ ...query, album })} options={[{ value: "", label: "All files" }, { value: "unorganised", label: "Unorganised" }, ...albums.map(album => ({ value: album.id, label: `${album.name} (${album.count})`, group: album.archivedAt ? "Archived albums" : "Albums" }))]} /></div>
+      <div className="filter-field"><span>Browse</span><WorkspaceSelect label="Browse library" value={query.album} onChange={album => onQuery({ ...query, album, section: "" })} options={[{ value: "", label: "All files" }, { value: "unorganised", label: "Unorganised" }, ...albums.map(album => ({ value: album.id, label: `${album.name} (${album.count})`, group: album.archivedAt ? "Archived albums" : "Albums" }))]} /></div>
     </div>
     <div className="library-filters">
       <div className="filter-field"><span>Dates</span><WorkspaceSelect label="Dates" value={query.dateMode} onChange={dateMode => onQuery({ ...query, dateMode })} options={[{ value: "uploaded", label: "Date uploaded (UTC)" }, { value: "captured", label: "Date taken" }]} /></div>
@@ -121,6 +122,7 @@ export function LibraryTools(props: Props) {
     {query.dateMode === "captured" && <p className="library-context">Camera date where available; otherwise date uploaded (UTC). Missing dates are labelled on each file.</p>}
     </div>
     {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Everyone in this space can view and save these files."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{isOwner && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
+    {activeAlbum && <AlbumSections album={activeAlbum} sections={props.sections.filter(section => section.albumId === activeAlbum.id)} query={query} onQuery={onQuery} selected={selected} isOwner={isOwner} refresh={refresh} clearSelection={props.onClearSelection} feedback={props.feedback} />}
     {activeFilterCount > 0 && <div className="active-library-filters" aria-label="Active filters">
       {query.dateMode === "captured" && <button className="filter-chip" onClick={() => onQuery({ ...query, dateMode: "uploaded" })}>Date taken<X size={13} /></button>}
       {(query.from || query.to) && <button className="filter-chip" onClick={() => onQuery({ ...query, from: "", to: "" })}>{query.from || "Any start"} – {query.to || "Any end"}<X size={13} /></button>}

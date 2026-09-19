@@ -1,0 +1,2 @@
+ALTER TABLE `album_sections` ADD `cover_media_id` text;--> statement-breakpoint
+CREATE UNIQUE INDEX `idx_section_active_name` ON `album_sections` (`album_id`,lower("name")) WHERE "album_sections"."deleted_at" IS NULL;

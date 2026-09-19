@@ -58,6 +58,7 @@ async function verifyBrowser(engine, options, label) {
     await expect(card.getByRole('button', { name: 'Delete permanently', exact: true })).toBeFocused();
     await card.getByRole('button', { name: 'Restore', exact: true }).click();
     await page.getByRole('button', { name: 'Back to files' }).click();
+    await page.locator('.category-navigation summary').click();
     await page.locator('.sidebar').getByRole('button', { name: /Final cuts/ }).click();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'finished-export.mov', mimeType: 'video/quicktime', buffer: payload });
     await expect(page.locator('article').filter({ hasText: 'finished-export.mov' })).toBeVisible();
@@ -75,6 +76,7 @@ async function verifyBrowser(engine, options, label) {
     await expect(page.getByLabel('Search filenames')).toBeVisible();
     // Deep links now retain the Final cuts view across reloads; All files remains explicitly available.
     await expect(page.locator('article')).toHaveCount(1);
+    await page.locator('.category-filter-disclosure summary').click();
     await page.locator('.filter-tabs').getByRole('button', { name: /^All files/ }).click();
     await expect(page.locator('article')).toHaveCount(2);
     await context.setOffline(true);

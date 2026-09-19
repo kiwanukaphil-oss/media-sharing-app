@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, index, primaryKey } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { sqliteTable, text, integer, index, primaryKey, foreignKey, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const spaces = sqliteTable("spaces", {
   id: text("id").primaryKey(),
@@ -56,7 +57,17 @@ export const albums = sqliteTable("albums", {
   revision: integer("revision").notNull().default(0),
 }, table => [index("idx_albums_space").on(table.spaceId, table.deletedAt, table.archivedAt)]);
 
+export const albumSections = sqliteTable("album_sections", {
+  albumId: text("album_id").notNull().references(() => albums.id, { onDelete: "cascade" }),
+  id: text("id").notNull(),
+  name: text("name").notNull(),
+  position: integer("position").notNull().default(0),
+  coverMediaId: text("cover_media_id"),
+  deletedAt: integer("deleted_at"),
+}, table => [primaryKey({ columns: [table.albumId, table.id] }), uniqueIndex("idx_section_active_name").on(table.albumId, sql`lower(${table.name})`).where(sql`${table.deletedAt} IS NULL`)]);
+
 export const albumMedia = sqliteTable("album_media", {
   albumId: text("album_id").notNull().references(() => albums.id, { onDelete: "cascade" }),
   mediaId: text("media_id").notNull().references(() => media.id, { onDelete: "cascade" }),
-}, table => [primaryKey({ columns: [table.albumId, table.mediaId] }), index("idx_album_media_file").on(table.mediaId)]);
+  sectionId: text("section_id"),
+}, table => [primaryKey({ columns: [table.albumId, table.mediaId] }), index("idx_album_media_file").on(table.mediaId), foreignKey({ columns: [table.albumId, table.sectionId], foreignColumns: [albumSections.albumId, albumSections.id] })]);

@@ -14,7 +14,11 @@ database = sqlite3.connect(output / 'restored.sqlite')
 database.executescript(source.read_text(encoding='utf-8'))
 assert database.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
 assert not database.execute('PRAGMA foreign_key_check').fetchall()
+# Include organisation tables when present, while retaining verification of older recovery points.
 tables = ['spaces', 'devices', 'invitations', 'media']
+for name in ['albums', 'album_sections', 'album_media']:
+    if database.execute("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?", (name,)).fetchone():
+        tables.append(name)
 counts = {name: database.execute('SELECT COUNT(*) FROM ' + name).fetchone()[0] for name in tables}
 
 # D1 exports interleave alphabetically sorted tables and rows; create all tables first for foreign keys.

@@ -94,3 +94,20 @@
   .workspace-select-menu { animation: none; }
   .workspace-select, .selection-mark { transition: none; }
 }
+
+/* Album-local sections use the existing compact command language on desktop and touch. */
+.album-sections { padding: 16px 0 4px; border-top: 1px solid var(--line); }
+.section-navigation, .section-management { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.section-navigation > .workspace-select { min-width: 220px; }
+.section-explanation { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+@media (max-width: 600px) { .section-navigation > .workspace-select { flex: 1 1 240px; min-width: 0; } }
+
+.section-cover { object-fit: cover; border-radius: 8px; }
+.template-file-preview { max-height: 200px; overflow: auto; font-size: 13px; }
+.template-file-preview ul { padding-left: 20px; }
+
+/* Retained file labels are secondary; albums and their custom sections lead navigation. */
+.category-navigation summary, .category-filter-disclosure summary { cursor: pointer; color: var(--muted); font-size: 12px; padding: 12px; min-height: 44px; }
+.category-navigation { margin-top: 4px; }
+.category-filter-disclosure { min-width: 160px; }
+.category-filter-disclosure[open] { flex: 1; }

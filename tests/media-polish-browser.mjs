@@ -81,6 +81,7 @@ try {
   for (const width of [320, 390, 768]) {
     await page.setViewportSize({ width, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `No overflow at ${width}px`);
+    if (await page.locator('.category-filter-disclosure').getAttribute('open') === null) await page.locator('.category-filter-disclosure summary').click();
     await expect(page.locator('.filter-tabs').getByRole('button', { name: /Final cuts/ })).toBeVisible();
     if (width === 390) await page.screenshot({ path: 'outputs/phase-3/mobile.png', fullPage: true, animations: 'disabled' });
     await page.getByRole('button', { name: 'Open navigation', exact: true }).click();

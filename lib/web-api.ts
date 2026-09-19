@@ -17,6 +17,19 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   const album = query.get("album");
   if (album === "unorganised") where += " AND NOT EXISTS (SELECT 1 FROM album_media am JOIN albums a ON a.id = am.album_id WHERE am.media_id = media.id AND a.deleted_at IS NULL)";
   else if (album) { await requireAlbum(device, album); where += " AND EXISTS (SELECT 1 FROM album_media WHERE media_id = media.id AND album_id = ?)"; values.push(album); }
+  const section = query.get("section");
+  if (section) {
+    if (!album || album === "unorganised") throw new ApiError(400, "Choose an album before a section.");
+    if (section === "unsectioned") {
+      where += " AND EXISTS (SELECT 1 FROM album_media am LEFT JOIN album_sections s ON s.album_id = am.album_id AND s.id = am.section_id WHERE am.media_id = media.id AND am.album_id = ? AND (am.section_id IS NULL OR s.deleted_at IS NOT NULL))";
+      values.push(album);
+    } else {
+      const available = await database().prepare("SELECT id FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL").bind(album, section).first();
+      if (!available) throw new ApiError(404, "This section is no longer available.");
+      where += " AND EXISTS (SELECT 1 FROM album_media WHERE media_id = media.id AND album_id = ? AND section_id = ?)";
+      values.push(album, section);
+    }
+  }
   if (search) { where += " AND (instr(lower(media.name), lower(?)) > 0 OR instr(lower(COALESCE(media.original_name, media.name)), lower(?)) > 0)"; values.push(search, search); }
   const dateMode = query.get("dateMode") || "uploaded";
   if (!["uploaded", "captured"].includes(dateMode)) throw new ApiError(400, "Unknown date mode.");

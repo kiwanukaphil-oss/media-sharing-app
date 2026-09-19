@@ -24,6 +24,7 @@ jobs:
       - run: node tests/capture-date.mjs
       - run: node tests/preparation-progress.mjs
       - run: node tests/preview-lifecycle.mjs
+      - run: node tests/album-section-migration.mjs
       - run: node tests/device-role-migration.mjs
       - run: node tests/owner-recovery-preparation.mjs
       # Clean checkouts default to the portable execution profile; no machine-local settings are needed.

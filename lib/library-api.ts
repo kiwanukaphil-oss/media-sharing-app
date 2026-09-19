@@ -2,9 +2,10 @@ import { z } from "zod";
 import { ApiError, database, readJson, requireOwner, type ActiveDevice } from "./server";
 import { splitFilename, validCaptureDate, validFilename } from "./library-names";
 import type { Album } from "./contracts";
+import { sectionAction, placeInSections } from "./sections-api";
 
 const albumFields = { name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).default("") };
-const selectionSchema = z.array(z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative() })).min(1).max(100).refine(items => new Set(items.map(item => item.id)).size === items.length);
+const selectionSchema = z.array(z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative(), sectionId: z.string().uuid().nullable().optional() })).min(1).max(100).refine(items => new Set(items.map(item => item.id)).size === items.length);
 
 export async function requireAlbum(device: ActiveDevice, id: string, active = false) {
   const album = await database().prepare("SELECT * FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL").bind(id, device.space_id).first<{ id: string; archived_at: number | null }>();
@@ -26,7 +27,15 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
       a.deleted_at AS deletedAt, a.revision, COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count
       FROM albums a LEFT JOIN album_media am ON am.album_id = a.id LEFT JOIN media m ON m.id = am.media_id
       WHERE a.space_id = ? AND a.deleted_at IS NULL GROUP BY a.id ORDER BY a.archived_at IS NOT NULL, a.name COLLATE NOCASE, a.id`).bind(device.space_id).all<Album>();
-    return Response.json({ albums: albums.results });
+    const sections = await database().prepare(`SELECT s.id, s.album_id AS albumId, s.name, s.position,
+      CASE WHEN EXISTS (SELECT 1 FROM album_media cover_membership JOIN media cover ON cover.id = cover_membership.media_id
+        WHERE cover_membership.album_id = s.album_id AND cover_membership.section_id = s.id AND cover.id = s.cover_media_id
+        AND cover.status = 'ready' AND cover.archived_at IS NULL AND cover.preview_ready = 1) THEN s.cover_media_id ELSE NULL END AS coverMediaId,
+      COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count
+      FROM album_sections s JOIN albums a ON a.id = s.album_id
+      LEFT JOIN album_media am ON am.album_id = s.album_id AND am.section_id = s.id LEFT JOIN media m ON m.id = am.media_id
+      WHERE a.space_id = ? AND a.deleted_at IS NULL AND s.deleted_at IS NULL GROUP BY s.album_id, s.id ORDER BY s.position, s.id`).bind(device.space_id).all();
+    return Response.json({ albums: albums.results, sections: sections.results });
   }
   requireOwner(device);
   if (request.method === "POST" && !id) {
@@ -86,9 +95,14 @@ async function organiseFiles(request: Request, device: ActiveDevice) {
     await requireAlbum(device, input.albumId, input.action === "add");
     selected += ` AND EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL ${input.action === "add" ? "AND archived_at IS NULL" : ""})`;
     selectionValues.push(input.albumId, device.space_id);
+    if (input.action === "add") {
+      selected += ` AND NOT EXISTS (SELECT 1 FROM json_each(?) chosen WHERE json_extract(chosen.value, '$.sectionId') IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM album_sections s WHERE s.album_id = ? AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))`;
+      selectionValues.push(json, input.albumId);
+    }
     const statement = input.action === "add"
-      ? database().prepare(`INSERT OR IGNORE INTO album_media (album_id, media_id) SELECT ?, media.id FROM media WHERE ${selected} RETURNING media_id AS id`).bind(input.albumId, ...selectionValues)
-      : database().prepare(`DELETE FROM album_media WHERE album_id = ? AND media_id IN (SELECT media.id FROM media WHERE ${selected}) RETURNING media_id AS id`).bind(input.albumId, ...selectionValues);
+      ? database().prepare(`INSERT OR IGNORE INTO album_media (album_id, media_id, section_id) SELECT ?, media.id, (SELECT json_extract(value, '$.sectionId') FROM json_each(?) WHERE json_extract(value, '$.id') = media.id) FROM media WHERE ${selected} RETURNING media_id AS id, section_id AS sectionId`).bind(input.albumId, json, ...selectionValues)
+      : database().prepare(`DELETE FROM album_media WHERE album_id = ? AND media_id IN (SELECT media.id FROM media WHERE ${selected}) RETURNING media_id AS id, section_id AS sectionId`).bind(input.albumId, ...selectionValues);
     const results = await database().batch([
       statement,
       database().prepare(`UPDATE media SET revision = revision + 1 WHERE ${selected} RETURNING id, revision`).bind(...selectionValues),
@@ -111,6 +125,8 @@ async function changeCaptureDate(request: Request, device: ActiveDevice) {
 }
 
 export async function libraryAction(request: Request, device: ActiveDevice, resource: string, id?: string) {
+  if (resource === "sections") return sectionAction(request, device, id);
+  if (resource === "library" && id === "sections" && request.method === "POST") return placeInSections(request, device);
   if (resource === "albums") return manageAlbums(request, device, id);
   if (resource !== "library" || request.method !== "POST") return null;
   if (id === "rename") return renameFiles(request, device);
