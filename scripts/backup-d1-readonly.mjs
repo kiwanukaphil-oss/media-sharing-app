@@ -8,6 +8,13 @@ const literal = value => `'${value.replaceAll("'", "''")}'`;
 const canonicalSchema = rows => JSON.stringify(rows.map(({ type, name, tbl_name, sql }) =>
   ({ type, name, tbl_name, sql })).sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name)));
 
+// Balance concatenation so wider tables do not exceed D1's expression-depth limit.
+function concatenateSql(parts) {
+  if (parts.length === 1) return parts[0];
+  const midpoint = Math.floor(parts.length / 2);
+  return `(${concatenateSql(parts.slice(0, midpoint))} || ${concatenateSql(parts.slice(midpoint))})`;
+}
+
 // Serialize in SQLite to retain 64-bit integers, binary data, and embedded zero bytes in text.
 function sqlValue(column) {
   return `CASE typeof(${column}) WHEN 'text' THEN 'CAST(X''' || hex(${column}) || ''' AS TEXT)' ` +
@@ -40,7 +47,8 @@ export function planReadOnlySnapshot(schema) {
     if (hasSequence) selections.push({ name: 'sqlite_sequence', names: ['name', 'seq'] });
     const tableQueries = selections.map(({ name, names }) => {
       const prefix = `INSERT INTO ${identifier(name)} (${names.map(identifier).join(',')}) VALUES (`;
-      const statement = `${literal(prefix)} || ${names.map(column => sqlValue(identifier(column))).join(" || ',' || ")} || ');'`;
+      const values = names.flatMap((column, position) => [...(position ? ["','"] : []), sqlValue(identifier(column))]);
+      const statement = concatenateSql([literal(prefix), ...values, "');'"]);
       return `json_object('name',${literal(name)},'count',(SELECT count(*) FROM ${identifier(name)}),` +
         `'rows',json((SELECT json_group_array(${statement}) FROM ${identifier(name)})))`;
     });

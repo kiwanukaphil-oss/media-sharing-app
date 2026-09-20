@@ -61,6 +61,8 @@ try {
     for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation', 'album-sections']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
+    const { verifyReadOnlyBackup } = await import('../tests/backup-d1-readonly.mjs');
+    await verifyReadOnlyBackup(database);
   }
 } finally {
   await emulator.dispose();

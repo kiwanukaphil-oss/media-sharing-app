@@ -3,6 +3,28 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import {schemaQuery,planReadOnlySnapshot,restoreReadOnlySnapshot,queryReadOnlyDatabase} from '../scripts/backup-d1-readonly.mjs';
 
+// Exercise D1's maximum table width; snapshot output must retain every column and value.
+test('wide tables round-trip without losing values',()=>{
+ const source=new DatabaseSync(':memory:');
+ const target=new DatabaseSync(':memory:');
+ try {
+  source.exec(`CREATE TABLE wide(${Array.from({length:100},(_,i)=>`c${i} TEXT`).join(',')})`);
+  source.prepare(`INSERT INTO wide VALUES(${Array(100).fill('?').join(',')})`).run(...Array.from({length:100},(_,i)=>`value ${i}`));
+  const plan=planReadOnlySnapshot(source.prepare(schemaQuery).all());
+  target.exec(restoreReadOnlySnapshot(plan,source.prepare(plan.sql).all()));
+  assert.deepEqual(target.prepare('SELECT * FROM wide').all(),source.prepare('SELECT * FROM wide').all());
+ } finally {source.close();target.close();}
+});
+
+// Run the same exporter against the actual D1 runtime, whose expression limit differs from Node SQLite.
+export async function verifyReadOnlyBackup(database) {
+ const plan=planReadOnlySnapshot((await database.prepare(schemaQuery).all()).results);
+ const result=await database.prepare(plan.sql).all();
+ restoreReadOnlySnapshot(plan,result.results);
+ assert.equal(result.meta.rows_written,0);
+ console.log('D1 read-only snapshot restored with schema, row counts and relationships verified.');
+}
+
 // Exercise exact SQLite storage values, explicit row identifiers, schema objects, and deleted sequence history.
 function createExportFixture() {
  const db=new DatabaseSync(':memory:');
