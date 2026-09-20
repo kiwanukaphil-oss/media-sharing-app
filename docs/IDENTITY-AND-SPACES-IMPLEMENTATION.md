@@ -70,9 +70,9 @@ Run `node scripts/auth0-setup.mjs` to print these public settings. This script d
 | Application type | Regular Web Application |
 | Token endpoint authentication | POST |
 | Signing algorithm | RS256 |
-| Allowed Callback URLs | `https://relay-media-exchange.kiwanukaphil.workers.dev/api/auth/callback` |
-| Allowed Logout URLs | `https://relay-media-exchange.kiwanukaphil.workers.dev/` |
-| Application Login URI | `https://relay-media-exchange.kiwanukaphil.workers.dev/api/auth/login` |
+| Allowed Callback URLs | `https://relayalbums.com/api/auth/callback` |
+| Allowed Logout URLs | `https://relayalbums.com/` |
+| Application Login URI | `https://relayalbums.com/api/auth/login` |
 
 These URLs are reserved for the planned account integration and are not operational login routes yet. Use exact URLs, not wildcards. Test settings should be in a separate development application/tenant with explicitly allowed local callback URLs.
 
@@ -114,3 +114,26 @@ The user confirmed on 20 September that they do not own a domain or use an email
 Auth0's built-in sender is suitable for testing only, with no production reliability guarantee. Do not enable general production account onboarding until delivery, verification/recovery, sender identity and post-trial availability have been tested. Development with simulated identities can continue independently.
 
 References reviewed 20 September 2026: [Auth0 email-provider guidance](https://support.auth0.com/center/s/article/Emails-to-Gmail-from-Auth0-never-arrive), [Resend's supported Auth0 integration](https://resend.com/changelog/auth0-integration).
+
+## Purchased domain and routing ? 20 September 2026
+
+- User purchased **relayalbums.com** in the existing Cloudflare account. Connected the root domain to the current production Worker without deploying new application code or database migrations.
+- `https://relayalbums.com` is the intended primary origin. The previous workers.dev origin remains operational during transition. Existing cookies/browser-local transfer state do not automatically migrate between origins; finish queued transfers on the original origin and use the normal pairing flow on the new one.
+- R2 CORS now allows both exact origins with the existing GET/HEAD/PUT methods and headers. No public bucket access was enabled.
+- Auth0 login URI now points to the new origin. Exact callback/logout URLs for both origins are saved and were verified after reloading the dashboard. The current settings table above reflects the intended new origin. Sign-in routes remain unimplemented/disabled.
+- Updated ignored local Auth0 settings and committed setup defaults to the new origin. Prepared deployment config explicitly preserves the custom domain on future deployments.
+- Verified HTTPS/API health on both origins and the full hosted section workflow on relayalbums.com: direct original upload, section moves and Undo, removal/restore, deep links and byte-identical download. Only the established Relay verification space received a tiny retained fixture.
+- Resend signup opened in Chrome. User must create/sign into their own free account, including password and terms acceptance. Proposed sending subdomain: `mail.relayalbums.com`; actual provider DNS records must come from Resend, never be invented.
+- Existing external uptime monitors still target the workers.dev origin; moving/adding custom-domain monitoring remains an operational follow-up.
+
+### Resend preparation
+
+User created the free Resend account. The sending domain `mail.relayalbums.com` has been added in the Ireland region; receiving remains disabled. Provider-generated records are:
+
+| Type | Host within relayalbums.com | Target/content |
+| --- | --- | --- |
+| TXT | `resend._domainkey.mail` | Provider-generated public DKIM key, available in the Resend domain setup screen |
+| CNAME | `rsend.mail` | `rsend-euw1.forge.rmta.net` (DNS only) |
+| CNAME | `send.mail` | `send.forge.rmta.net` (DNS only) |
+
+Publication and verification are pending. An API-key form is prepared with name **Relay Auth0 account emails** and **Sending access**; the domain restriction must be selected after domain verification, before creating the key. Do not create an all-domains or full-access key. Action-time confirmation requested for the sender authorization and persistent sending credential. No emails were sent.

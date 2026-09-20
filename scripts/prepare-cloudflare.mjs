@@ -7,6 +7,7 @@ async function prepareDirectCloudflareConfig() {
   config.name = resources.worker_name;
   config.account_id = resources.account_id;
   config.workers_dev = true;
+  config.routes = (resources.custom_domains || []).map(domain => ({ pattern: domain, custom_domain: true }));
   config.d1_databases = [{ binding: "DB", database_name: resources.database_name, database_id: resources.database_id }];
   config.r2_buckets = [{ binding: "BUCKET", bucket_name: resources.bucket_name }];
   config.vars = { R2_ACCOUNT_ID: resources.account_id, R2_BUCKET_NAME: resources.bucket_name, ALLOW_SPACE_CREATION: "false" };

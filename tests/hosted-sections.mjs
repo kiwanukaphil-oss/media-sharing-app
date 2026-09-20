@@ -5,8 +5,10 @@ import { chromium, expect } from '@playwright/test';
 import { chooseWorkspaceOption } from './browser-controls.mjs';
 
 // Only use the established verification space; never log its credential or direct-storage URLs.
-const { origin, cookie } = JSON.parse(await readFile('.sites-runtime/cloud-test-session.json', 'utf8'));
-assert.equal(origin, 'https://relay-media-exchange.kiwanukaphil.workers.dev');
+const { origin: credentialOrigin, cookie } = JSON.parse(await readFile('.sites-runtime/cloud-test-session.json', 'utf8'));
+assert.equal(credentialOrigin, 'https://relay-media-exchange.kiwanukaphil.workers.dev');
+const origin = process.env.RELAY_HOSTED_ORIGIN || credentialOrigin;
+assert.ok(['https://relayalbums.com', credentialOrigin].includes(origin), 'Credentials may only reach verified Relay production domains.');
 const api = (path, method = 'GET', body) => fetch(`${origin}/api/${path}`, { method,
   headers: { Cookie: cookie, Origin: origin, 'Content-Type': 'application/json' },
   body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
@@ -61,7 +63,7 @@ try {
   await mkdir('outputs/sections', { recursive: true });
   await page.screenshot({ path: 'outputs/sections/hosted.png', fullPage: true });
   assert.deepEqual(errors, []);
-  await writeFile('.sites-runtime/sections-release/hosted-verification.json', JSON.stringify({ result: 'passed', albumId, sectionId, mediaId: item.id, sha256: item.sha256, originalBytes: bytes.length }, null, 2));
+  await writeFile('.sites-runtime/sections-release/hosted-verification.json', JSON.stringify({ result: 'passed', origin, albumId, sectionId, mediaId: item.id, sha256: item.sha256, originalBytes: bytes.length }, null, 2));
   console.log('PASS hosted sections: create, captured R2 upload destination, move/Undo, section remove/restore, deep link and byte-identical download.');
   // Removal candidate: retain this tiny verification fixture for review rather than auto-deleting it.
   console.log('Only a newly created fixture in Relay verification was modified; it remains for review.');

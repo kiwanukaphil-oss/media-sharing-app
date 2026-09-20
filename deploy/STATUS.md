@@ -48,3 +48,7 @@ node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js depl
 ```
 
 Do not replay the initial database migration or bootstrap SQL. Preserve existing Worker secrets on redeployment. The Sites manifest is retained as compatibility metadata, not as the current deployment owner.
+
+## Custom domain ? 20 September 2026
+
+Primary web URL: https://relayalbums.com. Bound to the existing live Worker version `76609db5-810c-4c08-8968-6c8b4dcd97d7`; no code deployment in this change. The workers.dev URL remains available. R2 CORS permits both exact origins. Both health endpoints and hosted custom-domain upload/download/section workflows passed. Browser sessions must be paired separately at the new origin. Account sign-in is not yet enabled. External uptime monitors still use the original origin.

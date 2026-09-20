@@ -1,7 +1,7 @@
 {
   "rules": [{
     "allowed": {
-      "origins": ["https://relay-media-exchange.kiwanukaphil.workers.dev"],
+      "origins": ["https://relayalbums.com", "https://relay-media-exchange.kiwanukaphil.workers.dev"],
       "methods": ["GET", "HEAD", "PUT"],
       "headers": ["Content-Type", "Range"]
     },

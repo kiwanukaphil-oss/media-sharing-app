@@ -11,7 +11,7 @@ Autonomous development is authorised, including incremental commits and pushes. 
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; 1 external recovery-email setup dependency; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Complete **B01**: verify production recovery-email settings and integrate server sessions; the client secret is now stored in ignored local configuration. Auth0 dashboard access and application registration are resolved. **B02** is resolved: hosted backup and restore verification passed. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
+**Next action:** Complete **B01**: Resend account is created and mail.relayalbums.com is prepared; action-time confirmation requested for DNS sender authorization and a domain-restricted sending credential. Domain purchase, live routing and secure Auth0 secret handoff are complete. Continue server-session integration. Auth0 dashboard access and application registration are resolved. **B02** is resolved: hosted backup and restore verification passed. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
 
 **Execution authority (19 September 2026):** The user instructed autonomous work, commits and pushes, stopping only for a blocker requiring their input. This supersedes the earlier per-phase confirmation and no-auto-commit preferences for this roadmap. Continue through resolved phases without repeated permission requests. Record assumptions and evidence; ask only when a material decision cannot be safely resolved. No provider purchase or irreversible data deletion is inferred from this authority.
 
@@ -250,7 +250,7 @@ Planning dependencies are not incidents. The active external blocker is:
 
 | ID | Affected work | Required input | Owner | Opened | State |
 | --- | --- | --- | --- | --- | --- |
-| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; user-owned domain/email sender setup and runtime integration remain. No secrets in chat or Git. | User (email service/domain details); Codex (integration) | 2026-09-20 | Credential handoff complete; recovery email setup pending |
+| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; DNS sender verification, scoped sending credential and runtime integration remain. No secrets in chat or Git. | User (sending-access confirmation); Codex (DNS/sender/integration) | 2026-09-20 | Domain and Resend account ready; sender authorization pending |
 | B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause reproduced: SQL expression depth exceeded D1 limit. Balanced concatenation passes local D1/API tests and a live read-only snapshot restore. Hosted backup, Backblaze restore and verification passed in run 35491216252. | Codex | 2026-09-20 | Resolved |
 
 The Phase 2 design, exact Auth0 application settings, provider adapter and protocol tests are prepared. Relay Web registration is complete; personal accounts, runtime session routes and private-space migration remain unimplemented.
@@ -378,3 +378,13 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 
 - Final checks for the transaction foundation: web lint, TypeScript, production build, Auth0 protocol tests, full API/security integration, actual D1 transaction tests and backup recovery/workflow tests all passed.
 - B02 closed: [hosted backup and Backblaze restore verification](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35491216252) passed on commit `69b6843`.
+
+### Custom domain live ? 20 September 2026
+
+- User purchased `relayalbums.com` through Cloudflare. Connected it to the existing production Worker, retaining the previous URL and existing file permissions.
+- Applied and read back exact-origin R2 CORS for both domains. Saved and reloaded Auth0 callback/logout settings for the new domain; login remains disabled.
+- Passed HTTPS/API health on both domains and hosted upload/section/Undo/byte-identical download checks at `https://relayalbums.com`.
+- Deployment configuration now retains the custom domain. No Worker code release or identity migration was applied.
+- B01 is now the free Resend account/sender setup. Signup is open for the user; DNS records and email delivery tests follow account access. Existing external monitors still check the workers.dev origin.
+
+- Resend account subsequently created by user. Prepared `mail.relayalbums.com` (Ireland region), with generated DKIM TXT and two DNS-only CNAME records. No DNS sender records or Resend API credentials have been published/created yet; action-time confirmation requested under browser-control policy.
