@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { accountAction } from "@/lib/account-api";
+import { AccountError } from "@/lib/account-sessions";
+import { readAuth0Settings } from "@/lib/auth0-config";
 import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
@@ -22,10 +25,10 @@ async function serveRequest(request: Request) {
     for (const [name, value] of Object.entries(privateResponseHeaders(requestId))) response.headers.set(name, value);
     return response;
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
+    const status = error instanceof ApiError || error instanceof AccountError ? error.status : 500;
     // Never log raw exceptions, URLs, names, credentials, or request bodies; they may contain media details.
     if (status >= 500) console.error(JSON.stringify({ event: "relay_request_failed", requestId, status, method: request.method, durationMs: Date.now() - started }));
-    return Response.json({ error: error instanceof ApiError ? error.message : "Couldn't complete that request. Please retry.", requestId }, { status, headers: { ...privateResponseHeaders(requestId), ...(status === 429 ? { "Retry-After": "60" } : {}) } });
+    return Response.json({ error: error instanceof ApiError || error instanceof AccountError ? error.message : "Couldn't complete that request. Please retry.", requestId }, { status, headers: { ...privateResponseHeaders(requestId), ...(status === 429 ? { "Retry-After": "60" } : {}) } });
   }
 }
 
@@ -67,6 +70,7 @@ async function connectDevice(request: Request, nativeClient = false) {
 // Dispatch metadata, pairing, and multipart actions while enforcing space and device ownership.
 async function routeRequest(request: Request, [resource, id, action, part]: string[]): Promise<Response> {
   const method = request.method;
+  if (resource === "auth") return accountAction(request, database(), readAuth0Settings(process.env));
   if (resource === "health" && !id && method === "GET") {
     if (storageMode(request) === "unconfigured") throw new ApiError(503, "Service temporarily unavailable.");
     await Promise.all([database().prepare("SELECT id, preview_size FROM media LIMIT 1").all(), database().prepare("SELECT role FROM devices LIMIT 1").all(), database().prepare("SELECT created_by FROM invitations LIMIT 1").all(), bucket().head("_relay_health_probe")]);

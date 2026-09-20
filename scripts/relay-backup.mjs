@@ -58,6 +58,10 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='auth_transactions'").get()) {
       database.exec('DELETE FROM auth_transactions');
     }
+    // Restoring a snapshot must never revive a signed-out or stolen account session.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='account_sessions'").get()) {
+      database.prepare('UPDATE account_sessions SET revoked_at=?, expires_at=0').run(now);
+    }
     database.exec("UPDATE media SET preview_ready=0, preview_size=0; UPDATE media SET status='cancelling' WHERE status<>'ready'");
     checkDatabase(database);
     if (database.prepare('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL OR expires_at>0').get().n ||

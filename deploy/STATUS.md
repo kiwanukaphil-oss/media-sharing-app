@@ -52,3 +52,11 @@ Do not replay the initial database migration or bootstrap SQL. Preserve existing
 ## Custom domain ? 20 September 2026
 
 Primary web URL: https://relayalbums.com. Bound to the existing live Worker version `76609db5-810c-4c08-8968-6c8b4dcd97d7`; no code deployment in this change. The workers.dev URL remains available. R2 CORS permits both exact origins. Both health endpoints and hosted custom-domain upload/download/section workflows passed. Browser sessions must be paired separately at the new origin. Account sign-in is not yet enabled. External uptime monitors still use the original origin.
+
+## Account email setup ? 20 September 2026
+
+`mail.relayalbums.com` is verified in Resend after publishing one DKIM TXT and two DNS-only CNAME records. Receiving remains disabled. A sending-only API key restricted to this domain is created. User saved Auth0 Resend provider with `Relay <accounts@mail.relayalbums.com>`; enabled provider and sender were verified after reload. One explicitly authorized Auth0 provider test email was sent to the account owner; Resend reports Delivered (message `01a0bdc5-7ae1-7512-bf5f-d1e2ceb686b8`). The user confirmed inbox receipt. Actual account recovery remains unverified and account login has not been enabled. No Worker deployment or identity migration was performed.
+
+## Account/session code prepared - 20 September 2026
+
+Local only: additive migration 0008, person/session persistence, Auth0 route integration and `/account` UI. Lint, TypeScript, build, protocol, D1/API/security, restore and account UI checks pass. Account UI tests use mocked identities; no live sign-in is claimed. Neither migration 0007 nor 0008 has been applied to production. Worker version is unchanged. User approved committing and pushing this tested source increment. This does not activate production sign-in.

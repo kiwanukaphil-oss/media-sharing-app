@@ -1,6 +1,6 @@
 # Identity and personal/shared spaces: implementation proposal
 
-**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Recovery verification, account/session routes, identity migration and activation remain outstanding. No new identity system has been released.
+**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Account/session routes, person persistence and account UI are now implemented and locally tested. Recovery verification, memberships, identity migration and production activation remain outstanding. No new identity system has been released.
 
 This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-IMPLEMENTATION.md) is released. Progress remains in the [roadmap](DEVELOPMENT-ROADMAP.md).
 
@@ -74,7 +74,7 @@ Run `node scripts/auth0-setup.mjs` to print these public settings. This script d
 | Allowed Logout URLs | `https://relayalbums.com/` |
 | Application Login URI | `https://relayalbums.com/api/auth/login` |
 
-These URLs are reserved for the planned account integration and are not operational login routes yet. Use exact URLs, not wildcards. Test settings should be in a separate development application/tenant with explicitly allowed local callback URLs.
+These URLs are implemented in the local account integration; they are not deployed or enabled in production yet. Use exact URLs, not wildcards. Test settings should be in a separate development application/tenant with explicitly allowed local callback URLs.
 
 Required server settings are documented in [.env.example](../.env.example): `AUTH0_ENABLED=false`, tenant domain, client ID, client secret and fixed Relay origin. Keep client secrets in Worker secrets. The initial implementation accepts the provider-owned `*.auth0.com` tenant domain; custom domains require a separate issuer review. Local HTTP origins require an explicit test-only opt-in.
 
@@ -136,4 +136,19 @@ User created the free Resend account. The sending domain `mail.relayalbums.com` 
 | CNAME | `rsend.mail` | `rsend-euw1.forge.rmta.net` (DNS only) |
 | CNAME | `send.mail` | `send.forge.rmta.net` (DNS only) |
 
-Publication and verification are pending. An API-key form is prepared with name **Relay Auth0 account emails** and **Sending access**; the domain restriction must be selected after domain verification, before creating the key. Do not create an all-domains or full-access key. Action-time confirmation requested for the sender authorization and persistent sending credential. No emails were sent.
+User approved DNS publication, the domain-restricted sending key and Auth0 connection on 20 September. All three records are published and resolve publicly; both CNAMEs are DNS only. Resend now shows the domain as **Verified**; public CNAME, SPF and MX resolution was also checked. Receiving remains disabled.
+
+Created **Relay Auth0 account emails**, with **Sending access** restricted to `mail.relayalbums.com`. User completed credential entry and saved Auth0's Resend provider. Reloading the page confirms the provider enabled, Resend selected, `Relay <accounts@mail.relayalbums.com>` persisted and the test-email action available. With explicit user permission, sent one Auth0 provider test email to the account owner. Resend shows **Delivered** for **Email Provider Configuration Test**, message ID `01a0bdc5-7ae1-7512-bf5f-d1e2ceb686b8`. The user also confirmed receipt. Provider delivery and inbox receipt are verified; real account recovery remains unverified. The key was not printed or stored in Git.
+
+
+## Local account/session integration - 20 September 2026
+
+`lib/account-api.ts` connects the existing OIDC and transaction adapters to login/callback and account-session routes. `lib/account-sessions.ts` persists the provider issuer/subject identity and a separate, hashed credential. Migration 0008 is additive and has only been exercised in disposable D1. `AUTH0_ENABLED` remains off in production.
+
+Account cookies are Secure, HttpOnly, SameSite=Lax and host-scoped, with a fixed seven-day lifetime. Signing in rotates the previous browser credential. Every lookup checks account disablement, session revocation, expiry and issuer/client/origin binding. Cookies with duplicate account values are rejected. Account sign-out revokes only the selected person's session, and every mutation checks the exact application Origin. Backup restore invalidates all account sessions.
+
+The `/account` screen handles disabled sign-in, signed-out state, account profile and active-session revocation, including retryable failures. Failed callbacks return a fixed, non-sensitive error state to this screen. Provider tokens never reach it. Session sign-out currently ends Relay account access only: provider SSO and legacy device sessions remain independent. Production activation must include a clear, tested provider logout/recovery policy.
+
+No identity automatically becomes a member or owner, and no new space or storage allowance is allocated by signing in. This increment intentionally leaves file APIs on their existing device checks until explicit membership/claim integration is ready. Person accounts alone cannot be used as device credentials.
+
+Local evidence: lint, TypeScript, build, real signed-token protocol tests, D1 route/session tests, existing API/security suite and backup restore tests pass. Phone/desktop browser checks cover disabled routes, session display and failed/successful revocation with mocked account responses. Live Auth0 sign-in/recovery, membership/claim migration and production release remain outstanding.

@@ -12,7 +12,7 @@ export async function limitPublicRequest(request: Request, resource: string) {
   const local = isLocal(request);
   const ip = await tokenHash(request.headers.get("CF-Connecting-IP") || "local");
   await consumeLimit(env.API_RATE_LIMIT, `relay:ip:${ip}`, local);
-  if (resource === "connect" || resource === "native") await consumeLimit(env.PAIR_RATE_LIMIT, `relay:pair:${ip}`, local);
+  if (resource === "connect" || resource === "native" || resource === "auth") await consumeLimit(env.PAIR_RATE_LIMIT, `relay:pair:${ip}`, local);
 }
 
 export async function limitDeviceRequest(request: Request, deviceId: string, resource: string, id?: string, action?: string) {

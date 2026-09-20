@@ -7,13 +7,13 @@
 
 ## Current position
 
-Autonomous development is authorised, including incremental commits and pushes. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; live integration and recovery-policy verification remain outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Implementation is authorised; the latest user-supplied AGENTS.md instructions require confirmation before committing and before starting another phase. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Production activation, memberships, legacy claims and recovery-policy verification remain outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**At a glance:** 2 phases complete; 11/47 parent work items complete; 1 external recovery-email setup dependency; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
+**At a glance:** 2 phases complete; 11/47 parent work items complete; email delivery confirmed by the user; live identity/recovery activation outstanding; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Complete **B01**: Resend account is created and mail.relayalbums.com is prepared; action-time confirmation requested for DNS sender authorization and a domain-restricted sending credential. Domain purchase, live routing and secure Auth0 secret handoff are complete. Continue server-session integration. Auth0 dashboard access and application registration are resolved. **B02** is resolved: hosted backup and restore verification passed. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
+**Next action:** User approved committing and pushing the tested account/session increment. Continue Phase 2 membership, explicit legacy-claim and account recovery work before enabling production sign-in. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
 
-**Execution authority (19 September 2026):** The user instructed autonomous work, commits and pushes, stopping only for a blocker requiring their input. This supersedes the earlier per-phase confirmation and no-auto-commit preferences for this roadmap. Continue through resolved phases without repeated permission requests. Record assumptions and evidence; ask only when a material decision cannot be safely resolved. No provider purchase or irreversible data deletion is inferred from this authority.
+**Execution authority:** The user authorised autonomous implementation on 19 September. The newer user-supplied AGENTS.md instructions require confirmation before commits and phase transitions; follow that newer constraint. Current work remains within Phase 2. No purchase or irreversible deletion is inferred.
 
 | Phase | Outcome | Status | Completed work items | Main dependency |
 | --- | --- | --- | --- | --- |
@@ -117,7 +117,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** One person can safely use several devices and spaces, with a recoverable private library.
 **Entry:** Phase 0; D05–D07 resolved for this scope; reconcile the current organisation schema.
-**Status:** In progress; production activation blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; protocol/configuration and one-time transaction storage tests pass, but live login, person/session storage and identity migration remain outstanding.
+**Status:** In progress; production activation blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; protocol/configuration and one-time transaction storage tests pass, and person/session persistence, route orchestration and account UI now pass local checks. Live login, memberships and identity migration remain outstanding.
 
 - [ ] **P2-01 — Select and review identity design.** Compare suitable authentication providers, recovery, passkey/sign-in options, costs and operational dependencies. Review the trust model before choosing; use mature authentication rather than custom cryptography.
 - [ ] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
@@ -250,7 +250,7 @@ Planning dependencies are not incidents. The active external blocker is:
 
 | ID | Affected work | Required input | Owner | Opened | State |
 | --- | --- | --- | --- | --- | --- |
-| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; DNS sender verification, scoped sending credential and runtime integration remain. No secrets in chat or Git. | User (sending-access confirmation); Codex (DNS/sender/integration) | 2026-09-20 | Domain and Resend account ready; sender authorization pending |
+| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; sender domain verified and scoped sending key created; Auth0 provider saved and verified; test email delivered; actual recovery testing and runtime integration remain. No secrets in chat or Git. | Codex (recovery verification/integration); user (live account interaction) | 2026-09-20 | Provider delivery verified; recovery/integration outstanding |
 | B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause reproduced: SQL expression depth exceeded D1 limit. Balanced concatenation passes local D1/API tests and a live read-only snapshot restore. Hosted backup, Backblaze restore and verification passed in run 35491216252. | Codex | 2026-09-20 | Resolved |
 
 The Phase 2 design, exact Auth0 application settings, provider adapter and protocol tests are prepared. Relay Web registration is complete; personal accounts, runtime session routes and private-space migration remain unimplemented.
@@ -388,3 +388,20 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - B01 is now the free Resend account/sender setup. Signup is open for the user; DNS records and email delivery tests follow account access. Existing external monitors still check the workers.dev origin.
 
 - Resend account subsequently created by user. Prepared `mail.relayalbums.com` (Ireland region), with generated DKIM TXT and two DNS-only CNAME records. No DNS sender records or Resend API credentials have been published/created yet; action-time confirmation requested under browser-control policy.
+
+### Verified email sender ? 20 September 2026
+
+- User approved DNS publication, restricted sending-key creation and Auth0 connection. Published the three provider-generated DNS records; public DNS resolves correctly and Resend now shows Verified. Receiving remains disabled.
+- Created **Relay Auth0 account emails**, Sending access restricted to `mail.relayalbums.com`. No secret was printed or written to Git.
+- Prepared Auth0 Resend provider with `Relay <accounts@mail.relayalbums.com>`. Key copied in browser; user must paste into the focused API Key field and save under the browser-control credential handoff rule. User subsequently saved the provider; reloaded Auth0 confirms Resend enabled, the intended From address and an enabled test-email action. One user-authorized Auth0 provider test email was subsequently sent and marked Delivered by Resend.
+- B01 remains open for actual recovery verification and live integration; provider delivery is verified. No account routes, migrations or Worker code were deployed.
+
+### Account/session integration - 20 September 2026
+
+- User confirmed receipt of the Auth0 provider test email. Sender setup is complete; actual account recovery is a separate remaining verification.
+- Added `people` keyed by issuer/subject and hashed, configuration-bound `account_sessions` in additive migration `0008_mean_aqueduct.sql`. Equal emails never merge accounts. Verified email is required; disabled people cannot sign back in. No production migration applied.
+- Added disabled-by-default login/callback/session/list/revoke/logout routes. Callback attempts are consumed before provider exchange, credentials rotate on login, sessions expire after seven days, and account mutations enforce exact Origin even with an Authorization header. Login allocates no space, quota or membership.
+- Added responsive `/account` with browser-session controls and friendly failed/verification-needed sign-in messages. Legacy connected-library access remains separate and is labelled explicitly. Provider SSO logout, temporary/trusted session choices, membership links and account recovery are still outstanding.
+- Restore sanitization revokes every restored account session. Real-D1 tests cover same-email separation, concurrent identity creation, wrong-client denial, expiry, disablement, rotation, cross-account revocation denial, CSRF and callback races/replay.
+- Validation passed: web lint, TypeScript, production build, signed-token protocol tests, full API/security/D1 integration, seven backup recovery tests and account browser checks at phone/desktop sizes. Browser signed-in data was mocked; this is not a live Auth0 sign-in test. Screenshots inspected in ignored `.sites-runtime/account-preview`.
+- User approved committing and pushing this tested increment. Production activation is not part of this source update. No Worker release, live sign-in activation or identity migration was performed. P2 parent counts remain unchanged.

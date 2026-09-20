@@ -58,6 +58,15 @@ test('restoration discards pending sign-in attempts so consumed callbacks cannot
   } finally { database.close(); }
 });
 
+test('restoration revokes account sessions without deleting person records', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("CREATE TABLE account_sessions(id TEXT PRIMARY KEY, revoked_at INTEGER, expires_at INTEGER); INSERT INTO account_sessions VALUES('old-session',NULL,9999999999999)");
+    sanitizeRestoredAccess(database, 12345);
+    assert.deepEqual({ ...database.prepare('SELECT * FROM account_sessions').get() }, { id: 'old-session', revoked_at: 12345, expires_at: 0 });
+  } finally { database.close(); }
+});
+
 test('incorrect bytes cannot pass file verification', () => {
   assert.throws(() => validateFileDigest({ size: 4, sha256: 'a' }, { size: 4, sha256: 'b' }), /mismatch/);
   assert.throws(() => validateFileDigest({ size: 3, sha256: 'a' }, { size: 4, sha256: 'a' }), /mismatch/);

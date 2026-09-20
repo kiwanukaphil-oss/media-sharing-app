@@ -7,6 +7,28 @@ export const spaces = sqliteTable("spaces", {
   createdAt: integer("created_at").notNull(),
 });
 
+// Provider identity is unique; email is deliberately not an account-linking key.
+export const people = sqliteTable("people", {
+  id: text("id").primaryKey(),
+  issuer: text("issuer").notNull(),
+  subject: text("subject").notNull(),
+  displayName: text("display_name").notNull(),
+  verifiedEmail: text("verified_email").notNull(),
+  createdAt: integer("created_at").notNull(),
+  disabledAt: integer("disabled_at"),
+}, table => [uniqueIndex("idx_people_provider_identity").on(table.issuer, table.subject)]);
+
+// Account credentials cannot be used as legacy device credentials or grant space access.
+export const accountSessions = sqliteTable("account_sessions", {
+  id: text("id").primaryKey(),
+  personId: text("person_id").notNull().references(() => people.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  configurationHash: text("configuration_hash").notNull(),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  revokedAt: integer("revoked_at"),
+}, table => [index("idx_account_sessions_person").on(table.personId)]);
+
 // Short-lived login attempts are separate from identities and never grant space access.
 export const authTransactions = sqliteTable("auth_transactions", {
   stateHash: text("state_hash").primaryKey(),

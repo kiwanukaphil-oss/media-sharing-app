@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { chromium, expect } from '@playwright/test';
+
+const origin = process.env.RELAY_TEST_ORIGIN || 'http://127.0.0.1:8795';
+assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname), 'Account UI fixtures must stay local.');
+const browser = await chromium.launch(process.env.CI ? {} : { channel: 'chrome' });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const errors = [];
+page.on('pageerror', error => errors.push(error.message));
+const currentId = crypto.randomUUID();
+const otherId = crypto.randomUUID();
+let signedIn = true;
+let rejectRevocation = true;
+let entries = [currentId, otherId].map(id => ({ id, createdAt: Date.now(), expiresAt: Date.now() + 604800000 }));
+
+// First verify the real disabled endpoint, then isolate responsive UI states from the identity provider.
+try {
+  await page.goto(`${origin}/account`);
+  await expect(page.getByRole('heading', { name: 'Account sign-in is coming soon' })).toBeVisible();
+  assert.equal((await page.request.get(`${origin}/api/auth/login`)).status(), 404);
+  await page.route('**/api/auth/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/auth/session') return route.fulfill({ json: { enabled: true, account: signedIn ? {
+      sessionId: currentId, displayName: 'Morgan Ellis', verifiedEmail: 'morgan@example.test', expiresAt: Date.now() + 604800000,
+    } : null } });
+    if (url.pathname === '/api/auth/sessions') return route.fulfill({ json: { currentSessionId: currentId, sessions: entries } });
+    if (route.request().method() === 'DELETE') {
+      if (rejectRevocation) return route.fulfill({ status: 503, json: { error: 'Sign-out is temporarily unavailable. Please retry.' } });
+      const id = url.pathname.split('/').at(-1);
+      entries = entries.filter(entry => entry.id !== id);
+      if (id === currentId) signedIn = false;
+      return route.fulfill({ json: { revoked: true } });
+    }
+    return route.abort();
+  });
+  await page.reload();
+  await expect(page.getByText('morgan@example.test', { exact: true })).toBeVisible();
+  await expect(page.getByText('Another browser', { exact: true })).toBeVisible();
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await mkdir('.sites-runtime/account-preview', { recursive: true });
+  await page.screenshot({ path: '.sites-runtime/account-preview/mobile.png', fullPage: true });
+  await page.getByRole('button', { name: /Sign out browser signed in/ }).click();
+  await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
+  await expect(page.getByText('Another browser', { exact: true })).toBeVisible();
+  rejectRevocation = false;
+  await page.getByRole('button', { name: /Sign out browser signed in/ }).click();
+  await expect(page.getByText('Another browser', { exact: true })).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: '.sites-runtime/account-preview/desktop.png', fullPage: true });
+  await page.getByRole('button', { name: 'Sign out this browser', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Sign in securely' })).toBeVisible();
+  await page.keyboard.press('Tab');
+  assert.deepEqual(errors, []);
+  console.log('PASS: disabled production routes, responsive account UI, failed revocation recovery, remote sign-out and current-browser sign-out. UI account data was mocked.');
+} finally { await browser.close(); }
