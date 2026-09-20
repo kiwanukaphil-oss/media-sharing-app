@@ -1,17 +1,17 @@
 # Relay development roadmap
 
-**Last updated:** 19 September 2026
+**Last updated:** 20 September 2026
 **Scope:** Web app and supporting backend; preserve compatibility with existing clients. Native UI development is outside scope.
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
 ## Current position
 
-Autonomous development is authorised, including incremental commits and pushes. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has a tested Auth0 protocol adapter and prepared design; live integration is blocked on the user signing into the Auth0 dashboard. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Autonomous development is authorised, including incremental commits and pushes. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has a tested Auth0 protocol adapter and prepared design; the Relay Web application is created and its exact redirect URLs are saved; live integration awaits secure local credential handoff and recovery-policy verification. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**At a glance:** 2 phases complete; 11/47 parent work items complete; 1 external blocker. Code commit `78b7b96` is pushed and passed CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
+**At a glance:** 2 phases complete; 11/47 parent work items complete; 1 external setup dependency and 1 backup issue under investigation. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Resolve **B01**: sign into or create the user-owned Auth0 account in the open Chrome setup tab. The user selected Auth0 on 19 September 2026; provider selection is resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
+**Next action:** Complete **B01**: securely hand off the Relay Web client secret through the ignored local file requested from the user, then verify recovery settings and integrate server sessions. Auth0 dashboard access and application registration are resolved. Investigate **B02** before any further release. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) explains the concrete dependency. No credentials should be sent through chat. Resume P2-01 when resolved.
 
 **Execution authority (19 September 2026):** The user instructed autonomous work, commits and pushes, stopping only for a blocker requiring their input. This supersedes the earlier per-phase confirmation and no-auto-commit preferences for this roadmap. Continue through resolved phases without repeated permission requests. Record assumptions and evidence; ask only when a material decision cannot be safely resolved. No provider purchase or irreversible data deletion is inferred from this authority.
 
@@ -19,7 +19,7 @@ Autonomous development is authorised, including incremental commits and pushes. 
 | --- | --- | --- | --- | --- |
 | 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
 | 1 | Albums with custom sections | Done | 6/6 | Live; hosted and recovery checks passed |
-| 2 | People, recoverable accounts and personal/shared spaces | Blocked | 0/7 | Auth0 adapter tested; B01: dashboard login |
+| 2 | People, recoverable accounts and personal/shared spaces | Blocked | 0/7 | Application registered; B01: credential handoff/recovery setup |
 | 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
 | 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
@@ -236,7 +236,7 @@ For identity or access changes, test loss of access during an open viewer, queue
 | D02 | Organisation semantics | One section level, optional templates, zero/one placement per album, many albums per asset | Resolved: recommended default / standing execution authority |
 | D03 | Default browsing scope | Active space only; general Shared library distinct from restricted content later | Resolved: recommended default / standing execution authority |
 | D04 | Cross-audience publication | Explicit verified independent copy initially; no automatic union of album audiences | Resolved: recommended default / standing execution authority |
-| D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Auth0 selected; tenant/recovery setup pending / P2 implementation |
+| D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Auth0 selected; Relay Web registered; recovery verification pending / P2 implementation |
 | D06 | Ownership and offboarding | Shared work belongs to the space; personal work remains separate; explicit transfer/recovery | Proposed / P2 lifecycle design |
 | D07 | Retention and deletion | Document Trash, history, backups, account deletion and restore reconciliation separately | Open / P2 lifecycle design; revisit guest artifacts in P5 |
 | D08 | Restricted content and administrators | Explicit audited administrator grants; no access to members' personal spaces | Proposed / P4 design |
@@ -250,9 +250,10 @@ Planning dependencies are not incidents. The active external blocker is:
 
 | ID | Affected work | Required input | Owner | Opened | State |
 | --- | --- | --- | --- | --- | --- |
-| B01 | P2-01 and dependent identity/privacy/collaboration phases | Auth0 selected. User must sign into/create their Auth0 account in the open setup tab. Then configure the Relay Web application, production settings and recovery policy. Do not put secrets in chat. | User; Codex continues integration afterward | 2026-09-19 | Awaiting dashboard login/account creation |
+| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. User to save the client secret in ignored `.sites-runtime/auth0-client-secret.txt`; then verify recovery/delivery and complete runtime integration. No secrets in chat or Git. | User (secret handoff); Codex (integration) | 2026-09-20 | Awaiting secure local credential handoff |
+| B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause is not established; web verification for the same commit passed. Investigate and verify a fresh recovery snapshot before releasing further changes. | Codex | 2026-09-20 | Open |
 
-The Phase 2 design, exact Auth0 application settings, provider adapter and protocol tests are prepared. No personal accounts, runtime session routes or private-space migration have been provisioned while dashboard access is unresolved.
+The Phase 2 design, exact Auth0 application settings, provider adapter and protocol tests are prepared. Relay Web registration is complete; personal accounts, runtime session routes and private-space migration remain unimplemented.
 
 | ID | Risk / response | Owner | State |
 | --- | --- | --- | --- |
@@ -312,7 +313,7 @@ Next proposed phase and outstanding decision:
 | --- | --- | --- |
 | 2026-09-19 | Created the living guide; separated collaboration, restricted albums, deliveries and expansion into independently reviewable phases | User requested a phased development guide incorporating the product assessment and showing completed/outstanding work |
 
-Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 selected and protocol adapter tested; B01 (Auth0 dashboard login) is the only active external blocker.
+Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 application registered on 20 September; secure credential handoff remains B01. Scheduled backup failure is tracked separately as B02.
 
 | 2026-09-19 | Autonomous execution authorised; Phase 0 started | User explicitly instructed continued work, commits and pushes, stopping only for blockers |
 
@@ -355,3 +356,10 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 sele
 - Local protocol tests, dependency audit (zero reported vulnerabilities), TypeScript, web lint and production build passed. This is preparatory code, not a live sign-in deployment.
 - `AUTH0_ENABLED=false` remains the documented default. Account routes, atomic transaction consumption, user/session persistence, legacy claims, recovery and live tenant verification are outstanding. P2-01 remains unchecked until the provider and recovery design are fully configured and reviewed.
 - [Exact public callback/logout settings and remaining integration work](IDENTITY-AND-SPACES-IMPLEMENTATION.md#prepared-application-settings).
+
+### Auth0 registration update ? 20 September 2026
+
+- User explicitly approved application creation. Created **Relay Web**, Regular Web Application, in the user-owned tenant. Dashboard confirmed successful save of exact callback, logout and application-login URLs.
+- Verified RS256, OIDC conformity and Client Secret (Post). No secret was revealed or committed; no production login was enabled.
+- Default connections: email/password and Google enabled; no passwordless connection configured. Production recovery/delivery and social-provider credentials still require review.
+- Web CI for `85e5775` passed: https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35478701420. Separate scheduled backup failure recorded as B02; no claim that backup automation is currently healthy.

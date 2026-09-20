@@ -1,6 +1,6 @@
 # Identity and personal/shared spaces: implementation proposal
 
-**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Auth0 dashboard login/account creation is pending the user; account/session routes, migration and activation remain outstanding. No new identity system has been released.
+**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff, recovery verification, account/session routes, migration and activation remain outstanding. No new identity system has been released.
 
 This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-IMPLEMENTATION.md) is released. Progress remains in the [roadmap](DEVELOPMENT-ROADMAP.md).
 
@@ -88,3 +88,13 @@ Required server settings are documented in [.env.example](../.env.example): `AUT
 The adapter deliberately does not grant workspace access or merge accounts by email. It is not wired into production routes yet. Before activation, add server-side transaction storage with atomic consumption, an HttpOnly browser-binding cookie, person/session persistence, migration/claim rules, account/session endpoints, UI and corresponding integration/restore tests. The simulated provider's replay rejection is not a substitute for Relay's own one-time transaction consumption.
 
 Implementation references: [Auth0 authorization-code flow](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow/add-login-auth-code-flow), [openid-client](https://github.com/panva/openid-client). The client library supports Web API runtimes including Cloudflare Workers; a full Relay Worker/session integration check remains required.
+
+## Dashboard registration verified ? 20 September 2026
+
+- Tenant domain: `dev-q1z0b44pcvdxwni6.us.auth0.com`.
+- Application: **Relay Web**, Regular Web Application. Public client ID: `2hUhais7L0l8WRwbya5P3WofAqNCfCE0`.
+- Exact URLs in the settings table above saved successfully; RS256, OIDC conformity and Client Secret (Post) verified in the dashboard.
+- Default connections are Username-Password-Authentication and Google. Passwordless is not configured. Their presence is not evidence that recovery email delivery or production Google credentials are ready.
+- User asked to place the client secret in `.sites-runtime/auth0-client-secret.txt`, verified excluded from Git. Do not print its contents or include it in documentation. Transfer to server-only secrets during integration.
+- Tenant is labelled Development and displays a trial. Production readiness and post-trial capabilities remain to be reviewed; no subscription or paid upgrade was selected.
+- No account routes have been activated, and the live app is unchanged.
