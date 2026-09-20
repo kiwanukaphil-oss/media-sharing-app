@@ -63,6 +63,8 @@ try {
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyReadOnlyBackup } = await import('../tests/backup-d1-readonly.mjs');
     await verifyReadOnlyBackup(database);
+    const { verifyAuth0Transactions } = await import('../tests/auth0-transactions.mjs');
+    await verifyAuth0Transactions(database);
   }
 } finally {
   await emulator.dispose();

@@ -49,6 +49,15 @@ test('broken relationships fail restore validation', () => {
   } finally { database.close(); }
 });
 
+test('restoration discards pending sign-in attempts so consumed callbacks cannot revive', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("CREATE TABLE auth_transactions(state_hash TEXT PRIMARY KEY, verifier TEXT); INSERT INTO auth_transactions VALUES('old-state','old-verifier')");
+    sanitizeRestoredAccess(database, 12345);
+    assert.equal(database.prepare('SELECT COUNT(*) AS n FROM auth_transactions').get().n, 0);
+  } finally { database.close(); }
+});
+
 test('incorrect bytes cannot pass file verification', () => {
   assert.throws(() => validateFileDigest({ size: 4, sha256: 'a' }, { size: 4, sha256: 'b' }), /mismatch/);
   assert.throws(() => validateFileDigest({ size: 3, sha256: 'a' }, { size: 4, sha256: 'a' }), /mismatch/);

@@ -6,6 +6,16 @@ export const spaces = sqliteTable("spaces", {
   name: text("name").notNull(),
   createdAt: integer("created_at").notNull(),
 });
+
+// Short-lived login attempts are separate from identities and never grant space access.
+export const authTransactions = sqliteTable("auth_transactions", {
+  stateHash: text("state_hash").primaryKey(),
+  browserHash: text("browser_hash").notNull(),
+  configurationHash: text("configuration_hash").notNull(),
+  nonce: text("nonce").notNull(),
+  verifier: text("verifier").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+}, table => [index("idx_auth_transactions_expiry").on(table.expiresAt)]);
 export const devices = sqliteTable("devices", {
   id: text("id").primaryKey(),
   spaceId: text("space_id").notNull().references(() => spaces.id),

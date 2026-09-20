@@ -109,4 +109,4 @@ await assert.rejects(completeAuth0Login(settings, client, replayed, activeTransa
 endpointOverride = 'https://evil.example/oauth/token';
 await assert.rejects(discoverAuth0Client(settings, providerTransport), /unexpected endpoint/);
 console.log('PASS: disabled configuration, pinned origins, PKCE/state/nonce, browser binding, expiry, real signature/issuer/audience checks, unverified-email handling and provider code-replay rejection.');
-console.log('Account/session routes and atomic transaction consumption still require separate integration tests before activation.');
+console.log('Account/session routes still require end-to-end integration tests before activation; D1 transaction tests run in the API integration suite.');

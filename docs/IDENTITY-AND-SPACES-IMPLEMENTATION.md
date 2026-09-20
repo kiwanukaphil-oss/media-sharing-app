@@ -1,6 +1,6 @@
 # Identity and personal/shared spaces: implementation proposal
 
-**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff, recovery verification, account/session routes, migration and activation remain outstanding. No new identity system has been released.
+**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Recovery verification, account/session routes, identity migration and activation remain outstanding. No new identity system has been released.
 
 This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-IMPLEMENTATION.md) is released. Progress remains in the [roadmap](DEVELOPMENT-ROADMAP.md).
 
@@ -85,7 +85,7 @@ Required server settings are documented in [.env.example](../.env.example): `AUT
 - [Protocol tests](../tests/auth0-client.mjs): a simulated provider issues real RSA-signed test tokens. Tests cover valid sign-in, wrong signing key/issuer/audience/nonce, missing ID token, expired or wrong-browser attempts, invalid redirect origins, wrong state, unverified email and provider code replay. These tests do not contact a live Auth0 tenant.
 - Tests are included in the web verification workflow. [Public setup generator](../scripts/auth0-setup.mjs) emits the exact dashboard settings without secrets.
 
-The adapter deliberately does not grant workspace access or merge accounts by email. It is not wired into production routes yet. Before activation, add server-side transaction storage with atomic consumption, an HttpOnly browser-binding cookie, person/session persistence, migration/claim rules, account/session endpoints, UI and corresponding integration/restore tests. The simulated provider's replay rejection is not a substitute for Relay's own one-time transaction consumption.
+The adapter deliberately does not grant workspace access or merge accounts by email. It is not wired into production routes yet. Server-side transaction storage and the HttpOnly browser-binding cookie are now implemented and tested separately. Before activation, wire them into routes, add person/session persistence, migration/claim rules, account/session endpoints, UI and corresponding integration/restore tests. The simulated provider's replay rejection is not a substitute for Relay's own one-time transaction consumption.
 
 Implementation references: [Auth0 authorization-code flow](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow/add-login-auth-code-flow), [openid-client](https://github.com/panva/openid-client). The client library supports Web API runtimes including Cloudflare Workers; a full Relay Worker/session integration check remains required.
 
@@ -95,6 +95,22 @@ Implementation references: [Auth0 authorization-code flow](https://auth0.com/doc
 - Application: **Relay Web**, Regular Web Application. Public client ID: `2hUhais7L0l8WRwbya5P3WofAqNCfCE0`.
 - Exact URLs in the settings table above saved successfully; RS256, OIDC conformity and Client Secret (Post) verified in the dashboard.
 - Default connections are Username-Password-Authentication and Google. Passwordless is not configured. Their presence is not evidence that recovery email delivery or production Google credentials are ready.
-- User asked to place the client secret in `.sites-runtime/auth0-client-secret.txt`, verified excluded from Git. Do not print its contents or include it in documentation. Transfer to server-only secrets during integration.
+- User supplied the client secret in `.sites-runtime/auth0-client-secret.txt`, verified excluded from Git. Disabled local settings are prepared in `.sites-runtime/auth0-settings.json`. Do not print its contents or include it in documentation. Transfer to server-only secrets during integration.
 - Tenant is labelled Development and displays a trial. Production readiness and post-trial capabilities remain to be reviewed; no subscription or paid upgrade was selected.
 - No account routes have been activated, and the live app is unchanged.
+
+## One-time transaction storage ? 20 September 2026
+
+- `lib/auth0-transactions.ts` stores hashed state/browser lookups, issuer/client/callback binding, nonce, PKCE verifier and expiry in D1. A single `DELETE ... RETURNING` consumes an eligible attempt before token exchange. Wrong-browser/configuration attempts cannot consume it.
+- `__Host-relay_login` is Secure, HttpOnly, SameSite=Lax, Path=/ and expires after ten minutes. Duplicate cookie values are rejected. Expired rows are purged when new attempts are stored.
+- Additive migration `0007_auth_transactions.sql` is prepared but **not applied to production**. Existing people, memberships and access remain unchanged.
+- Actual D1 tests cover concurrent callbacks (exactly one succeeds), replay, expiry, browser/configuration mismatch, cleanup and cookie properties. Backup restoration discards pending login attempts to prevent their revival.
+- This remains an integration foundation: no account/session routes are enabled and no user login has yet been verified end to end.
+
+## Production email dependency
+
+The user confirmed on 20 September that they do not own a domain or use an email-sending service. Production recovery/sign-in emails therefore need a new sender setup. Recommended provider: **Resend**, which now has a supported Auth0 integration; use a verified sending subdomain of a user-owned domain. Domain choice, registration and account ownership must be resolved by the user. No purchase has been made or authorised by this recommendation.
+
+Auth0's built-in sender is suitable for testing only, with no production reliability guarantee. Do not enable general production account onboarding until delivery, verification/recovery, sender identity and post-trial availability have been tested. Development with simulated identities can continue independently.
+
+References reviewed 20 September 2026: [Auth0 email-provider guidance](https://support.auth0.com/center/s/article/Emails-to-Gmail-from-Auth0-never-arrive), [Resend's supported Auth0 integration](https://resend.com/changelog/auth0-integration).

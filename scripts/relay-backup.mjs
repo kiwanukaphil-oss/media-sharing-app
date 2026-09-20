@@ -54,6 +54,10 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
   try {
     database.prepare('UPDATE devices SET revoked_at=?, expires_at=0').run(now);
     database.prepare('UPDATE invitations SET expires_at=0, redeemed_at=COALESCE(redeemed_at, ?)').run(now);
+    // Ephemeral login attempts must not become usable again after restoring an older snapshot.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='auth_transactions'").get()) {
+      database.exec('DELETE FROM auth_transactions');
+    }
     database.exec("UPDATE media SET preview_ready=0, preview_size=0; UPDATE media SET status='cancelling' WHERE status<>'ready'");
     checkDatabase(database);
     if (database.prepare('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL OR expires_at>0').get().n ||
