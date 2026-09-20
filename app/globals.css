@@ -219,3 +219,6 @@ h1 { font-size: clamp(28px, 2.5vw, 36px); font-weight: 650; letter-spacing: -1.2
 /* Account settings use a focused reading width independent of the library canvas. */
 main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 @media (max-width: 640px) { main.account-page { padding: 36px 24px; } }
+
+.account-page .account-primary-action { background: var(--accent); color: #fff; }
+.account-page .account-secondary-action { border: 1px solid var(--line); }

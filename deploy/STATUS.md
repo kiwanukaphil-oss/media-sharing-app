@@ -60,3 +60,7 @@ Primary web URL: https://relayalbums.com. Bound to the existing live Worker vers
 ## Account/session code prepared - 20 September 2026
 
 Local only: additive migration 0008, person/session persistence, Auth0 route integration and `/account` UI. Lint, TypeScript, build, protocol, D1/API/security, restore and account UI checks pass. Account UI tests use mocked identities; no live sign-in is claimed. Neither migration 0007 nor 0008 has been applied to production. Worker version is unchanged. User approved committing and pushing this tested source increment. This does not activate production sign-in.
+
+## Membership and claim preparation - 20 September 2026
+
+Local only: membership storage, explicit owner-claim API/UI and additive migration 0009. Real-D1 claim race/revocation tests, existing API regressions, restore checks and responsive UI checks pass. Production remains on the previously recorded Worker; migrations 0007-0009 are not applied. Live provider-user verification awaits user password entry and email verification; person-based file access is still under implementation.

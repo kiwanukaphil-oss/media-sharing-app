@@ -11,7 +11,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; email delivery confirmed by the user; live identity/recovery activation outstanding; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Account/session increment committed and pushed as `0218360`. Continue Phase 2 membership, explicit legacy-claim and account recovery work before enabling production sign-in. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
+**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Continue person-based file/library authorisation and space switching. Live Auth0 account verification requires the user to complete sign-up/sign-in and email verification from the open connection test; the password step cannot be automated. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
 
 **Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
@@ -134,10 +134,18 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Implement one-time, browser-bound sign-in transactions and replay protection. **Locally tested; migration 0007 prepared.**
   - [x] Connect login/callback/session/list/revoke/logout routes with expiry, credential rotation and cross-site request protection. **Locally tested.**
   - [x] Build responsive account and browser-session controls, including failed-request recovery. **Browser tested with mock account data.**
-  - [ ] Add person-to-space memberships and enforce the requested space on every relevant API.
+  - [x] Add person-to-space membership storage and a membership-scoped library list. **Locally tested; migration 0009 prepared.**
+  - [ ] Enforce person membership and requested-space context on every file/library API; connect account access to the library UI.
   - [ ] Implement temporary/trusted session choices and connect account sessions to authorised space access.
 
 - [ ] **P2-03 — Migrate legacy access deliberately.** Provide verified account/space claims and recovery; separate Connect my device from Invite a person. Never merge users by device labels, overwrite existing memberships or relabel shared spaces as personal.
+
+  - [x] Implement owner-claim preview and confirmation using a verified account plus a current owner-device credential. **Locally tested.**
+  - [x] Bind claims to a recent account session, expire previews after five minutes, prevent replay/conflicting claims and record immutable claim evidence. **Real-D1 race and revocation tests passed.**
+  - [x] Add the named library/account preview, Cancel and explicit confirmation to the account screen. **Phone/desktop browser checks passed with mock account data.**
+  - [ ] Complete person-based library access and separate device pairing from person invitations.
+  - [ ] Verify claims and recovery with the real provider, then apply the reviewed migration and release.
+
 - [ ] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
 - [ ] **P2-05 — Provide explicit publication.** Implement the approved private-to-shared copy flow with source/destination permission checks, audience confirmation, storage accounting, verified completion and clear independent-copy semantics.
 - [ ] **P2-06 — Complete account lifecycle and retention rules.** Recovery, ownership transfer, leaving a space, offboarding, account-deletion handling and shared-content ownership have explicit policies and supported flows. Preserve deletion/revocation decisions through restore.
@@ -442,3 +450,13 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Save the latest user instruction in root `AGENTS.md` so future sessions inherit autonomous execution through project completion. Routine commit and phase confirmations are superseded.
 - [x] Expand Phase 2 into checked completed milestones and unchecked outstanding milestones, retaining honest parent counts and local/live distinctions.
 - Continue Phase 2 from the next action above; ask only for blockers requiring user input.
+
+### Membership and explicit owner claims - 20 September 2026
+
+- [x] Add migration `0009_married_silvermane.sql` for memberships, short-lived claim attempts and permanent claim evidence. Existing devices/files/spaces are preserved.
+- [x] Implement membership-scoped library listing and claim preview/confirm endpoints. Confirmation is carried in a request header rather than a URL, and Origin checks remain mandatory.
+- [x] Recheck current device ownership, account/session validity, recent sign-in, claim expiry and absence of a previous claim within the atomic write. Concurrent accounts cannot claim the same device; revoked membership cannot be silently restored with another legacy device.
+- [x] Invalidate pending claim attempts on backup restore. Completed claim evidence is preserved.
+- [x] Pass build, lint, TypeScript, full API/security/D1 regression, claim races/revocation tests, eight restore tests and responsive claim UI checks. UI identity responses are mocked; no live provider login is claimed.
+- [ ] Live dependency: user completes the Auth0 database connection sign-up/sign-in and email verification. Auth0 Try Connection did not open a visible test tab through browser automation; its source settings page is left open for the user. Browser-control policy requires user password entry/submission.
+- [ ] Remaining implementation: account membership enforcement across existing file APIs, personal spaces/quotas, switcher, lifecycle and provider recovery/logout verification. Parent Phase 2 items remain unchecked. No production migration or Worker deployment in this increment.

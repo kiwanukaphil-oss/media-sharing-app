@@ -12,6 +12,8 @@ const currentId = crypto.randomUUID();
 const otherId = crypto.randomUUID();
 let signedIn = true;
 let rejectRevocation = true;
+let libraryConnected = false;
+let claimConfirmations = 0;
 let entries = [currentId, otherId].map(id => ({ id, createdAt: Date.now(), expiresAt: Date.now() + 604800000 }));
 
 // First verify the real disabled endpoint, then isolate responsive UI states from the identity provider.
@@ -25,6 +27,15 @@ try {
       sessionId: currentId, displayName: 'Morgan Ellis', verifiedEmail: 'morgan@example.test', expiresAt: Date.now() + 604800000,
     } : null } });
     if (url.pathname === '/api/auth/sessions') return route.fulfill({ json: { currentSessionId: currentId, sessions: entries } });
+    if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: libraryConnected ? [{ id: 'library', name: 'Family archive', role: 'owner' }] : [] } });
+    if (url.pathname === '/api/auth/owner-claim') return route.fulfill({ json: {
+      token: 'c'.repeat(64), spaceName: 'Family archive', deviceName: 'My desktop', accountEmail: 'morgan@example.test', expiresAt: Date.now() + 300000,
+    } });
+    if (url.pathname === '/api/auth/owner-claim/confirm') {
+      assert.equal(route.request().headers()['x-relay-claim'], 'c'.repeat(64));
+      claimConfirmations++; libraryConnected = true;
+      return route.fulfill({ json: { connected: true } });
+    }
     if (route.request().method() === 'DELETE') {
       if (rejectRevocation) return route.fulfill({ status: 503, json: { error: 'Sign-out is temporarily unavailable. Please retry.' } });
       const id = url.pathname.split('/').at(-1);
@@ -37,6 +48,17 @@ try {
   await page.reload();
   await expect(page.getByText('morgan@example.test', { exact: true })).toBeVisible();
   await expect(page.getByText('Another browser', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Connect an existing library' }).click();
+  await expect(page.getByRole('heading', { name: 'Connect Family archive?' })).toBeVisible();
+  await expect(page.getByText(/will become an owner/)).toContainText('morgan@example.test');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(claimConfirmations, 0, 'Cancel cannot mutate membership');
+  await page.getByRole('button', { name: 'Connect an existing library' }).click();
+  await page.screenshot({ path: '.sites-runtime/account-claim-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Confirm connection' }).click();
+  await expect(page.getByRole('status')).toContainText('Library connected');
+  await expect(page.getByText('Family archive', { exact: true })).toBeVisible();
+  assert.equal(claimConfirmations, 1);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await mkdir('.sites-runtime/account-preview', { recursive: true });
   await page.screenshot({ path: '.sites-runtime/account-preview/mobile.png', fullPage: true });
@@ -52,5 +74,5 @@ try {
   await expect(page.getByRole('link', { name: 'Sign in securely' })).toBeVisible();
   await page.keyboard.press('Tab');
   assert.deepEqual(errors, []);
-  console.log('PASS: disabled production routes, responsive account UI, failed revocation recovery, remote sign-out and current-browser sign-out. UI account data was mocked.');
+  console.log('PASS: disabled production routes, responsive account UI, explicit claim preview/cancel/confirm, failed revocation recovery, remote sign-out and current-browser sign-out. UI account data was mocked.');
 } finally { await browser.close(); }

@@ -62,6 +62,10 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='account_sessions'").get()) {
       database.prepare('UPDATE account_sessions SET revoked_at=?, expires_at=0').run(now);
     }
+    // Pending authority changes must also expire when restoring an older snapshot.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='owner_claim_attempts'").get()) {
+      database.prepare('UPDATE owner_claim_attempts SET expires_at=0, consumed_at=COALESCE(consumed_at, ?)').run(now);
+    }
     database.exec("UPDATE media SET preview_ready=0, preview_size=0; UPDATE media SET status='cancelling' WHERE status<>'ready'");
     checkDatabase(database);
     if (database.prepare('SELECT COUNT(*) AS n FROM devices WHERE revoked_at IS NULL OR expires_at>0').get().n ||

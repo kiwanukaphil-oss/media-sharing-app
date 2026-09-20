@@ -67,6 +67,15 @@ test('restoration revokes account sessions without deleting person records', () 
   } finally { database.close(); }
 });
 
+test('restoration invalidates pending ownership claims', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("CREATE TABLE owner_claim_attempts(token_hash TEXT PRIMARY KEY, consumed_at INTEGER, expires_at INTEGER); INSERT INTO owner_claim_attempts VALUES('pending',NULL,9999999999999)");
+    sanitizeRestoredAccess(database, 12345);
+    assert.deepEqual({ ...database.prepare('SELECT * FROM owner_claim_attempts').get() }, { token_hash: 'pending', consumed_at: 12345, expires_at: 0 });
+  } finally { database.close(); }
+});
+
 test('incorrect bytes cannot pass file verification', () => {
   assert.throws(() => validateFileDigest({ size: 4, sha256: 'a' }, { size: 4, sha256: 'b' }), /mismatch/);
   assert.throws(() => validateFileDigest({ size: 3, sha256: 'a' }, { size: 4, sha256: 'a' }), /mismatch/);

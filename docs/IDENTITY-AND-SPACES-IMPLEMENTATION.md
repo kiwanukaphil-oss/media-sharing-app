@@ -152,3 +152,14 @@ The `/account` screen handles disabled sign-in, signed-out state, account profil
 No identity automatically becomes a member or owner, and no new space or storage allowance is allocated by signing in. This increment intentionally leaves file APIs on their existing device checks until explicit membership/claim integration is ready. Person accounts alone cannot be used as device credentials.
 
 Local evidence: lint, TypeScript, build, real signed-token protocol tests, D1 route/session tests, existing API/security suite and backup restore tests pass. Phone/desktop browser checks cover disabled routes, session display and failed/successful revocation with mocked account responses. Live Auth0 sign-in/recovery, membership/claim migration and production release remain outstanding.
+
+
+## Explicit owner-claim foundation - 20 September 2026
+
+Migration 0009 adds `space_memberships`, `owner_claim_attempts` and `legacy_owner_claims`. The account screen can preview a library connection and explicitly confirm it. A claim requires a verified identity, a Relay session created within the last ten minutes and a current owner-device cookie. The preview names the account email, library and proving device. It does not grant authority until confirmed, expires after five minutes, and binds the confirmation to the same account session and owner credential. Confirmation tokens never appear in URLs.
+
+The atomic D1 batch rechecks expiry, revocation, account disablement and device ownership at write time. One legacy device can claim only one person membership; different legitimate owner devices can link their respective owners. An existing membership, including a revoked one, cannot be overwritten by a legacy claim. Completed claim records remain as evidence, while expired attempts are purged and restores invalidate all pending attempts. Legacy device access is unchanged.
+
+Membership listing is person-scoped. Existing media APIs still use device authorisation: this is an unactivated membership/claim foundation, not completed account-based library access. Migrations 0007-0009 remain unapplied to production. Tests cover competing accounts, replay, wrong-session/device proofs, post-preview device demotion/revocation/expiry, session revocation, person disablement and revoked-membership denial. The responsive preview/cancel/confirm UI was checked with mocked identity responses.
+
+The user must complete their own database-connection sign-up/sign-in and email-verification test in Auth0. The connection settings page is open at Try Connection; no password or real app-user account has been created by the agent. This provider test will not substitute for Relay callback and recovery tests after runtime integration.

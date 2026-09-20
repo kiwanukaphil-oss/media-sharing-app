@@ -2,6 +2,7 @@ import type { Auth0Settings } from "./auth0-config";
 import { completeAuth0Login, discoverAuth0Client, prepareAuth0Login, type Auth0LoginTransaction, type VerifiedAuth0Identity } from "./auth0-client";
 import { auth0TransactionCookie, clearAuth0TransactionCookie, consumeAuth0Transaction, readAuth0BrowserBinding, storeAuth0Transaction } from "./auth0-transactions";
 import { AccountError, accountCookie, clearAccountCookie, createAccountSession, readAccountSession, readAccountToken, revokeAccountSession } from "./account-sessions";
+import { confirmOwnerClaim, listPersonSpaces, prepareOwnerClaim, readLegacyClaimCredential } from "./space-memberships";
 
 type LoginProvider = {
   prepare(settings: Auth0Settings): Promise<{ url: string; transaction: Auth0LoginTransaction }>;
@@ -39,7 +40,7 @@ async function finishAccountLogin(request: Request, database: D1Database, settin
   }
 }
 
-// Account endpoints deliberately do not read or create space memberships or legacy device credentials.
+// Space membership requires an explicit owner claim; sign-in alone never grants library access.
 // Origin checks apply even to callers presenting Authorization; account cookies have no bearer-token bypass.
 export async function accountAction(request: Request, database: D1Database, settings: Auth0Settings | null,
   provider: LoginProvider = auth0Provider): Promise<Response> {
@@ -65,6 +66,13 @@ export async function accountAction(request: Request, database: D1Database, sett
     return Response.json({ enabled: true, account: session }, { headers: privateHeaders });
   }
   if (!session) throw new AccountError(401, "Sign in to your account to continue.");
+  if (action === "spaces" && request.method === "GET") return Response.json({ spaces: await listPersonSpaces(database, session) }, { headers: privateHeaders });
+  if (action === "owner-claim" && request.method === "POST") {
+    return Response.json(await prepareOwnerClaim(database, session, readLegacyClaimCredential(request)), { headers: privateHeaders });
+  }
+  if (action === "owner-claim/confirm" && request.method === "POST") {
+    return Response.json(await confirmOwnerClaim(database, session, readLegacyClaimCredential(request), request.headers.get("X-Relay-Claim") || ""), { headers: privateHeaders });
+  }
   if (action === "logout" && request.method === "POST") {
     await revokeAccountSession(database, session, session.sessionId);
     return Response.json({ signedOut: true }, { headers: { ...privateHeaders, "Set-Cookie": clearAccountCookie() } });

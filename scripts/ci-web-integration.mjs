@@ -67,6 +67,8 @@ try {
     await verifyAuth0Transactions(database);
     const { verifyAccountSessions } = await import('../tests/account-sessions.mjs');
     await verifyAccountSessions(database);
+    const { verifySpaceMemberships } = await import('../tests/space-memberships.mjs');
+    await verifySpaceMemberships(database);
   }
 } finally {
   await emulator.dispose();

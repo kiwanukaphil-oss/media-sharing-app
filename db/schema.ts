@@ -48,6 +48,33 @@ export const devices = sqliteTable("devices", {
   expiresAt: integer("expires_at").notNull(),
   revokedAt: integer("revoked_at"),
 }, table => [index("idx_devices_space").on(table.spaceId)]);
+
+// Membership is independent of device authority; revoked memberships cannot be silently reclaimed.
+export const spaceMemberships = sqliteTable("space_memberships", {
+  id: text("id").primaryKey(),
+  personId: text("person_id").notNull().references(() => people.id),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  role: text("role", { enum: ["owner", "member"] }).notNull(),
+  createdAt: integer("created_at").notNull(),
+  revokedAt: integer("revoked_at"),
+}, table => [uniqueIndex("idx_memberships_person_space").on(table.personId, table.spaceId), index("idx_memberships_space").on(table.spaceId)]);
+
+export const ownerClaimAttempts = sqliteTable("owner_claim_attempts", {
+  tokenHash: text("token_hash").primaryKey(),
+  sessionId: text("session_id").notNull().references(() => accountSessions.id),
+  deviceId: text("device_id").notNull().references(() => devices.id),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  expiresAt: integer("expires_at").notNull(),
+  consumedAt: integer("consumed_at"),
+}, table => [index("idx_claim_attempts_expiry").on(table.expiresAt)]);
+
+// Immutable claim evidence prevents one legacy credential linking itself to several people.
+export const legacyOwnerClaims = sqliteTable("legacy_owner_claims", {
+  deviceId: text("device_id").primaryKey().references(() => devices.id),
+  membershipId: text("membership_id").notNull().references(() => spaceMemberships.id),
+  sessionId: text("session_id").notNull().references(() => accountSessions.id),
+  claimedAt: integer("claimed_at").notNull(),
+});
 export const invitations = sqliteTable("invitations", {
   tokenHash: text("token_hash").primaryKey(),
   spaceId: text("space_id").notNull().references(() => spaces.id),
