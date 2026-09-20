@@ -7,19 +7,19 @@
 
 ## Current position
 
-Implementation is authorised; the latest user-supplied AGENTS.md instructions require confirmation before committing and before starting another phase. Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Production activation, memberships, legacy claims and recovery-policy verification remain outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Production activation, memberships, legacy claims and recovery-policy verification remain outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; email delivery confirmed by the user; live identity/recovery activation outstanding; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** User approved committing and pushing the tested account/session increment. Continue Phase 2 membership, explicit legacy-claim and account recovery work before enabling production sign-in. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
+**Next action:** Account/session increment committed and pushed as `0218360`. Continue Phase 2 membership, explicit legacy-claim and account recovery work before enabling production sign-in. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
 
-**Execution authority:** The user authorised autonomous implementation on 19 September. The newer user-supplied AGENTS.md instructions require confirmation before commits and phase transitions; follow that newer constraint. Current work remains within Phase 2. No purchase or irreversible deletion is inferred.
+**Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
 | Phase | Outcome | Status | Completed work items | Main dependency |
 | --- | --- | --- | --- | --- |
 | 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
 | 1 | Albums with custom sections | Done | 6/6 | Live; hosted and recovery checks passed |
-| 2 | People, recoverable accounts and personal/shared spaces | In progress | 0/7 | Application registered; B01: production recovery-email setup |
+| 2 | People, recoverable accounts and personal/shared spaces | In progress | 0/7 complete features; completed milestones checked below | Memberships, legacy claims and live recovery verification |
 | 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
 | 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
@@ -34,7 +34,7 @@ Update this file in the same change set as meaningful development work, and agai
 
 1. At phase start, record approval, scope, owner, branch/change reference and the first active work item. Dates are targets only when explicitly agreed.
 2. Mark active items `In progress`. Record missing decisions in the decision register and actual impediments in the blocker register.
-3. For each finished work item, check its box and add evidence to the work log: implementation location, verification result and remaining limitations. Record partial completion without checking the parent box.
+3. For each finished work item, check its box and add evidence to the work log: implementation location, verification result and remaining limitations. For partial completion, add and maintain individual milestone checkboxes beneath the parent: check completed milestones, keep outstanding milestones unchecked, and leave the parent unchecked until its full acceptance criteria are met. Label completed work as live/configured or implemented and locally tested, as appropriate. Update these checkboxes alongside the narrative on every meaningful change.
 4. Update the phase count and status. Keep implementation, verification and release state distinct. A completed local change is not a deployed feature.
 5. Before phase closure, fill in the phase-closeout record. A phase is `Done` only when all agreed deliverables and release gates are satisfied, with release evidence for deployable changes and a recorded closeout under the standing execution authority.
 6. At handoff or pause, update **Current position**, the next action and outstanding items. A future contributor should be able to continue without reading the entire conversation.
@@ -120,12 +120,43 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 **Status:** In progress; production activation blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; protocol/configuration and one-time transaction storage tests pass, and person/session persistence, route orchestration and account UI now pass local checks. Live login, memberships and identity migration remain outstanding.
 
 - [ ] **P2-01 — Select and review identity design.** Compare suitable authentication providers, recovery, passkey/sign-in options, costs and operational dependencies. Review the trust model before choosing; use mature authentication rather than custom cryptography.
+
+  - [x] Compare providers, select Auth0 and document the identity/access trust model. **Design complete.**
+  - [x] Register Relay Web, save exact callback/logout URLs and securely supply the client secret. **Configured.**
+  - [x] Connect `relayalbums.com`, verify HTTPS and update exact-origin R2 access. **Live.**
+  - [x] Verify the Resend sender, connect Auth0, deliver a test email and confirm inbox receipt. **Verified with the user.**
+  - [ ] Finalise production sign-in methods and confirm post-trial/free-plan suitability, including social-provider configuration.
+  - [ ] Finalise and verify real account recovery and provider logout behaviour.
+
 - [ ] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
+
+  - [x] Implement stable provider identities and separate, hashed account-session storage. **Locally tested; migration 0008 prepared.**
+  - [x] Implement one-time, browser-bound sign-in transactions and replay protection. **Locally tested; migration 0007 prepared.**
+  - [x] Connect login/callback/session/list/revoke/logout routes with expiry, credential rotation and cross-site request protection. **Locally tested.**
+  - [x] Build responsive account and browser-session controls, including failed-request recovery. **Browser tested with mock account data.**
+  - [ ] Add person-to-space memberships and enforce the requested space on every relevant API.
+  - [ ] Implement temporary/trusted session choices and connect account sessions to authorised space access.
+
 - [ ] **P2-03 — Migrate legacy access deliberately.** Provide verified account/space claims and recovery; separate Connect my device from Invite a person. Never merge users by device labels, overwrite existing memberships or relabel shared spaces as personal.
 - [ ] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
 - [ ] **P2-05 — Provide explicit publication.** Implement the approved private-to-shared copy flow with source/destination permission checks, audience confirmation, storage accounting, verified completion and clear independent-copy semantics.
 - [ ] **P2-06 — Complete account lifecycle and retention rules.** Recovery, ownership transfer, leaving a space, offboarding, account-deletion handling and shared-content ownership have explicit policies and supported flows. Preserve deletion/revocation decisions through restore.
+
+  - [x] Invalidate restored account sessions and pending sign-in attempts so old credentials cannot revive. **Restore tests passed.**
+  - [ ] Complete and verify account recovery, ownership transfer, leaving/offboarding and account-deletion rules.
+  - [ ] Finalise retention and shared-content ownership policies, including restoration of future membership/deletion records.
+
 - [ ] **P2-07 — Verify and release identity/privacy.** Test cross-person and cross-space denial, legacy claims, recovery, sign-out/caches, in-flight transfers and backup restoration of new tables. Record capability handling for older clients and safe rollback limits.
+
+  - [x] Pass local signed-token, real-D1 identity/session, callback replay, cross-account revocation and CSRF checks. **Local security evidence recorded.**
+  - [x] Pass existing API regressions, account UI checks, build, lint, TypeScript and backup-restore checks. **Local verification complete for the current increment.**
+  - [x] Commit and push the tested account/session increment and supporting documentation. **`0218360` on main.**
+  - [ ] Verify real Auth0 sign-in, recovery and provider logout end to end.
+  - [ ] Verify membership/claim migration, cross-person and cross-space privacy, in-flight transfers and older-client compatibility.
+  - [ ] Apply reviewed production migrations, activate sign-in and record hosted verification and rollback boundaries.
+
+
+**Checkbox guide:** Checked milestones above are complete at the stated level. Unchecked parent items still contain outstanding work; locally tested code is not yet a live feature. Phases 0 and 1 remain fully checked off.
 
 **Acceptance scenarios:** Joining Family does not expose My space or replace Studio membership. A lost device can be revoked without deleting shared work. Recovery requires ownership proof. Personal content cannot be discovered through counts, covers, search, activity, Trash or original download routes. Restoring a backup does not revive revoked sessions.
 
@@ -405,3 +436,9 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - Restore sanitization revokes every restored account session. Real-D1 tests cover same-email separation, concurrent identity creation, wrong-client denial, expiry, disablement, rotation, cross-account revocation denial, CSRF and callback races/replay.
 - Validation passed: web lint, TypeScript, production build, signed-token protocol tests, full API/security/D1 integration, seven backup recovery tests and account browser checks at phone/desktop sizes. Browser signed-in data was mocked; this is not a live Auth0 sign-in test. Screenshots inspected in ignored `.sites-runtime/account-preview`.
 - User approved committing and pushing this tested increment. Production activation is not part of this source update. No Worker release, live sign-in activation or identity migration was performed. P2 parent counts remain unchanged.
+
+### Persistent autonomous execution - 20 September 2026
+
+- [x] Save the latest user instruction in root `AGENTS.md` so future sessions inherit autonomous execution through project completion. Routine commit and phase confirmations are superseded.
+- [x] Expand Phase 2 into checked completed milestones and unchecked outstanding milestones, retaining honest parent counts and local/live distinctions.
+- Continue Phase 2 from the next action above; ask only for blockers requiring user input.
