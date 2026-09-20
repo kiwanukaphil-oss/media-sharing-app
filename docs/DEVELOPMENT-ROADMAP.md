@@ -11,7 +11,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; email delivery confirmed by the user; live identity/recovery activation outstanding; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Continue person-based file/library authorisation and space switching. Live Auth0 account verification requires the user to complete sign-up/sign-in and email verification from the open connection test; the password step cannot be automated. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
+**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Continue person-based file/library authorisation and space switching. Auth0 connection sign-in succeeded for the user. The account remains email-unverified; a user-authorised verification email was delivered and awaits the user clicking its link. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
 
 **Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
@@ -460,3 +460,10 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Pass build, lint, TypeScript, full API/security/D1 regression, claim races/revocation tests, eight restore tests and responsive claim UI checks. UI identity responses are mocked; no live provider login is claimed.
 - [ ] Live dependency: user completes the Auth0 database connection sign-up/sign-in and email verification. The alternate Database Connections > More Actions > Try entry opened a separate hosted Auth0 tab, now verified on the Sign up screen and left open for the user. Browser-control policy requires user password entry/submission.
 - [ ] Remaining implementation: account membership enforcement across existing file APIs, personal spaces/quotas, switcher, lifecycle and provider recovery/logout verification. Parent Phase 2 items remain unchecked. No production migration or Worker deployment in this increment.
+
+### Live provider verification - 20 September 2026
+
+- [x] Confirm the hosted database connection test reports Successful transaction and the user account exists.
+- [x] With explicit user approval, send a verification email; Resend reports Delivered for **Verify your email**, message `01a0bf75-43bc-754c-ba8f-4d0605de55c0`.
+- [ ] User clicks the email verification link; confirm the provider flag changes from UNVERIFIED.
+- [ ] Verify real recovery and Relay callback/session integration; a successful provider connection test alone does not complete these.
