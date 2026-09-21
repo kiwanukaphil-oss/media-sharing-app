@@ -153,4 +153,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Sent exactly one approved recovery email through the normal Universal Login reset flow. Auth0 displayed Check Your Email; Resend shows Delivered for message `01a0c2b0-56c2-723b-aeff-b671fdde0bf5` (Reset your password).
 - User password change is pending. Preserve the existing account browser and check revocation before fresh sign-in, to distinguish webhook delivery from signed-login reconciliation. Inbox placement/authentication, trusted-session choice and provider logout are not yet verified.
 - Hosted CI passed `f0c19a8`. No deployment or schema change in this verification increment; pilot Worker remains `0a65245e-5af3-4295-aa37-136c68d493be`.
+
+## 21 September 2026 - Password-change revocation verified
+
+- User completed the password change. Reloading the existing Relay account tab showed the signed-out screen before any new login.
+- Read-only D1 evidence shows only the pre-reset temporary session: authentication `1789972657000`, creation `1789972660090`, provider password-change watermark `1789973030975`, revocation `1789973031391` (416 ms after the reset timestamp). This demonstrates notification-driven revocation in this test, not a general latency guarantee.
+- The exact recovery message has Gmail's Inbox label. Gmail Original Message summary reports SPF PASS, DKIM PASS for `mail.relayalbums.com`, and DMARC PASS; sender is the configured Relay address. No reset link or raw message was copied into project records.
+- Fresh sign-in with the changed password is handed to the user; provider logout verification follows. No additional email sent, no deployment and no migration in this increment.
 - Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.
