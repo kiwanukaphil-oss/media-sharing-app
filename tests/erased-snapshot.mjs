@@ -5,6 +5,7 @@ import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { minimiseErasedSnapshot, providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
 import { reconcileErasedSnapshot } from '../scripts/reconcile-erased-snapshot.mjs';
 import { inspectHistoricalSnapshot, reconcileHistoricalManifests } from '../scripts/inventory-historical-snapshots.mjs';
+import { liveObjectInventoryQuery, reconcileLiveObjectInventory } from '../scripts/reconcile-live-object-inventory.mjs';
 import { importSnapshot } from '../scripts/relay-backup.mjs';
 import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from '../scripts/backup-d1-readonly.mjs';
 
@@ -42,6 +43,11 @@ try {
   const sql = restoreReadOnlySnapshot(exportPlan,database.prepare(exportPlan.sql).all());
   const receipt = {formatVersion:1,personId:'gone',identityDigest:providerIdentityDigest('https://fixture/','private-subject')};
   const historical = inspectHistoricalSnapshot(sql);
+  const liveMetadata = JSON.parse(database.prepare(liveObjectInventoryQuery).get().inventory);
+  const liveReport = reconcileLiveObjectInventory(liveMetadata,{listingComplete:true,bucketName:'relay-media-originals',fingerprint:'fixture',unfinishedUploads:[],
+    objects:historical.originals.map(original=>({key:original.object_key,size:original.size,etag:'fixture'}))});
+  assert.deepEqual(liveReport.anomalies,[]);
+  assert.equal(liveReport.matches.find(match=>match.key==='personal/secret').references[0].personalOwner,'gone');
   assert.equal(historical.minimisationSchemaReviewed,true);
   assert.equal(historical.people.length,2);
   assert.deepEqual(historical.contentReferences.find(entry=>entry.sha256==='a'.repeat(64)).references.map(entry=>entry.personalOwner),['gone',null]);

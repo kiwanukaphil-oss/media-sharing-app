@@ -36,6 +36,8 @@ jobs:
       - run: node tests/erasure-rehearsal-scope.mjs
       - run: node tests/scheduled-identity-monitor.mjs
       - run: node tests/monitor-json.mjs
+      - run: node tests/r2-object-inventory.mjs
+      - run: node tests/live-object-reconciliation.mjs
       - run: node tests/operations-health.mjs
       - run: node tests/publication-rehearsal.mjs
       - run: node tests/auth0-client.mjs

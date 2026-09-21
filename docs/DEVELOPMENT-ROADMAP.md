@@ -710,3 +710,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Reconcile all eight retained manifest versions with exact SQL and original catalog versions, table counts and file metadata; zero unreferenced SQL versions. Tests reject mismatched, missing and duplicate references. This is metadata verification, not another original-byte restoration.
 - [ ] Reconcile older schema minimisation, live R2/multipart state and current ledger evidence under a write freeze. Pre-identity snapshots need authenticated legacy-device mappings; a current provider digest alone is insufficient. Catalog stability is not atomicity or deletion authority.
 - [x] Recheck full local browser suite after a hosted intermittent Firefox reload timeout; Chrome, Edge, Firefox, WebKit and all account/library/publication fixtures pass. The subsequent hosted run `35616790390` also passed. No speculative product change or relaxed assertion was made; recurrence requires further diagnostics.
+
+## 21 September 2026 - Live R2 and database reconciliation
+
+- [x] Add read-only fixed-bucket S3 object/multipart inventory using existing encrypted credentials, bounded secure XML parsing and complete pagination. No new access grant or dependency package.
+- [x] Test encoded keys, duplicate/missing records, continuation loops, entity rejection, GET-only signing and exact scope. Test actual-schema reconciliation of originals, previews, Trash, shared copies, publication attempts and unfinished transfers.
+- [x] Run against production read-only: **31 objects, zero unfinished uploads, zero review anomalies**. Before/after database and object fingerprints agree; private details remain in ignored storage.
+- [ ] Verify an authorised write freeze, in-flight capability expiry/reconciliation, historical-schema treatment, independently recoverable ledger and full erasure execution. Read consistency is not an atomic inventory, byte-integrity proof or deletion authority.
