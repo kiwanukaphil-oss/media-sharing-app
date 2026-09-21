@@ -19,7 +19,7 @@ const server=createServer(async(request,response)=>{
   response.setHeader('Content-Type','text/html; charset=utf-8');
   response.setHeader('Cache-Control','no-store');
   response.setHeader('Content-Security-Policy',"default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-  response.setHeader('Referrer-Policy','no-referrer');
+  response.setHeader('Referrer-Policy','same-origin');
   if(request.headers.host!==`127.0.0.1:${port}`||request.url!==pathname){response.writeHead(404);response.end('Not found');return;}
   if(request.method==='GET'){response.end(used?'Form closed':html);return;}
   if(request.method!=='POST'||request.headers.origin!==origin||used){response.writeHead(403);response.end('Refused');return;}
