@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { minimiseErasedSnapshot, providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
+import { reconcileErasedSnapshot } from '../scripts/reconcile-erased-snapshot.mjs';
 import { importSnapshot } from '../scripts/relay-backup.mjs';
 import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from '../scripts/backup-d1-readonly.mjs';
 
@@ -39,6 +41,21 @@ try {
   const sql = restoreReadOnlySnapshot(exportPlan,database.prepare(exportPlan.sql).all());
   const receipt = {formatVersion:1,personId:'gone',identityDigest:providerIdentityDigest('https://fixture/','private-subject')};
   const output = minimiseErasedSnapshot(sql,receipt,1000);
+  // Authenticate the decision independently before transforming this actual-schema historical snapshot.
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const ledger = {formatVersion:1,ledgerId:'fixture',keyId:'fixture',revision:1,issuedAt:900,expiresAt:2000,
+    records:[{personId:'gone',requestId:'request',identityDigest:receipt.identityDigest,state:'fulfilled',updatedAt:800,evidenceDigest:'a'.repeat(64)}]};
+  const payload = Buffer.from(JSON.stringify(ledger));
+  const envelope = {payload:payload.toString('base64url'),signature:sign(null,
+    Buffer.concat([Buffer.from('relay-erasure-ledger-v1\n'),payload]),privateKey).toString('base64url')};
+  const trust = {ledgerId:'fixture',keyId:'fixture',revision:1,headCheckedAt:1000,
+    payloadDigest:createHash('sha256').update(payload).digest('hex'),publicKey:publicKey.export({type:'spki',format:'pem'})};
+  const reconciled = reconcileErasedSnapshot(sql,envelope,trust,'gone',1000);
+  assert.equal(reconciled.sql,output.sql);
+  assert.equal(reconciled.ledgerAuthenticated,true);
+  assert.equal(reconciled.cutoverAllowed,false);
+  assert.equal(reconciled.cloudErasureVerified,false);
+  assert.throws(()=>reconcileErasedSnapshot(sql,envelope,{...trust,revision:2},'gone',1000));
   assert.equal(output.cutoverAllowed,false);
   assert.equal(output.cloudErasureVerified,false);
   assert.equal(database.prepare('SELECT COUNT(*) AS n FROM media').get().n,3,'Source database remains unchanged.');

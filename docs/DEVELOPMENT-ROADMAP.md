@@ -690,3 +690,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Pass lint and TypeScript; deploy the independent Worker disabled, without credentials or cron triggers. [Activation record](SCHEDULED-IDENTITY-MONITOR.md).
 - [x] Obtain the required approval, install the four existing credentials encrypted and activate the twice-hourly cron. Version `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2` verified at 100%; no additional provider permissions.
 - [ ] Verify a real scheduled run and resource usage, plus the pending external-alert receipt.
+
+## 21 September 2026 - Authenticated restore decision boundary
+
+- [x] Implement Ed25519 ledger verification with independently pinned current revision/digest, bounded freshness, strict schema and duplicate-identity rejection. No production signing key was generated.
+- [x] Test tampering, wrong keys, rollback, same-revision forks, stale/future heads and expired manifests. Pending, withdrawn and review-required decisions cannot authorise minimisation.
+- [x] Integrate verified decisions with the actual-schema isolated snapshot transformation; preserve shared originals and keep cutover disabled. [Contract and remaining gates](ERASURE-LEDGER.md).
+- [ ] Provision the independent ledger authority/head reader and connect real decision transitions, evidence verification and complete historical reconciliation. Local signature tests do not prove cloud erasure or production recoverability; P2-06 stays open.

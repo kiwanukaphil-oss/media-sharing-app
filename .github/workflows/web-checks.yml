@@ -30,6 +30,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/identity-operations.mjs
       - run: node --disable-warning=ExperimentalWarning tests/account-erasure-plan.mjs
       - run: node tests/backup-version-inventory.mjs
+      - run: node tests/erasure-ledger.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs
       - run: node tests/erasure-rehearsal-scope.mjs
       - run: node tests/scheduled-identity-monitor.mjs
