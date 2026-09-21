@@ -48,3 +48,18 @@ Real-D1 tests cover sole-owner denial, handover, recent authentication, concurre
 `Identity operations` runs twice hourly on main using the existing D1 read-only environment credential. It fails when pending or restore-held requests exist, when request states are unknown, or when known recovery watermarks/disabled accounts disagree with live sessions. It reports static categories only; no identities, request IDs, counts, filenames or credentials enter job logs. GitHub scheduling and notifications are best effort; successful manual execution alone does not prove notification delivery or missed-run detection.
 
 The project operator reviews failed runs and uses `deploy/account-deletion-review.sql` privately to assess requests. A red run is a review task, never authority to erase data. Pending requests continue to flag until withdrawn or a future reviewed execution workflow records completion; do not silence the check to imply fulfilment. This check cannot detect an Auth0 reset whose event never reached Relay. Provider-side monitoring remains a separate gate.
+
+## Read-only erasure review preparation
+
+`node --disable-warning=ExperimentalWarning scripts/plan-account-erasure.mjs <local-snapshot.sql> <request-uuid>` prepares a private review under ignored `.sites-runtime/operations/erasure-plans/`. It does not query the provider, modify live data, remove backup versions or execute deletion. It requires an existing request and always reports `executable: false`.
+
+The inventory identifies exact personal-space ownership, originals, Trash, incomplete uploads, publication attempts, linked devices/account actors, shared copies to preserve and profile/session/membership references. It rechecks sole shared ownership against other active account owners. Withdrawn, restored-for-review or unknown request states are blockers. A snapshot digest and inventory fingerprint support later comparison; they are not locks and cannot replace a fresh inventory after writes are frozen.
+
+Backup originals are content-addressed. If an independently published shared copy or another space legitimately references the same SHA-256, deleting that B2 blob would damage someone else's retained content. The review therefore counts other current references and never treats a personal hash as an unconditional purge target. Every historical snapshot/version still needs separate inventory and metadata redaction; current D1 references alone cannot determine which backup objects may be removed.
+
+- [x] Implement the private read-only planner and actual-schema tests for personal/shared isolation, Trash, active uploads, source/copy independence, duplicate-content dependencies, owner handover, disabled owners and withdrawn/restored intent.
+- [ ] Complete live R2/multipart and all-version B2 inventories; identify orphaned objects and historical profile references.
+- [ ] Implement/rehearse an authorised write freeze, provider removal, database minimisation, backup snapshot replacement and an independent erasure ledger for restore reconciliation.
+- [ ] Obtain concrete irreversible-operation approval and verify a synthetic end-to-end erasure/restore before marking lifecycle execution complete.
+
+Plans contain private provider/object identifiers and must stay out of chat, Git and public CI artifacts. No production deletion request was submitted to exercise this planner; tests use synthetic in-memory databases.

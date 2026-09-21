@@ -634,3 +634,9 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Independently restore snapshot 2026-09-21T09-04-10-836Z-76478b50-0d2d-4ba9-97a3-73fea8e7536b: 23 originals / 304,899,366 bytes, every hash and database relationship verified. Personal test source and shared copy have distinct object keys/spaces and matching expected SHA-256. All 20 baseline original rows remain unchanged.
 - [x] Fix misleading initial account-library labels and publication progress: opening a personal library no longer briefly says Shared library / Not paired; active publication/cancellation has accurate progress wording. Lint, types, build, deployment and live opening-state readback passed (fe4fa894-f45e-4c7d-93a6-4ced1a355774 at 100%).
 - [ ] Complete remaining hosted interruption/revocation scenarios.
+
+## 21 September 2026 - Account-erasure review inventory
+
+- [x] Add a read-only private erasure planner for a local database snapshot and an existing request. Exact personal ownership determines scope; shared attribution never makes shared files deletion candidates.
+- [x] Verify actual-schema cases: personal Trash and unfinished uploads included, shared copies retained, other people's personal files excluded, B2 duplicate-content dependencies identified, last-owner and withdrawn/restored intent blocked. Planning makes no database changes and always remains non-executable.
+- [ ] Complete provider/live-object/all-backup-version inventory, write freeze, minimisation and restore-ledger execution/rehearsal. Concrete irreversible-operation authority remains required; no real account deletion was requested or performed.

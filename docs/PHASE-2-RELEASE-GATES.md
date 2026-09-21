@@ -43,6 +43,7 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Verify hosted identity operations and both-origin health checks (runs 35576462943 and 35576467793).
 - [ ] Verify operator notifications and missed-run detection; provider delivery cannot be inferred from a consistent local watermark.
 
+- [x] Implement and locally test a private read-only erasure review inventory; exact personal ownership, shared-copy preservation, content-addressed backup dependencies and intent/handover blockers verified.
 - [ ] Establish a monitored deletion-request queue, authorised executor, backup removal/minimisation policy and independent erasure/restore rehearsal. Follow [the retention runbook](ACCOUNT-DELETION-AND-RETENTION.md); no irreversible cleanup is inferred from project-wide development authority.
 - [x] Verify actual legacy owner claim and current paired-device audience without guessing people from names. User approved and completed primary-origin pairing/promotion/account claim on 21 September. Account-scoped files and roles verified; original desktop owner and phone member retained. No live device retired.
 - [x] Choose and record a bounded personal allocation budget: 1 GiB total for the designated-account pilot; per-person allowance remains 1 GiB. No pilot audience expansion or paid upgrade. Review aggregate R2/B2 growth before expanding it.
