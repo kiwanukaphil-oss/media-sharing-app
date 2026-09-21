@@ -167,4 +167,10 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Tested Sign out this browser: Relay session revoked at `1789973639951`, returned to the registered root, and Auth0 audit records **Success Logout** at `2026-09-21T06:54:00.602Z`. Password recovery and current-browser provider logout are verified; trusted-browser persistence remains pending explicit permission.
 - Fixed the signed-out welcome screen: direct Account & libraries entry, invitation guidance preserved, and outdated no-accounts wording replaced with accurate device-access guidance. Actions wrap with spacing on narrow screens.
 - Lint, TypeScript, build and deployment dry run passed. Deployed **`f8ba096e-cb97-41b0-bf67-cc7bcecfee4d`**; primary-origin public health/private-feed probe passed and live desktop layout/account navigation were inspected. No schema, secrets, pilot audience or personal budget changed.
+
+## 21 September 2026 - Trusted session and owner-migration preparation
+
+- User explicitly approved seven-day browser persistence. Selected the trusted option, user completed sign-in, and account UI shows 21 September 10:02:47 to 28 September 10:02:47 Nairobi. D1 confirms `trusted`, 604800000 ms lifetime, and no revocation. Hosted CI passed `3e9d6e4`.
+- Existing-library preview on the primary origin correctly requires a connected owner browser. The legacy-origin tab has active owner access to Our shared space; its device panel shows one owner and one member. No identity or ownership inferred from display names.
+- Requested explicit approval to pair the primary-origin browser, promote that device through the existing owner, and connect the designated account as owner. This is persistent access expansion and requires browser-policy confirmation. No invitation, promotion, ownership connection or device revocation performed in this preparation.
 - Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.
