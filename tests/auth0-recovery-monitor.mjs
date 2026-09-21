@@ -26,7 +26,9 @@ const request = async (url, options) => {
     return Response.json(logs);
   }
   assert.match(url, /users\/auth0%7Cprivate-person\?/);
-  assert.equal(new URL(url).searchParams.get('fields'), 'user_id,last_password_reset,blocked');
+  assert.equal(new URL(url).searchParams.get('include_fields'), 'false');
+  assert.match(new URL(url).searchParams.get('fields'), /identities,app_metadata,user_metadata/);
+  assert.ok(!new URL(url).searchParams.get('fields').includes('last_password_reset'));
   return Response.json(profile);
 };
 assert.deepEqual(await inspectAuth0Recovery([person], credentials, request, now), []);

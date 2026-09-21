@@ -4,6 +4,8 @@ import { pathToFileURL } from 'node:url';
 import { queryReadOnlyDatabase } from './backup-d1-readonly.mjs';
 
 export const providerOrigin = 'https://dev-q1z0b44pcvdxwni6.us.auth0.com';
+// Auth0 rejects last_password_reset in its inclusion allowlist; exclude unrelated supported fields instead.
+const excludedProfileFields = 'phone_number,email,email_verified,picture,username,name,nickname,created_at,identities,app_metadata,user_metadata,last_ip,last_login,logins_count,updated_at,family_name,given_name';
 export const recoveryPeopleQuery = `SELECT p.subject, p.credentials_changed_at,
   COALESCE(w.changed_at,0) AS delivered_changed_at FROM people p
   LEFT JOIN recovery_watermarks w ON w.issuer=p.issuer AND w.subject=p.subject
@@ -54,8 +56,9 @@ export async function inspectAuth0Recovery(people, credentials, request = fetch,
   const issues = new Set();
   if (logs.length) issues.add('Auth0 reports an Action or password-recovery failure in the review window; inspect tenant logs privately.');
   for (const person of people) {
-    const fields = new URLSearchParams({ fields: 'user_id,last_password_reset,blocked', include_fields: 'true' });
-    const profile = await readProviderJson(request, `/api/v2/users/${encodeURIComponent(person.subject)}?${fields}`, options);
+    const fields = new URLSearchParams({ fields: excludedProfileFields, include_fields: 'false' });
+    const { user_id, last_password_reset, blocked } = await readProviderJson(request, `/api/v2/users/${encodeURIComponent(person.subject)}?${fields}`, options);
+    const profile = { user_id, last_password_reset, blocked };
     if (profile?.user_id !== person.subject) fail('Auth0 returned an unexpected identity.');
     if (profile.blocked === true) issues.add('An active Relay identity is blocked at Auth0; review access privately.');
     const changedAt = profile.last_password_reset === undefined ? 0 : Date.parse(profile.last_password_reset);
