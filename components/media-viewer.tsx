@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ArrowDownToLine, ArrowLeft, ArrowRight, Info, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowDownToLine, ArrowLeft, ArrowRight, Info, Share2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { formatBytes, type MediaItem } from "@/lib/contracts";
 
 type Props = {
@@ -11,13 +11,14 @@ type Props = {
   onNavigate: (item: MediaItem) => void;
   onClose: () => void;
   onSave: () => void;
+  onPublish?: () => void;
   preview: ReactNode;
   thumbnail: (item: MediaItem) => ReactNode;
   children: ReactNode;
 };
 
 // Keep the original-file actions intact while giving images and videos a dedicated viewing surface.
-export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, preview, thumbnail, children }: Props) {
+export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, onPublish, preview, thumbnail, children }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -51,6 +52,7 @@ export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, 
         <button autoFocus className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={21} /></button>
         <div className="viewer-file"><h2 id={titleId}>{item.name}</h2><p>{item.category === "final" ? "Final cut" : "Original"} · {formatBytes(item.size)} · {item.deviceName}</p></div>
         <div className="viewer-controls">
+          {onPublish && <button className="icon-button" aria-label="Publish shared copy" title="Publish shared copy" onClick={onPublish}><Share2 size={20} /></button>}
           {canZoom && <button className="icon-button" aria-label={zoomed ? "Zoom out" : "Zoom in"} aria-pressed={zoomed} onClick={() => setZoomedId(zoomed ? null : item.id)}>{zoomed ? <ZoomOut size={20} /> : <ZoomIn size={20} />}</button>}
           <button className="icon-button" aria-label="File details" aria-expanded={detailsOpen} aria-controls={detailsId} onClick={() => setDetailsOpen(!detailsOpen)}><Info size={20} /></button>
           <button className="button viewer-save" aria-label="Save original to device" disabled={saving} onClick={onSave}><ArrowDownToLine size={18} /><span>{saving ? "Saving original…" : "Save original to device"}</span></button>

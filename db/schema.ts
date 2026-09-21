@@ -88,6 +88,29 @@ export const membershipEvents = sqliteTable("membership_events", {
   createdAt: integer("created_at").notNull(),
 }, table => [index("idx_membership_events_space").on(table.spaceId)]);
 
+// Source identifiers are historical references, not cascading FKs: source deletion cannot recall a published copy.
+export const publications = sqliteTable("publications", {
+  id: text("id").primaryKey(),
+  sourceId: text("source_id").notNull(),
+  sourceSpaceId: text("source_space_id").notNull().references(() => spaces.id),
+  destinationSpaceId: text("destination_space_id").notNull().references(() => spaces.id),
+  personId: text("person_id").notNull().references(() => people.id),
+  sourceRevision: integer("source_revision").notNull(),
+  albumId: text("album_id"),
+  sectionId: text("section_id"),
+  createdAt: integer("created_at").notNull(),
+  phase: text("phase").notNull().default("pending"),
+  attemptKey: text("attempt_key"),
+  leaseExpiresAt: integer("lease_expires_at").notNull().default(0),
+}, table => [index("idx_publications_person").on(table.personId)]);
+
+// Retain every attempt key so interrupted/cancelled storage can be reconciled without guessing object prefixes.
+export const publicationAttempts = sqliteTable("publication_attempts", {
+  objectKey: text("object_key").primaryKey(),
+  publicationId: text("publication_id").notNull().references(() => publications.id),
+  createdAt: integer("created_at").notNull(),
+}, table => [index("idx_publication_attempts_job").on(table.publicationId)]);
+
 // Non-authenticating compatibility actors preserve media attribution across account sessions.
 export const accountSpaceActors = sqliteTable("account_space_actors", {
   membershipId: text("membership_id").primaryKey().references(() => spaceMemberships.id),
@@ -140,7 +163,7 @@ export const media = sqliteTable("media", {
   objectKey: text("object_key").notNull().unique(),
   uploadId: text("upload_id").notNull(),
   partSize: integer("part_size").notNull(),
-  status: text("status", { enum: ["uploading", "ready", "deleting", "cancelling"] }).notNull(),
+  status: text("status", { enum: ["uploading", "publishing", "ready", "deleting", "cancelling"] }).notNull(),
   archivedAt: integer("archived_at"),
   previewReady: integer("preview_ready").notNull().default(0),
   previewSize: integer("preview_size").notNull().default(0),

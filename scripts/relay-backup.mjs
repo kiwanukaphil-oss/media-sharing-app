@@ -70,6 +70,10 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='person_invitations'").get()) {
       database.prepare('UPDATE person_invitations SET expires_at=0, revoked_at=COALESCE(revoked_at, ?)').run(now);
     }
+    // Unfinished cross-space publication must never resume automatically after a historical restore.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='publications'").get()) {
+      database.exec("UPDATE publications SET phase='cancelling', lease_expires_at=0 WHERE phase NOT IN ('ready','cancelled')");
+    }
     // Pending authority changes must also expire when restoring an older snapshot.
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='owner_claim_attempts'").get()) {
       database.prepare('UPDATE owner_claim_attempts SET expires_at=0, consumed_at=COALESCE(consumed_at, ?)').run(now);

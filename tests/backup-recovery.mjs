@@ -101,3 +101,13 @@ test('credentials with deletion or broader bucket access are rejected', () => {
   assert.throws(() => validateKeyScope({ ...allowed, buckets: [] }, 'writer'), /scope/);
   assert.throws(() => validateKeyScope({ ...allowed, namePrefix: '' }, 'writer'), /scope/);
 });
+
+test('restoration prevents unfinished publication from resuming and preserves completed evidence', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("CREATE TABLE publications(id TEXT PRIMARY KEY, phase TEXT, lease_expires_at INTEGER); INSERT INTO publications VALUES('in-flight','copying',9999999999999),('finished','ready',0)");
+    sanitizeRestoredAccess(database, 12345);
+    assert.deepEqual({ ...database.prepare("SELECT phase,lease_expires_at FROM publications WHERE id='in-flight'").get() }, { phase: 'cancelling', lease_expires_at: 0 });
+    assert.equal(database.prepare("SELECT phase FROM publications WHERE id='finished'").get().phase, 'ready');
+  } finally { database.close(); }
+});

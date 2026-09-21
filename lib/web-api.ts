@@ -2,6 +2,7 @@ import { z } from "zod";
 import { libraryAction, requireAlbum } from "./library-api";
 import { ApiError, bucket, database, requireMedia, requireOwner, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
 import type { MediaItem } from "./contracts";
+import { cancelPublication } from "./publications";
 
 // Stable keyset pagination avoids duplicates when a new drop arrives between page requests.
 export async function readFeed(request: Request, device: ActiveDevice) {
@@ -71,11 +72,11 @@ export async function readFeed(request: Request, device: ActiveDevice) {
 
 export async function readStorage(device: ActiveDevice) {
   const usage = await database().prepare(`SELECT COALESCE(SUM(size + preview_size),0) AS used,
-    COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling') THEN size ELSE 0 END),0) AS reserved,
+    COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling','publishing') THEN size + preview_size ELSE 0 END),0) AS reserved,
     COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ?`).bind(device.space_id).first();
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
-    (media.device_id = ? OR ? = 'owner') AS canCancel
-    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.space_id).all();
+    (media.device_id = ? OR ? = 'owner') AS canCancel, (media.status = 'publishing') AS publication
+    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.space_id).all();
   return Response.json({ ...usage, limit: spaceLimitBytes(device), uploads: uploads.results });
 }
 
@@ -147,6 +148,10 @@ export async function webAction(request: Request, device: ActiveDevice, resource
   if (resource === "uploads" && id && !action && method === "DELETE") {
     const item = await requireMedia(device, id);
     if (item.device_id !== device.id) requireOwner(device);
+    if (item.status === "publishing" || (item.status === "cancelling" && await database().prepare("SELECT id FROM publications WHERE id = ?").bind(id).first())) {
+      const publisher = await database().prepare("SELECT person_id FROM space_memberships WHERE id = ?").bind(device.id).first<{ person_id: string }>();
+      return Response.json(await cancelPublication(database(), bucket(), { ...device, personId: device.authentication === "account" ? publisher?.person_id : undefined }, id));
+    }
     if (!["uploading", "cancelling"].includes(item.status)) throw new ApiError(409, "This file has already arrived. Refresh your feed.");
     const cancelled = await database().prepare("UPDATE media SET status = 'cancelling' WHERE id = ? AND status = 'uploading'").bind(id).run();
     if (item.status === "uploading" && !cancelled.meta.changes) throw new ApiError(409, "This file finished arriving. Refresh the feed.");

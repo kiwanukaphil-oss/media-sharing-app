@@ -228,3 +228,12 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .account-page .account-secondary-action { border: 1px solid var(--line); }
 .account-page .account-trust-choice input { width: 16px; height: 16px; min-height: 16px; flex: 0 0 16px; padding: 0; margin: 4px 0 0; accent-color: var(--accent); }
 .account-page .invitation-link { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 12px; }
+.publication-dialog { max-width: 540px; }
+.publication-filename { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; margin: 8px 0; }
+.publication-destinations { display: grid; gap: 12px; margin: 22px 0; }
+.publication-destinations .workspace-select { width: 100%; }
+.publication-audience { margin: 22px 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.publication-audience strong { font-size: 13px; }
+.publication-audience p { font-size: 13px; line-height: 1.65; margin-top: 10px; color: var(--muted); }
+.publication-progress { display: flex; align-items: center; gap: 10px; font-size: 13px; margin: 18px 0; }
+.publication-success-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }

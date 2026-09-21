@@ -4,10 +4,11 @@ import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
 import { changeSpacePerson, createPersonInvitation, listSpacePeople, revokePersonInvitation } from "@/lib/space-people";
+import { cancelPublication, finishPublication, reservePublication } from "@/lib/publications";
 import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
-import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, requireOwner, sessionCookie, signedObjectUrl, storageMode, tokenHash, uploadSchema } from "@/lib/server";
+import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, requireOwner, sessionCookie, signedObjectUrl, spaceLimitBytes, storageMode, tokenHash, uploadSchema } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 const deviceName = z.string().trim().min(1).max(60);
@@ -89,6 +90,30 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     throw new ApiError(409, "Use Account for sign-out. Device pairing is available from a connected device.");
   }
   await limitDeviceRequest(request, device.id, resource, id, action);
+  if (resource === "publications") {
+    if (!accountAccess) throw new ApiError(403, "Sign in with your account to publish a personal file.");
+    if (!id && method === "GET") {
+      const sourceId = new URL(request.url).searchParams.get("sourceId") || "";
+      if (!z.string().uuid().safeParse(sourceId).success || accountAccess.space_kind !== "personal") throw new ApiError(400, "Choose a personal original.");
+      const publication = await database().prepare(`SELECT id, source_id AS sourceId, source_revision AS sourceRevision,
+        destination_space_id AS destinationSpaceId, album_id AS albumId, section_id AS sectionId, phase FROM publications
+        WHERE person_id = ? AND source_space_id = ? AND source_id = ? AND phase IN ('pending','copying','cancelling','ready') ORDER BY created_at DESC LIMIT 1`)
+        .bind(accountAccess.personId, accountAccess.space_id, sourceId).first();
+      return Response.json({ publication });
+    }
+    if (id && !action && method === "DELETE") return Response.json(await cancelPublication(database(), bucket(), accountAccess, id));
+    if (!id && method === "POST") {
+      const input = await readJson(request, z.object({ id: z.string().uuid(), sourceId: z.string().uuid(), sourceRevision: z.number().int().nonnegative(),
+        destinationSpaceId: z.string().uuid(), albumId: z.string().uuid().optional(), sectionId: z.string().uuid().optional(), confirmed: z.literal(true) }));
+      const destinationRequest = new Request(`${new URL(request.url).origin}/api/session?space=${input.destinationSpaceId}`, {
+        headers: { Cookie: request.headers.get("Cookie") || "" } });
+      const destination = await requireAccountSpaceAccess(destinationRequest, database(), readAuth0Settings(process.env));
+      if (!destination) throw new ApiError(403, "Choose an authorised shared destination.");
+      const job = await reservePublication(database(), accountAccess, destination, input, spaceLimitBytes(destination));
+      return Response.json(await finishPublication(database(), bucket(), accountAccess, job));
+    }
+    throw new ApiError(404, "This publication action is unavailable.");
+  }
   if (["people", "person-invitations"].includes(resource)) {
     if (!accountAccess) throw new ApiError(403, "Sign in with your account to manage people.");
     if (resource === "people" && !id && method === "GET") return Response.json(await listSpacePeople(database(), accountAccess, device.space_id));

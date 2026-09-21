@@ -93,3 +93,8 @@ Migration `0012_gorgeous_stellaris.sql` and temporary/trusted session selection 
 ## People and membership lifecycle prepared - 21 September 2026
 
 Migration `0013_concerned_naoko.sql` adds bounded person invitations, membership revisions and durable access events. Shared-library people controls, explicit joins, owner handover, leaving/removal and linked legacy credential revocation are locally verified. Restore sanitization suspends restored memberships pending authority reconciliation. Existing unlinked legacy devices remain a separately disclosed audience; complete live migration and recovery checks are outstanding. No production migration or Worker deployment was performed; migrations 0007-0013 remain prepared only.
+
+
+## Verified publication prepared - 21 September 2026
+
+Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add durable publication intent and attempt-key history. Explicit private-to-shared copies, quota reservations, checksum validation, retries/cancellation and the web workflow are locally verified. Hosted streaming/interruption checks remain release gates. No production migration, allocation change or Worker release was performed; production remains at Phase 1 and migrations 0007-0015 are prepared only.
