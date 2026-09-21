@@ -160,4 +160,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Read-only D1 evidence shows only the pre-reset temporary session: authentication `1789972657000`, creation `1789972660090`, provider password-change watermark `1789973030975`, revocation `1789973031391` (416 ms after the reset timestamp). This demonstrates notification-driven revocation in this test, not a general latency guarantee.
 - The exact recovery message has Gmail's Inbox label. Gmail Original Message summary reports SPF PASS, DKIM PASS for `mail.relayalbums.com`, and DMARC PASS; sender is the configured Relay address. No reset link or raw message was copied into project records.
 - Fresh sign-in with the changed password is handed to the user; provider logout verification follows. No additional email sent, no deployment and no migration in this increment.
+
+## 21 September 2026 - Recovery completion and account entry
+
+- Verified fresh sign-in with the changed password at 09:53:27 Nairobi. D1 authentication `1789973604000` is newer than reset watermark `1789973030975`.
+- Tested Sign out this browser: Relay session revoked at `1789973639951`, returned to the registered root, and Auth0 audit records **Success Logout** at `2026-09-21T06:54:00.602Z`. Password recovery and current-browser provider logout are verified; trusted-browser persistence remains pending explicit permission.
+- Fixed the signed-out welcome screen: direct Account & libraries entry, invitation guidance preserved, and outdated no-accounts wording replaced with accurate device-access guidance. Actions wrap with spacing on narrow screens.
+- Lint, TypeScript, build and deployment dry run passed. Deployed **`f8ba096e-cb97-41b0-bf67-cc7bcecfee4d`**; primary-origin public health/private-feed probe passed and live desktop layout/account navigation were inspected. No schema, secrets, pilot audience or personal budget changed.
 - Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.

@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker 0a65245e-5af3-4295-aa37-136c68d493be is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Personal allocation remains zero.
+Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker f8ba096e-cb97-41b0-bf67-cc7bcecfee4d is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Personal allocation remains zero.
 
 ## Prepared and verified locally
 
@@ -26,9 +26,10 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Configure matching Worker recovery and pilot bindings. Live signed synthetic event returns 204; unsigned event returns 403. Auth0 hosted notification test succeeds after the CommonJS compatibility correction.
 - [ ] Complete Action failure monitoring and reconciliation path. Hosted test results expose redacted failures for the supervised pilot; automated production alerting is not complete.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
-- [ ] Complete successful new sign-in with the changed password.
+- [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.
 - [x] Verify the real Relay callback and eight-hour temporary session with the designated account. No library access is inferred.
-- [ ] Verify the trusted-browser choice and current-browser provider logout.
+- [x] Verify current-browser sign-out: Relay session revoked, return to registered home page, and Auth0 audit Success Logout at 06:54:00.602 UTC.
+- [ ] Verify the trusted-browser choice; explicit permission to retain this computer for seven days is pending.
 
 ## Lifecycle and operations
 
@@ -46,4 +47,4 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 4. Record the Worker version, migration journal, verified behaviour and allocation in the roadmap and deployment log. Check parent items only after all their acceptance criteria pass.
 5. If activation fails, disable new identity sign-in/allocation and return to the last compatible Worker while retaining the added schema and data. Do not roll the database back after users have created personal spaces, memberships or publications: an old snapshot can lose files or revive revoked access. Existing account users need a clear service-status/recovery path; a rollback to a legacy-only Worker is not feature-equivalent.
 
-Both Auth0 handoffs are verified. The user authorised one recovery email to the designated test account on 21 September; it was sent and Resend confirms delivery (01a0c2b0-56c2-723b-aeff-b671fdde0bf5). The restricted pilot receiver is live and hosted synthetic notification succeeds. Real sign-in and password-change trigger binding are verified. Password change, old-session revocation before fresh login, and Inbox authentication are verified. Next: new sign-in and provider logout. Automated monitoring remains outstanding. Later collaboration/privacy phases remain dependent on these identity release gates.
+Both Auth0 handoffs are verified. The user authorised one recovery email to the designated test account on 21 September; it was sent and Resend confirms delivery (01a0c2b0-56c2-723b-aeff-b671fdde0bf5). The restricted pilot receiver is live and hosted synthetic notification succeeds. Real sign-in and password-change trigger binding are verified. Password change, old-session revocation before fresh login, and Inbox authentication are verified. New sign-in and provider logout are verified. Next: trusted-browser verification and operational release gates. Automated monitoring remains outstanding. Later collaboration/privacy phases remain dependent on these identity release gates.

@@ -237,3 +237,6 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .publication-audience p { font-size: 13px; line-height: 1.65; margin-top: 10px; color: var(--muted); }
 .publication-progress { display: flex; align-items: center; gap: 10px; font-size: 13px; margin: 18px 0; }
 .publication-success-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+
+/* Keep account access and invitation guidance distinct on narrow signed-out screens. */
+.welcome-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
