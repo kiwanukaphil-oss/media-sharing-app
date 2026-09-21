@@ -44,4 +44,14 @@ The additional evidence artifact is exact JSON with `formatVersion`, `personId`,
 - [x] Reject altered evidence, withdrawn intent, cross-person/provider mismatches, duplicate bindings, wrong spaces and future schema additions.
 - [ ] Produce and independently verify real historical association evidence through the deployed ledger/executor workflow. No real account was marked fulfilled and no retained production snapshot was transformed by these tests.
 
+### Recorded-claim evidence preparation
+
+`prepareLegacyErasureEvidence` derives an **unsigned review artifact** from a separately digest-pinned, schema-0018 source snapshot. It verifies the exact provider identity, database integrity, claim/session/membership person agreement, device/space agreement and claim chronology. A later revoked session or demoted membership does not erase the historical association. Unclaimed devices with matching names or email addresses are never inferred to belong to the person. Personal-space claims, tombstoned source identities and unknown schemas fail for review.
+
+- [x] Test the actual schema with conflicting people/spaces, altered source bytes, later revocation, missing identities, tombstones and future schema changes.
+- [x] Prepare private unsigned evidence from the already hash-verified production backup: **one person, one recorded legacy claim**. Source and results remain in ignored operations storage; no provider, database or backup was changed.
+- [ ] Independently verify the complete historical association set and retain its provenance in the deployed ledger workflow before signing any real decision.
+
+The caller must obtain the source digest from separately verified backup evidence, not from an arbitrary submitted SQL file. The artifact binds the source digest and excludes names, email addresses and credentials. It deliberately reports `historicalCompletenessVerified: false`: a snapshot can establish recorded associations but cannot establish that every earlier relationship was recorded. No production signing key or fulfilment statement is created by this preparation.
+
 Output remains limited to the named legacy device profiles with `cutoverAllowed: false` and `cloudErasureVerified: false`. Deliberately shared filenames, organisation and original-file metadata remain governed by the shared-content retention policy; these tests do not claim complete anonymisation.

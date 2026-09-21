@@ -723,3 +723,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Identify the seven older SQL snapshots as actual migration shapes 0002 and 0006, both predating person/private-space tables.
 - [x] Add digest-bound, authenticated legacy-device evidence and isolated transformations for these exact schemas. Synthetic tests preserve shared originals/other profiles, quarantine restored access, reject wrong-space/altered/withdrawn evidence and expose missing bindings.
 - [ ] Produce verified real association evidence through the independent ledger/executor. No real fulfilment decision or production snapshot transformation was made; shared metadata is retained under the explicit content policy.
+
+## 21 September 2026 - Recorded historical claim evidence
+
+- [x] Add and test unsigned association evidence preparation from an independently digest-pinned source snapshot. Check exact provider identity, recorded claim/session/membership relationships, space agreement and chronology; never infer ownership from matching labels.
+- [x] Prepare private evidence from the verified production backup for one person and one recorded legacy claim. No account, original or backup changed; no fulfilment decision was signed.
+- [ ] Independently establish historical completeness and retain provenance through the deployed ledger workflow. Local preparation explicitly reports incomplete verification and cannot authorise erasure or restore cutover. See [erasure ledger](ERASURE-LEDGER.md).
