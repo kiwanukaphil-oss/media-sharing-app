@@ -1,6 +1,6 @@
 # Relay development roadmap
 
-**Last updated:** 21 September 2026
+**Last updated:** 22 September 2026
 **Scope:** Web app and supporting backend; preserve compatibility with existing clients. Native UI development is outside scope.
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
@@ -784,3 +784,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Pin the non-secret public verification root independently in the repository and read the real cloud archive using that root, without the application database, local journal or signing key. Revision 1 verified; populated-decision loss/recovery and executor integration remain outstanding.
 
 - [x] Lifecycle request authority hardening implemented and locally verified: preview, request and withdrawal reject a cached session authenticated before the current credential-change watermark. Withdrawal timestamps advance even within one millisecond, preserving strict decision ordering. Actual D1 account-access integration, lint, TypeScript, production build and deployment dry run pass. Deployed Worker `2241047a-0bd9-441f-b0fd-bf301c4004f5` at 100%; both origins return health/operations 200, primary anonymous account access is 401 and legacy-origin account access remains 403. Hosted [Web checks 35652294580](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35652294580) passed both verification and browser jobs.
+
+## 22 September 2026 - Independent journal recovery
+
+- [x] Implement a read-only archive-to-new-journal recovery command using the independently pinned public root. It refuses existing or changed destinations, audits all signed versions before importing and preserves complete authenticated history.
+- [x] Prove synthetic pending/withdrawn history survives loss of the source journal and application database, including expired manifests, replay uploads, missing revisions and signed forks. Recovery never grants currentness or activates a writer.
+- [x] Run the real read-only recovery command against the existing cloud archive: one revision restored, zero person decisions. Existing operational journal, signing key and application database were not opened or changed.
+- [ ] Connect real intent transitions, coordinate writers and rehearse the complete executor. The recovered history remains a quarantined review artifact.
