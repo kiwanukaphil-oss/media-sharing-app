@@ -7,7 +7,7 @@ import { initialiseErasureJournal,readErasureJournal,appendErasureJournal,journa
 import { auditErasureLedgerArchive,erasureArchivePrefix,prepareErasureArchiveEntries } from './audit-erasure-ledger-archive.mjs';
 import { readCurrentErasureArchive } from './read-erasure-ledger-archive.mjs';
 import { inventoryBackupVersions } from './inventory-backup-versions.mjs';
-import { authorizeBackupRole,downloadBackupFile,operationsDirectory,runPrivateCommand,uploadBackupFile } from './backup-storage.mjs';
+import { authorizeBackupRole,downloadBackupFile,operationsDirectory,runPrivateCommand,storageRequest,uploadBackupFile } from './backup-storage.mjs';
 
 // Bootstrap can sign only an empty decision set, including freshness renewal while setup is unfinished.
 // Once a real decision exists, this entry point refuses to act; it cannot replace or fulfil a request.
