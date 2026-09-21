@@ -1,7 +1,7 @@
 // Auth0 runs this asynchronously: failure must be observable and must never be described as synchronous revocation.
 // Await bounded delivery attempts; the signed Post Login claim also reconciles missed resets on the next sign-in.
 exports.onExecutePostChangePassword = async (event) => {
-  const crypto = await import('node:crypto');
+  const crypto = require('node:crypto');
   const secret = event.secrets.RELAY_RECOVERY_SECRET;
   const issuer = event.secrets.RELAY_ISSUER;
   const origin = event.secrets.RELAY_ORIGIN;

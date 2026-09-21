@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import login from '../deploy/auth0/post-login.cjs';
-import recovery from '../deploy/auth0/post-change-password.cjs';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { runInNewContext } from 'node:vm';
+
+// Auth0 uses a CommonJS sandbox without a dynamic-import callback; native module tests alone miss that boundary.
+const recovery = {};
+runInNewContext(await readFile('deploy/auth0/post-change-password.cjs', 'utf8'), {
+  exports: recovery, require: createRequire(import.meta.url), AbortSignal,
+  fetch: (...args) => globalThis.fetch(...args),
+});
 
 const changedAt = Date.now() - 5000;
 const event = { client: { client_id: 'relay' }, user: { user_id: 'auth0|fixture', last_password_reset: new Date(changedAt).toISOString() },

@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "rollout": "pilot",
   "domain": "dev-q1z0b44pcvdxwni6.us.auth0.com",
   "clientId": "2hUhais7L0l8WRwbya5P3WofAqNCfCE0",
