@@ -22,11 +22,12 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] User connected the login Action and applied it. Verified the Action in the flow and All changes are live on 21 September.
 - [x] Prepare **Relay recovery notification**, set its public issuer/origin settings, and verify the saved source matches the repository exactly. Generate the independent recovery secret in an ignored local file without printing it.
 - [x] User entered and saved the recovery secret. Verified its setting name and saved draft without reading the value.
-- [ ] Install and connect the reviewed Post Login and Post Change Password Actions; complete any required secure credential handoff. The latter is tenant-wide for database password changes: verify this tenant remains dedicated to Relay or explicitly constrain the operational scope before installation.
+- [x] Install and connect both reviewed Actions, complete the credential handoff, and verify both applied flows. Post Change Password is tenant-wide; current application inventory is Relay Web and Default App, and future additions must review this scope.
 - [x] Configure matching Worker recovery and pilot bindings. Live signed synthetic event returns 204; unsigned event returns 403. Auth0 hosted notification test succeeds after the CommonJS compatibility correction.
 - [ ] Complete Action failure monitoring and reconciliation path. Hosted test results expose redacted failures for the supervised pilot; automated production alerting is not complete.
 - [ ] With explicit email authority, send the designated recovery email; the user completes the password change personally. Check fresh delivery authentication/inbox placement and observe revocation of an older Relay session plus successful new sign-in.
-- [ ] Verify real callback, temporary/trusted browser choices and current-browser provider logout. Provider connection-test success is not sufficient.
+- [x] Verify the real Relay callback and eight-hour temporary session with the designated account. No library access is inferred.
+- [ ] Verify the trusted-browser choice and current-browser provider logout.
 
 ## Lifecycle and operations
 
@@ -44,4 +45,4 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 4. Record the Worker version, migration journal, verified behaviour and allocation in the roadmap and deployment log. Check parent items only after all their acceptance criteria pass.
 5. If activation fails, disable new identity sign-in/allocation and return to the last compatible Worker while retaining the added schema and data. Do not roll the database back after users have created personal spaces, memberships or publications: an old snapshot can lose files or revive revoked access. Existing account users need a clear service-status/recovery path; a rollback to a legacy-only Worker is not feature-equivalent.
 
-Both Auth0 handoffs are verified. The user authorised one recovery email to the designated test account on 21 September; it has not yet been sent. The restricted pilot receiver is live and hosted synthetic notification succeeds. Next: user sign-in and password-change trigger binding, then the authorised real recovery test. Automated monitoring remains outstanding. Later collaboration/privacy phases remain dependent on these identity release gates.
+Both Auth0 handoffs are verified. The user authorised one recovery email to the designated test account on 21 September; it was sent and Resend confirms delivery (01a0c2b0-56c2-723b-aeff-b671fdde0bf5). The restricted pilot receiver is live and hosted synthetic notification succeeds. Real sign-in and password-change trigger binding are verified. Next: user password change and verification of old-session revocation before any fresh login, followed by new sign-in and logout. Automated monitoring remains outstanding. Later collaboration/privacy phases remain dependent on these identity release gates.

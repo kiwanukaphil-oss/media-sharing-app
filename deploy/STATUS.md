@@ -145,4 +145,12 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Activated restricted pilot **`0a65245e-5af3-4295-aa37-136c68d493be`**, deployment read back at **100%**. Public config is enabled/pilot with personal allocation zero. Only the designated provider subject can complete account sign-in; general onboarding remains closed.
 - Live synthetic recovery accepts the correct signature (204) and rejects unsigned events (403). Auth0 hosted testing exposed unsupported dynamic import; corrected the Action to CommonJS `require`, added a matching sandbox regression and verified hosted success in 316 ms. Hosted source SHA-256: `39a8bee9a64c700b3f8073df53dae0583527c51adb509b94d997267e3fe7a4e1`.
 - Login Action binding and saved recovery secret are verified. Recovery Action corrected version is deployed; user trigger drag/Apply and real pilot sign-in are pending. One recovery email is authorised, not yet sent. Automated Action-failure monitoring, real recovery/logout, lifecycle operations and general-release gates remain open.
+
+## 21 September 2026 - Real sign-in and recovery delivery
+
+- Verified the real Relay callback: designated user signed in at 09:37:40 Nairobi with a temporary session expiring at 17:37:40. Account UI shows no connected libraries; login has not inferred ownership or access.
+- Verified the recovery Action between Start and Complete, Apply disabled and All changes are live. Both Action bindings are complete.
+- Sent exactly one approved recovery email through the normal Universal Login reset flow. Auth0 displayed Check Your Email; Resend shows Delivered for message `01a0c2b0-56c2-723b-aeff-b671fdde0bf5` (Reset your password).
+- User password change is pending. Preserve the existing account browser and check revocation before fresh sign-in, to distinguish webhook delivery from signed-login reconciliation. Inbox placement/authentication, trusted-session choice and provider logout are not yet verified.
+- Hosted CI passed `f0c19a8`. No deployment or schema change in this verification increment; pilot Worker remains `0a65245e-5af3-4295-aa37-136c68d493be`.
 - Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.
