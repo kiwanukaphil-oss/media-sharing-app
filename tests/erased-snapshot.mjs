@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { minimiseErasedSnapshot, providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
 import { reconcileErasedSnapshot } from '../scripts/reconcile-erased-snapshot.mjs';
+import { inspectHistoricalSnapshot } from '../scripts/inventory-historical-snapshots.mjs';
 import { importSnapshot } from '../scripts/relay-backup.mjs';
 import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from '../scripts/backup-d1-readonly.mjs';
 
@@ -40,6 +41,11 @@ try {
   const exportPlan = planReadOnlySnapshot(database.prepare(schemaQuery).all());
   const sql = restoreReadOnlySnapshot(exportPlan,database.prepare(exportPlan.sql).all());
   const receipt = {formatVersion:1,personId:'gone',identityDigest:providerIdentityDigest('https://fixture/','private-subject')};
+  const historical = inspectHistoricalSnapshot(sql);
+  assert.equal(historical.minimisationSchemaReviewed,true);
+  assert.equal(historical.people.length,2);
+  assert.deepEqual(historical.contentReferences.find(entry=>entry.sha256==='a'.repeat(64)).references.map(entry=>entry.personalOwner),['gone',null]);
+  assert.equal(historical.completedOriginalReferences,3);
   const output = minimiseErasedSnapshot(sql,receipt,1000);
   // Authenticate the decision independently before transforming this actual-schema historical snapshot.
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');

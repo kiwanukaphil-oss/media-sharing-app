@@ -697,3 +697,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Test tampering, wrong keys, rollback, same-revision forks, stale/future heads and expired manifests. Pending, withdrawn and review-required decisions cannot authorise minimisation.
 - [x] Integrate verified decisions with the actual-schema isolated snapshot transformation; preserve shared originals and keep cutover disabled. [Contract and remaining gates](ERASURE-LEDGER.md).
 - [ ] Provision the independent ledger authority/head reader and connect real decision transitions, evidence verification and complete historical reconciliation. Local signature tests do not prove cloud erasure or production recoverability; P2-06 stays open.
+
+## 21 September 2026 - Historical backup SQL inventory
+
+- [x] Add a read-only, exact-version SQL inventory with digest checks and independent before/after catalogs. Tests cover superseded versions, older schemas, shared/private same-byte references, malformed versions and incomplete catalogs.
+- [x] Inspect all eight retained SQL upload versions in B2; seven need historical-schema minimisation review. Save private identity/content dependencies in ignored operations storage; no names, credentials or object keys printed. Both catalog reads matched.
+- [ ] Reconcile manifest contents, older schema minimisation, live R2/multipart state and current ledger evidence under a write freeze. Catalog stability is not atomicity or deletion authority.
