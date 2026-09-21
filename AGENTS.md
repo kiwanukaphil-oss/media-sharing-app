@@ -8,6 +8,10 @@ On 20 September 2026, the user instructed:
 
 This is the current project-specific instruction. Together with the earlier explicit authorisation to commit and push as work progresses, it supersedes the earlier preferences requiring confirmation before commits and phase transitions. Continue through the agreed roadmap without routine approval pauses. Make reasonable implementation decisions, implement and verify changes, update documentation, and commit and push completed increments.
 
+On 21 September 2026, the user reaffirmed this authority and asked that it be explicit in this file. For this project, the standing authorisation covers commits, pushes and phase transitions; do not request those confirmations again merely because global preferences normally require them.
+
+Completing a task, milestone, commit, push or phase is a progress checkpoint, not a stopping point. Report the outcome briefly and continue with the next outstanding authorised roadmap item in the same working session. Do not end a working turn just to await another "proceed". Continue until the agreed roadmap is complete or a concrete blocker requires the user. Routine implementation choices are not blockers: use project context and sound judgement, recording consequential assumptions in the relevant documentation.
+
 Ask the user only when progress requires their input, access, a material decision that cannot reasonably be inferred, or an action that governing tool/security rules require them to approve or perform. Explain the concrete blocker and complete independent authorised work while waiting. Do not infer permission for purchases, irreversible deletion, or sending messages beyond the user's authorised scope.
 
 ## Scope and progress
