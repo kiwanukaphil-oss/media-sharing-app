@@ -1,16 +1,18 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- Authenticated thumbnails and local QR data URLs must bypass public image optimizers. */
-import Link from "next/link";
+// Full account navigation retains the browser beforeunload guard for active transfers.
+/* eslint-disable @next/next/no-html-link-for-pages */
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ImagePlus and Send are retained removal candidates from the earlier UI.
 import { ArrowDown, ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Check, CheckCheck, ChevronRight, CircleHelp, Clapperboard, Copy, FileImage, FileVideo, Folder, FolderDown, Grid2X2, ImagePlus, Laptop, Link2, List, LoaderCircle, Menu, MonitorSmartphone, MoreHorizontal, Pause, Pencil, Play, Plus, Radio, RefreshCw, Search, Send, ShieldCheck, Smartphone, Trash2, Undo2, Upload, X } from "lucide-react";
 import QRCode from "qrcode";
+import { LibraryScope, useLibraryApi } from "./library-scope";
 import { LibraryTools, emptyLibraryQuery, type LibraryQuery } from "./library-tools";
 import { MediaViewer } from "./media-viewer";
 import { SelectionControl } from "./selection-control";
 import { useActionConfirmation } from "./action-confirmation";
-import { requestJson, RequestError } from "@/lib/api-client";
+import { RequestError } from "@/lib/api-client";
 import { formatBytes, MAX_FILE_SIZE, type Category, type Device, type MediaItem, type Session, type FeedPage, type StorageUsage, type Album, type AlbumSection } from "@/lib/contracts";
 import { persistTransfer, restoreTransfers, forgetTransfer, forgetDeviceTransfers, uploadOriginal, type Transfer } from "@/lib/transfers";
 import { saveVerifiedOriginal, supportsVerifiedSave } from "@/lib/downloads";
@@ -36,13 +38,14 @@ function ModalFrame({ title, children, onClose }: { title: string; children: Rea
 
 // A stored video poster is for the grid; opening the file still provides its original player.
 function MediaPreview({ item, large = false }: { item: MediaItem; large?: boolean }) {
+  const { apiUrl } = useLibraryApi();
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const photo = /^image\/(jpeg|png|webp|gif|avif)$/.test(item.mime);
-  if (!failed && large && /^video\/(mp4|webm|quicktime)$/.test(item.mime)) return <video controls playsInline preload="metadata" aria-label={`Play ${item.name}`} poster={item.hasPreview ? `/api/media/${item.id}/thumbnail` : undefined} onError={() => setFailed(true)} src={`/api/media/${item.id}/preview`} className="media-image" />;
+  if (!failed && large && /^video\/(mp4|webm|quicktime)$/.test(item.mime)) return <video controls playsInline preload="metadata" aria-label={`Play ${item.name}`} poster={item.hasPreview ? apiUrl(`media/${item.id}/thumbnail`) : undefined} onError={() => setFailed(true)} src={apiUrl(`media/${item.id}/preview`)} className="media-image" />;
   if (!failed && ((large && photo) || item.hasPreview)) return <div className={`preview-image-frame${loaded ? " is-loaded" : ""}`}>
-    {large && !loaded && item.hasPreview && <img className="preview-placeholder" src={`/api/media/${item.id}/thumbnail`} alt="" aria-hidden="true" />}
-    <img loading={large ? "eager" : "lazy"} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} src={`/api/media/${item.id}/${large && photo ? "preview" : "thumbnail"}`} alt={item.name} className="media-image" />
+    {large && !loaded && item.hasPreview && <img className="preview-placeholder" src={apiUrl(`media/${item.id}/thumbnail`)} alt="" aria-hidden="true" />}
+    <img loading={large ? "eager" : "lazy"} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} src={apiUrl(`media/${item.id}/${large && photo ? "preview" : "thumbnail"}`)} alt={item.name} className="media-image" />
     {large && !loaded && <span className="preview-loading" role="status"><LoaderCircle size={18} className="spin" /><span>Loading preview…</span></span>}
   </div>;
   const Icon = item.mime.startsWith("video/") ? FileVideo : FileImage;
@@ -50,7 +53,15 @@ function MediaPreview({ item, large = false }: { item: MediaItem; large?: boolea
 }
 
 // The working surface shares one durable feed; browser storage tracks only this device's queue.
-export default function RelayApp() {
+export default function RelayApp({ accountSpaceId }: { accountSpaceId?: string }) {
+  return <LibraryScope.Provider value={accountSpaceId}><RelayWorkspace key={accountSpaceId ?? "legacy"} /></LibraryScope.Provider>;
+}
+
+// Isolate library state across account spaces and legacy device access.
+function RelayWorkspace() {
+  const { requestJson, apiUrl, accountSpaceId } = useLibraryApi();
+  const libraryAccessLost = useRef(false);
+  const verifiedDownload = useRef<AbortController | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -125,33 +136,43 @@ export default function RelayApp() {
         collected.push(...result.items); cursor = result.nextCursor;
         if (!cursor) break;
       }
-      if (revision !== feedRevision.current) return;
+      if (revision !== feedRevision.current || libraryAccessLost.current) return;
       setLoadedQuery(query); setFeedFailure(null);
       setItems(collected); setCounts(result!.counts); setTotal(result!.total); setNextCursor(cursor); setOnline(true);
       setSession(current => current && current.role !== result!.role ? { ...current, role: result!.role } : current);
     } catch (failure) {
       if (revision !== feedRevision.current) return;
+      if (accountSpaceId !== undefined && failure instanceof RequestError && [401, 403].includes(failure.status)) {
+        libraryAccessLost.current = true;
+        controllers.current.forEach(controller => controller.abort());
+        verifiedDownload.current?.abort();
+        setSession(null); setSessionFailure(true); setItems([]); setAlbums([]); setSections([]);
+        setStorage(null); setTransfers([]); setSelectedIds(new Set()); setModal(null);
+        setRenameItems([]); setDateItem(null); setFeedbackMessage(""); setUndoLibraryAction(null); setDownload(null);
+        setCounts({ all: 0, original: 0, final: 0, trash: 0 });
+      }
       setFeedFailure({ query, message: failure instanceof Error ? failure.message : "Couldn't load files." });
       throw failure;
     }
-  }, []);
+  }, [accountSpaceId, requestJson]);
   async function loadMore() {
     setFeedBusy(true); pageDepth.current++;
     try { await refreshFeed(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't load more files."); }
     finally { setFeedBusy(false); }
   }
-  const refreshAlbums = useCallback(async () => { const result = await requestJson<{ albums: Album[]; sections?: AlbumSection[] }>("albums"); setAlbums(result.albums); setSections(result.sections || []); }, []);
-  const refreshStorage = useCallback(async () => { setStorage(await requestJson<StorageUsage>("storage")); }, []);
+  const refreshAlbums = useCallback(async () => { const result = await requestJson<{ albums: Album[]; sections?: AlbumSection[] }>("albums"); if (libraryAccessLost.current) return; setAlbums(result.albums); setSections(result.sections || []); }, [requestJson]);
+  const refreshStorage = useCallback(async () => { const result = await requestJson<StorageUsage>("storage"); if (!libraryAccessLost.current) setStorage(result); }, [requestJson]);
   const refreshDevices = useCallback(async () => {
+    if (accountSpaceId !== undefined) { setDevices([]); return; }
     const result = await requestJson<{ devices: Device[] }>("devices");
     setDevices(result.devices);
-  }, []);
+  }, [accountSpaceId, requestJson]);
   // Recover the paired session and unfinished manifests without creating a space implicitly.
   const loadSession = useCallback(async () => {
     setLoading(true); setSessionFailure(false); setError("");
     try {
-      const response = await fetch("/api/session");
-      if (response.status === 401) {
+      const response = await fetch(apiUrl("session"));
+      if (response.status === 401 && accountSpaceId === undefined) {
         setSession(null);
         const access = await requestJson<{ canCreateSpace: boolean }>("access");
         setCanCreateSpace(access.canCreateSpace);
@@ -160,12 +181,13 @@ export default function RelayApp() {
       const body = await response.json() as Session & { error?: string };
       if (!response.ok) throw new Error(body.error);
       const current = body as Session;
+      libraryAccessLost.current = false;
       setSession(current);
       setTransfers(await restoreTransfers(current.deviceId));
       await Promise.all([refreshFeed(), refreshDevices(), refreshStorage(), refreshAlbums()]);
     } catch (failure) { setSessionFailure(true); setError(failure instanceof Error ? failure.message : "Couldn't open this space."); }
     finally { setLoading(false); }
-  }, [refreshDevices, refreshFeed, refreshStorage, refreshAlbums]);
+  }, [accountSpaceId, apiUrl, requestJson, refreshDevices, refreshFeed, refreshStorage, refreshAlbums]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- Pairing fragments and browser capabilities must be read after hydration. */
   useEffect(() => {
@@ -202,13 +224,13 @@ export default function RelayApp() {
     if (!session) return;
     const timer = setTimeout(() => {
       feedQuery.current = new URLSearchParams({ category: filter, q: search, ...libraryQuery }).toString();
-      history.replaceState(null, "", `${location.pathname}?${feedQuery.current}${location.hash}`);
+      history.replaceState(null, "", `${location.pathname}?${feedQuery.current}${accountSpaceId === undefined ? "" : `&space=${encodeURIComponent(accountSpaceId)}`}${location.hash}`);
       setSelectedIds(new Set()); selectionAnchor.current = null;
       pageDepth.current = 1; setFeedBusy(true);
       void refreshFeed().catch(() => {}).finally(() => setFeedBusy(false));
     }, search ? 250 : 0);
     return () => clearTimeout(timer);
-  }, [filter, search, libraryQuery, session, refreshFeed]);
+  }, [accountSpaceId, filter, search, libraryQuery, session, refreshFeed]);
   useEffect(() => {
     const update = () => { setOnline(navigator.onLine); if (navigator.onLine && session) void refreshFeed().catch(() => {}); };
     window.addEventListener("online", update); window.addEventListener("offline", update);
@@ -234,7 +256,7 @@ export default function RelayApp() {
       },
     }, { signal: lifecycle.signal })).catch(() => {});
     return () => lifecycle.abort();
-  }, [session]);
+  }, [session, requestJson]);
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (controllers.current.size || savingVerified) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn);
@@ -312,6 +334,7 @@ export default function RelayApp() {
     finally { setConnecting(false); }
   }
   function updateTransfer(next: Transfer) {
+    if (libraryAccessLost.current) return;
     setTransfers(current => current.some(item => item.id === next.id) ? current.map(item => item.id === next.id ? next : item) : [...current, next]);
   }
   // Serialize files to bound memory; each file resumes from its persisted completed parts.
@@ -343,7 +366,7 @@ export default function RelayApp() {
     const category = filter === "final" ? "final" : "original";
     for (const file of Array.from(selected)) {
       if (!file.size || file.size > MAX_FILE_SIZE) { setError(`${file.name}: choose a file between 1 byte and 100 GB.`); continue; }
-      const transfer: Transfer = { id: crypto.randomUUID(), deviceId: session.deviceId, name: file.name, size: file.size, mime: file.type || "application/octet-stream", category, albumId: destination?.id, albumName: destination?.name, sectionId: libraryQuery.section && libraryQuery.section !== "unsectioned" ? libraryQuery.section : undefined, sectionName: sections.find(section => section.id === libraryQuery.section)?.name, uploadBatch, parts: [], state: "queued", progress: 0 };
+      const transfer: Transfer = { id: crypto.randomUUID(), deviceId: session.deviceId, accountSpaceId, spaceName: session.space.name, name: file.name, size: file.size, mime: file.type || "application/octet-stream", category, albumId: destination?.id, albumName: destination?.name, sectionId: libraryQuery.section && libraryQuery.section !== "unsectioned" ? libraryQuery.section : undefined, sectionName: sections.find(section => section.id === libraryQuery.section)?.name, uploadBatch, parts: [], state: "queued", progress: 0 };
       try { await persistTransfer(transfer); scheduleTransfer(file, transfer); }
       catch { setError("Allow browser storage before sending, so interrupted transfers can resume."); }
     }
@@ -404,7 +427,7 @@ export default function RelayApp() {
     if (verifiedSaveAvailable) { await saveAsOriginal(item); return; }
     try {
       const link = document.createElement("a");
-      link.href = `/api/media/${item.id}/download`; link.download = item.name;
+      link.href = apiUrl(`media/${item.id}/download`); link.download = item.name;
       document.body.appendChild(link); link.click(); link.remove();
       setNotice("Download requested. Check your browser's downloads.");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't start that download."); }
@@ -415,10 +438,11 @@ export default function RelayApp() {
     const controller = new AbortController();
     setSavingVerified(true);
     setDownload({ id: item.id, name: item.name, progress: 0, controller });
-    try { await saveVerifiedOriginal(item, { signal: controller.signal, onProgress: progress => setDownload(current => current ? { ...current, progress } : null) }); setNotice("Saved to your device. Original file verified."); }
+    verifiedDownload.current = controller;
+    try { await saveVerifiedOriginal(item, { accountSpaceId, signal: controller.signal, onProgress: progress => setDownload(current => current ? { ...current, progress } : null) }); setNotice("Saved to your device. Original file verified."); }
     catch (failure) {
       if (!(failure instanceof DOMException && failure.name === "AbortError")) setError(failure instanceof Error ? failure.message : "Couldn't save the file.");
-    } finally { setSavingVerified(false); setDownload(null); }
+    } finally { verifiedDownload.current = null; setSavingVerified(false); setDownload(null); }
   }
   // Trash is reversible; only the separate permanent-delete action removes stored originals.
   async function changeMedia(item: MediaItem, action: "archive" | "restore" | "delete") {
@@ -463,7 +487,7 @@ export default function RelayApp() {
   }
   // Navigation preserves deep links; selection never leaks into a different album or date range.
   function changeLibraryQuery(query: LibraryQuery) {
-    history.pushState(null, "", `${location.pathname}?${new URLSearchParams({ category: filter, q: search, ...query })}`);
+    history.pushState(null, "", `${location.pathname}?${new URLSearchParams({ category: filter, q: search, ...query, ...(accountSpaceId === undefined ? {} : { space: accountSpaceId }) })}`);
     setLibraryQuery(query); setSelectedIds(new Set());
   }
   async function refreshLibrary() { await Promise.all([refreshFeed(), refreshAlbums(), refreshStorage()]); }
@@ -497,8 +521,8 @@ export default function RelayApp() {
     <a className="skip-link" href="#main-content">Skip to content</a>
     <aside ref={sidebarRef} className={`sidebar${navigationOpen ? " is-open" : ""}`} role={navigationOpen ? "dialog" : undefined} aria-modal={navigationOpen || undefined} aria-label="Workspace navigation" onClick={event => { if ((event.target as HTMLElement).closest("button")) setNavigationOpen(false); }}>
       <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setNavigationOpen(false)}><X size={20} /></button>
-      <Link href="/" className="wordmark" aria-label="Relay home"><span className="brand-icon"><ArrowLeftRight size={22} strokeWidth={2.4} /></span>relay<span className="brand-dot">.</span></Link>
-      <div className="space-label"><span className="space-avatar">{(session?.space.name || "Your space").slice(0, 1).toUpperCase()}</span><div><strong>{session?.space.name || "Your shared space"}</strong><span>{session ? "Connected workspace" : "A little less back and forth"}</span></div></div>
+      <a href="/" className="wordmark" aria-label="Relay home"><span className="brand-icon"><ArrowLeftRight size={22} strokeWidth={2.4} /></span>relay<span className="brand-dot">.</span></a>
+      <div className="space-label"><span className="space-avatar">{(session?.space.name || "Your space").slice(0, 1).toUpperCase()}</span><div><strong>{session?.space.name || "Your shared space"}</strong><span>{session ? accountSpaceId !== undefined ? `${session.role === "owner" ? "Owner" : "Member"} / Account access` : "Connected workspace" : "A little less back and forth"}</span></div></div>
       <p className="nav-label">WORKSPACE</p>
       <nav aria-label="Shared media">
         <button aria-pressed={filter === "all" && !libraryQuery.album} className={`nav-item ${filter === "all" && !libraryQuery.album ? "active" : ""}`} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery(emptyLibraryQuery); }}><Grid2X2 size={18} />All files<span>{counts.all}</span></button>
@@ -514,20 +538,20 @@ export default function RelayApp() {
         <button className={`nav-item${libraryQuery.album === "unorganised" ? " active" : ""}`} aria-current={libraryQuery.album === "unorganised" ? "page" : undefined} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, album: "unorganised" }); }}><Grid2X2 size={17} /><span className="album-name">Unorganised</span></button>
       </nav></>}
       <button aria-pressed={filter === "trash" && !libraryQuery.album} className={`nav-item ${filter === "trash" && !libraryQuery.album ? "active" : ""}`} onClick={() => { setFilter("trash"); setSearch(""); changeLibraryQuery(emptyLibraryQuery); }}><FolderDown size={18} />Trash<span>{counts.trash}</span></button><button className="nav-item" disabled={!session} onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}><ShieldCheck size={18} />Storage<span>{storage ? formatBytes(storage.used) : ""}</span></button><div className="nav-divider" />
-      <button className="nav-item" disabled={!session} onClick={() => { setModal("devices"); void refreshDevices().catch(() => setError("Couldn't refresh connected devices.")); }}><MonitorSmartphone size={18} />Connected devices<span>{devices.length || "—"}</span></button>
-      <div className="sidebar-bottom"><div className="quality-note"><ShieldCheck size={20} /><div><strong>Every detail, intact.</strong><p>Your files. Original quality.</p></div></div><button className="nav-item" onClick={() => setModal("help")}><CircleHelp size={18} />How Relay works<ArrowUpRight size={15} /></button><div className="device-footer"><Laptop size={17} /><span>{devices.find(device => device.current)?.name || "This device"}</span><span className={`status-dot ${session ? "online" : ""}`} /></div></div>
+      {accountSpaceId !== undefined ? <a className="nav-item" href="/account"><MonitorSmartphone size={18} />Account &amp; libraries</a> : <button className="nav-item" disabled={!session} onClick={() => { setModal("devices"); void refreshDevices().catch(() => setError("Couldn't refresh connected devices.")); }}><MonitorSmartphone size={18} />Connected devices<span>{devices.length || "—"}</span></button>}
+      <div className="sidebar-bottom"><div className="quality-note"><ShieldCheck size={20} /><div><strong>Every detail, intact.</strong><p>Your files. Original quality.</p></div></div><button className="nav-item" onClick={() => setModal("help")}><CircleHelp size={18} />How Relay works<ArrowUpRight size={15} /></button><div className="device-footer"><Laptop size={17} /><span>{accountSpaceId !== undefined ? "Account access" : devices.find(device => device.current)?.name || "This device"}</span><span className={`status-dot ${session ? "online" : ""}`} /></div></div>
     </aside>
 
     {navigationOpen && <button className="navigation-scrim" aria-label="Close navigation overlay" tabIndex={-1} onClick={() => setNavigationOpen(false)} />}
     <div className="workspace" inert={navigationOpen}>
-      <header className="topbar"><div className="breadcrumb"><button ref={navigationButton} className="icon-button navigation-open" aria-label="Open navigation" aria-expanded={navigationOpen} onClick={() => setNavigationOpen(true)}><Menu size={20} /></button><span title={session?.space.name}>{session?.space.name || "Workspace"}</span><ChevronRight size={14} /><strong>{pageTitle}</strong></div><div className="topbar-right"><button className="icon-button mobile-help" aria-label="How Relay works" onClick={() => setModal("help")}><CircleHelp size={20} /></button><span className="connection"><span className={`status-dot ${session && online ? "online" : ""}`} />{session ? online ? "Connected" : "Reconnecting" : "Not paired"}</span><button className="button secondary compact" aria-label={isOwner ? "Pair a device" : "Devices"} disabled={!session} onClick={() => setModal("devices")}><MonitorSmartphone size={16} /><span>{isOwner ? "Pair a device" : "Devices"}</span></button></div></header>
+      <header className="topbar"><div className="breadcrumb"><button ref={navigationButton} className="icon-button navigation-open" aria-label="Open navigation" aria-expanded={navigationOpen} onClick={() => setNavigationOpen(true)}><Menu size={20} /></button><span title={session?.space.name}>{session?.space.name || "Workspace"}</span><ChevronRight size={14} /><strong>{pageTitle}</strong></div><div className="topbar-right"><button className="icon-button mobile-help" aria-label="How Relay works" onClick={() => setModal("help")}><CircleHelp size={20} /></button><span className="connection"><span className={`status-dot ${session && online ? "online" : ""}`} />{session ? online ? "Connected" : "Reconnecting" : "Not paired"}</span>{accountSpaceId !== undefined ? <a className="button secondary compact" href="/account">Account</a> : <button className="button secondary compact" aria-label={isOwner ? "Pair a device" : "Devices"} disabled={!session} onClick={() => setModal("devices")}><MonitorSmartphone size={16} /><span>{isOwner ? "Pair a device" : "Devices"}</span></button>}</div></header>
       <main id="main-content" tabIndex={-1}>
         <div className="page-heading"><div><div className="eyebrow"><span className="small-line" />LESS SENDING. MORE CREATING.</div><h1>{pageTitle}<span className="title-dot">.</span></h1><p>{filter === "trash" ? "Restore removed files or free up shared storage." : filter === "final" ? "The finished work, ready for its next stop." : "A little less sending. A lot more creating."}</p></div>{filter !== "trash" && <button className="button primary" disabled={!session || session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={() => fileInput.current?.click()}><Plus size={18} />{filter === "final" ? "Drop final cuts" : "Add files"}</button>}{filter === "trash" && <button className="button secondary" onClick={() => setFilter("all")}>Back to files</button>}</div>
         {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError("")}><X size={17} /></button></div>}
         {!online && session && <div className="error-banner" role="status">Connection interrupted. Your queue is retained; resume sending when you are back online.</div>}
         {session?.transport === "local" && <div className="local-note"><span className="status-dot" />Local workspace · files stay on this computer until hosting is connected.</div>}
         {session?.transport === "unconfigured" && <div className="error-banner">File transfers need their storage connection. Existing originals have not been changed.</div>}
-        {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={25} /><p>Opening your space…</p></div> : sessionFailure && !session ? <section className="loading-panel"><p>Couldn&apos;t open your space.</p><button className="button secondary" onClick={() => void loadSession()}>Try again</button></section> : invitationRequired ?
+        {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={25} /><p>Opening your space…</p></div> : sessionFailure && !session ? <section className="loading-panel"><p>Couldn&apos;t open your space.</p>{accountSpaceId !== undefined && <a className="button secondary" href="/account">Sign in or choose a library</a>}<button className="button secondary" onClick={() => void loadSession()}>Try again</button></section> : invitationRequired ?
           <section className="welcome-panel"><div className="welcome-symbol"><Link2 size={32} /></div><span className="pill">YOUR FILES STAY IN YOUR CIRCLE</span><h2>Bring this device along.</h2><p>Open an invitation link or scan a code from a connected device.</p><button className="button secondary" onClick={() => setModal("help")}><CircleHelp size={17} />How Relay works</button><small>No passwords. No new accounts.</small></section> : !session ?
           <section className="welcome-panel"><div className="welcome-symbol"><ArrowLeftRight size={32} /></div><span className="pill">A SHARED SPACE, WITHOUT THE FUSS</span><h2>{invitation ? "You're one step away." : "Good work starts with a drop."}</h2><p>{invitation ? "Give this device a name. You'll stay connected." : "Connect once. Move photos and videos whenever you need."}</p><form onSubmit={connectSpace}>{!invitation && <label>Space name<input required maxLength={60} value={spaceName} onChange={event => setSpaceName(event.target.value)} /></label>}<label>This device<input required maxLength={60} value={deviceName} onChange={event => setDeviceName(event.target.value)} /></label><button className="button primary" disabled={connecting}>{connecting ? <LoaderCircle size={18} className="spin" /> : <ArrowUpRight size={18} />}{invitation ? "Join shared space" : "Create shared space"}</button></form><small>No passwords. No new accounts.</small></section> : <>
           <LibraryTools feedback={{ message: feedbackMessage, setMessage: setFeedbackMessage, undo: undoLibraryAction, setUndo: setUndoLibraryAction }} albums={albums} sections={sections} query={libraryQuery} onQuery={changeLibraryQuery} isOwner={isOwner} selected={visibleItems.filter(item => selectedIds.has(item.id))} loadedCount={visibleItems.length} onSelectLoaded={() => setSelectedIds(new Set(visibleItems.slice(0, 100).map(item => item.id)))} onClearSelection={() => setSelectedIds(new Set())} refresh={refreshLibrary} renameItems={renameItems} onRename={setRenameItems} dateItem={dateItem} onDate={setDateItem} viewControls={<div className="view-toggle" role="group" aria-label="Library view"><button type="button" aria-label="Grid view" aria-pressed={libraryView === "grid"} onClick={() => chooseLibraryView("grid")}><Grid2X2 size={17} aria-hidden="true" /><span>Grid</span></button><button type="button" aria-label="List view" aria-pressed={libraryView === "list"} onClick={() => chooseLibraryView("list")}><List size={18} aria-hidden="true" /><span>List</span></button></div>}>

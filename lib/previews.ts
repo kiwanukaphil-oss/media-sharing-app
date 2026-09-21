@@ -1,3 +1,5 @@
+import { createLibraryApi } from "./api-client";
+
 // Wait for a decodable frame without leaving listeners behind on errors, cancellation or timeout.
 function waitForVideoFrame(video: HTMLVideoElement, event: "loadeddata" | "seeked", signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -43,7 +45,7 @@ async function createVideoPoster(file: File, signal: AbortSignal) {
 }
 
 // Keep posters optional and bounded so unsupported media never holds up the original-file queue.
-async function publishVideoPoster(file: File, id: string, signal: AbortSignal) {
+async function publishVideoPoster(file: File, id: string, signal: AbortSignal, accountSpaceId?: string) {
   if (file.size > 256 * 1024 * 1024) return;
   const deadline = new AbortController();
   const timeout = setTimeout(() => deadline.abort(), 6000);
@@ -51,15 +53,15 @@ async function publishVideoPoster(file: File, id: string, signal: AbortSignal) {
     const previewSignal = AbortSignal.any([signal, deadline.signal]);
     const blob = await createVideoPoster(file, previewSignal);
     if (blob && blob.size <= 250000 && !previewSignal.aborted) {
-      await fetch(`/api/media/${id}/thumbnail`, { method: "PUT", signal: previewSignal, headers: { "Content-Type": "image/jpeg" }, body: blob });
+      await fetch(createLibraryApi(accountSpaceId).apiUrl(`media/${id}/thumbnail`), { method: "PUT", signal: previewSignal, headers: { "Content-Type": "image/jpeg" }, body: blob });
     }
   } catch { /* An unsupported codec or preview timeout does not affect the completed original. */ }
   finally { clearTimeout(timeout); }
 }
 
 // Generate only a disposable display copy. The upload and save paths always use original bytes.
-export async function publishPreview(file: File, id: string, signal: AbortSignal) {
-  if (/^video\/(mp4|webm|quicktime)$/.test(file.type)) return publishVideoPoster(file, id, signal);
+export async function publishPreview(file: File, id: string, signal: AbortSignal, accountSpaceId?: string) {
+  if (/^video\/(mp4|webm|quicktime)$/.test(file.type)) return publishVideoPoster(file, id, signal, accountSpaceId);
   if (!/^image\/(jpeg|png|webp|avif)$/.test(file.type) || file.size > 24 * 1024 * 1024 || typeof createImageBitmap !== "function") return;
   let bitmap: ImageBitmap | undefined;
   try {
@@ -72,7 +74,7 @@ export async function publishPreview(file: File, id: string, signal: AbortSignal
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", .76));
     if (!blob || blob.size > 250000 || signal.aborted) return;
-    await fetch(`/api/media/${id}/thumbnail`, { method: "PUT", signal, headers: { "Content-Type": "image/jpeg" }, body: blob });
+    await fetch(createLibraryApi(accountSpaceId).apiUrl(`media/${id}/thumbnail`), { method: "PUT", signal, headers: { "Content-Type": "image/jpeg" }, body: blob });
   } catch { /* Preview failure must never prevent a completed original from being available. */ }
   finally { bitmap?.close(); }
 }

@@ -1,13 +1,14 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { requestJson } from "./api-client";
+import { createLibraryApi } from "./api-client";
 import type { MediaItem } from "./contracts";
 
 type SavePickerWindow = Window & { showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle> };
 export function supportsVerifiedSave() { return typeof (window as SavePickerWindow).showSaveFilePicker === "function"; }
 
 // Open the picker before awaiting network work to preserve the user's transient activation.
-export async function saveVerifiedOriginal(item: MediaItem, options: { signal?: AbortSignal; onProgress?: (percent: number) => void } = {}) {
+export async function saveVerifiedOriginal(item: MediaItem, options: { accountSpaceId?: string; signal?: AbortSignal; onProgress?: (percent: number) => void } = {}) {
+  const { requestJson } = createLibraryApi(options.accountSpaceId);
   const picker = (window as SavePickerWindow).showSaveFilePicker;
   if (!picker) throw new Error("Use Save to device in this browser.");
   const handle = await picker.call(window, { suggestedName: item.name });

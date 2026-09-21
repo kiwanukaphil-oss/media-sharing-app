@@ -1,12 +1,12 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { requestJson } from "./api-client";
+import { createLibraryApi } from "./api-client";
 import { readCaptureDate } from "./capture-date";
 import { publishPreview } from "./previews";
 import type { Category, UploadSession } from "./contracts";
 
 export type Transfer = {
-  id: string; deviceId: string; name: string; size: number; mime: string; category: Category;
+  id: string; deviceId: string; accountSpaceId?: string; spaceName?: string; name: string; size: number; mime: string; category: Category;
   albumId?: string; albumName?: string; sectionId?: string; sectionName?: string; capturedAt?: string; uploadBatch?: string;
   hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
   state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
@@ -118,6 +118,7 @@ function sendPart(url: string, blob: Blob, signal: AbortSignal, onProgress: (sen
 }
 // Confirm file identity before resuming, save each ETag, and publish only after completion.
 export async function uploadOriginal(file: File, initial: Transfer, signal: AbortSignal, onChange: (transfer: Transfer) => void) {
+  const { requestJson } = createLibraryApi(initial.accountSpaceId);
   let current: Transfer = { ...initial, parts: [...initial.parts], state: "preparing", message: undefined };
   const update = (patch: Partial<Transfer>) => { current = { ...current, ...patch }; onChange(current); };
   update({ state: "preparing", preparationProgress: 0 });
@@ -157,7 +158,7 @@ export async function uploadOriginal(file: File, initial: Transfer, signal: Abor
       await requestJson(`uploads/${current.id}/complete`, { method: "POST", signal, body: JSON.stringify({ parts: current.parts }) });
     }
     update({ state: "complete", progress: 100 });
-    await publishPreview(file, current.id, signal);
+    await publishPreview(file, current.id, signal, initial.accountSpaceId);
   } catch (error) {
     update({ state: signal.aborted ? "paused" : "error", message: signal.aborted ? "Ready when you are" : error instanceof Error ? error.message : "Couldn't send this file. Please retry." });
   }

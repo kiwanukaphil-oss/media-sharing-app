@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction 
 import { FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
 import { AlbumSections } from "./album-sections";
 import { WorkspaceSelect } from "./workspace-select";
-import { requestJson } from "@/lib/api-client";
+import { useLibraryApi } from "./library-scope";
 import { numberedFilename, splitFilename, validFilename } from "@/lib/library-names";
 import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contracts";
 
@@ -32,6 +32,7 @@ function LibraryDialog({ title, close, children }: { title: string; close: () =>
 
 // Organisation controls keep mutations explicit, undoable, and independent of file transfer state.
 export function LibraryTools(props: Props) {
+  const { requestJson } = useLibraryApi();
   const { albums, query, onQuery, isOwner, selected, refresh, renameItems, onRename, dateItem, onDate } = props;
   const [albumEditor, setAlbumEditor] = useState<Album | "new" | null>(null);
   const [targetAlbum, setTargetAlbum] = useState("");

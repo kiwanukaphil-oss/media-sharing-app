@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
 import { AccountError } from "@/lib/account-sessions";
+import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
 import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
@@ -79,11 +80,16 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   if (resource === "native" && id === "connect" && method === "POST") return connectDevice(request, true);
   if (resource === "access" && method === "GET") return Response.json({ canCreateSpace: isLocal(request) });
   if (resource === "connect" && method === "POST") return connectDevice(request);
-  const device = await requireDevice(request);
+  const accountAccess = await requireAccountSpaceAccess(request, database(), readAuth0Settings(process.env));
+  const device = accountAccess || await requireDevice(request);
+  // Pairing and device administration remain explicitly legacy until person invitations are implemented.
+  if (accountAccess && (["devices", "invitations"].includes(resource) || (resource === "session" && method !== "GET"))) {
+    throw new ApiError(409, "Use Account for sign-out. Device pairing is available from a connected device.");
+  }
   await limitDeviceRequest(request, device.id, resource, id, action);
   const webResponse = await webAction(request, device, resource, id, action);
   if (webResponse) return webResponse;
-  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name }, deviceId: device.id, role: device.role, transport: storageMode(request) });
+  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
   if (resource === "session" && !id && method === "DELETE") {
     await changeDeviceAccess(device, device.id);
     return Response.json({ disconnected: true }, { headers: { "Set-Cookie": expiredSessionCookie(request) } });
@@ -131,7 +137,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
       if (item.status !== "uploading") throw new ApiError(409, "This transfer is no longer accepting parts.");
       const { number } = await readJson(request, z.object({ number: z.number().int().min(1).max(Math.ceil(item.size / item.part_size)) }));
       const expectedBytes = Math.min(item.part_size, item.size - (number - 1) * item.part_size);
-      const url = storageMode(request) === "local" ? `/api/uploads/${id}/bytes/${number}` : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) }, expectedBytes);
+      const url = storageMode(request) === "local" ? scopedTransferUrl(`/api/uploads/${id}/bytes/${number}`, device) : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) }, expectedBytes);
       return Response.json({ url });
     }
     if (action === "bytes" && method === "PUT" && isLocal(request)) {
@@ -170,7 +176,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     if (item.status !== "ready") throw new ApiError(409, "This file is still arriving.");
     if (action === "link") {
       if (storageMode(request) === "unconfigured") throw new ApiError(503, "Direct downloads are not connected yet.");
-      const url = storageMode(request) === "direct" ? await signedObjectUrl(item.object_key, "GET", { "response-content-disposition": attachmentName(item.name) }) : `/api/media/${id}/download`;
+      const url = storageMode(request) === "direct" ? await signedObjectUrl(item.object_key, "GET", { "response-content-disposition": attachmentName(item.name) }) : scopedTransferUrl(`/api/media/${id}/download`, device);
       return Response.json({ url });
     }
     const inline = action === "preview" && /^(image\/(jpeg|png|webp|gif|avif)|video\/(mp4|webm|quicktime))$/.test(item.mime);

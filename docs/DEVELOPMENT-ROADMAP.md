@@ -1,17 +1,17 @@
 # Relay development roadmap
 
-**Last updated:** 20 September 2026
+**Last updated:** 21 September 2026
 **Scope:** Web app and supporting backend; preserve compatibility with existing clients. Native UI development is outside scope.
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
 ## Current position
 
-Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Production activation, memberships, legacy claims and recovery-policy verification remain outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
+Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Memberships, explicit legacy owner claims and account-scoped library access are implemented locally; production activation and recovery-policy verification remain outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; email delivery confirmed by the user; live identity/recovery activation outstanding; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Continue person-based file/library authorisation and space switching. Auth0 connection sign-in succeeded for the user. The account remains email-unverified; a user-authorised verification email was delivered and awaits the user clicking its link. Resend delivery and inbox receipt are verified; no further email-provider setup is needed. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
+**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Person-based file/library authorisation and explicit account-library navigation are implemented locally. Continue personal-space quotas and a dedicated space switcher, then lifecycle and live provider recovery/activation checks. Auth0 connection sign-in succeeded for the user. Auth0 now confirms the account is VERIFIED. The verification email arrived in Spam: Gmail showed SPF/DKIM PASS but DMARC FAIL. The missing sending-domain DMARC record is now published and resolves through authoritative DNS and Google Public DNS; fresh-message authentication and inbox placement remain to be verified. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
 
 **Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
@@ -65,7 +65,7 @@ These capabilities are documented in the existing implementation and release rec
 | Trash, revision checks and recovery paths | [Library API](../lib/library-api.ts), [Interaction polish](WEB-INTERACTION-POLISH.md) | No silent overwrites, scope widening or accidental permanent deletion. |
 | Documented monitoring and independent backup/restore activation | [Operations](OPERATIONS-ACTIVATION.md), [Backup and recovery](BACKUP-RECOVERY.md) | Extend coverage as the data model grows; verify current health before relying on a recovery point. |
 
-Current limitations: identities remain device-based; albums and sections are not privacy boundaries; Original/Final remains a compatibility field behind secondary controls; version relationships are absent. Custom sections are now live. Proposed personal spaces, restricted albums, guest requests and deliveries must not be described as available until released.
+Current production limitations: identities remain device-based; albums and sections are not privacy boundaries; Original/Final remains a compatibility field behind secondary controls; version relationships are absent. Custom sections are now live. Proposed personal spaces, restricted albums, guest requests and deliveries must not be described as available until released.
 
 ## Product rules that guide every phase
 
@@ -135,7 +135,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Connect login/callback/session/list/revoke/logout routes with expiry, credential rotation and cross-site request protection. **Locally tested.**
   - [x] Build responsive account and browser-session controls, including failed-request recovery. **Browser tested with mock account data.**
   - [x] Add person-to-space membership storage and a membership-scoped library list. **Locally tested; migration 0009 prepared.**
-  - [ ] Enforce person membership and requested-space context on every file/library API; connect account access to the library UI.
+  - [x] Enforce person membership and explicit requested-space context at the shared file/library API boundary; connect account libraries, previews, edits and captured upload destinations to the UI. **Locally tested; migration 0010 prepared.**
   - [ ] Implement temporary/trusted session choices and connect account sessions to authorised space access.
 
 - [ ] **P2-03 — Migrate legacy access deliberately.** Provide verified account/space claims and recovery; separate Connect my device from Invite a person. Never merge users by device labels, overwrite existing memberships or relabel shared spaces as personal.
@@ -143,10 +143,14 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Implement owner-claim preview and confirmation using a verified account plus a current owner-device credential. **Locally tested.**
   - [x] Bind claims to a recent account session, expire previews after five minutes, prevent replay/conflicting claims and record immutable claim evidence. **Real-D1 race and revocation tests passed.**
   - [x] Add the named library/account preview, Cancel and explicit confirmation to the account screen. **Phone/desktop browser checks passed with mock account data.**
-  - [ ] Complete person-based library access and separate device pairing from person invitations.
+  - [x] Complete account-based file/library access with stable upload attribution across account sessions. **Locally tested.**
+  - [ ] Separate Connect my device from Invite a person; account-scoped device administration remains unavailable pending this workflow.
   - [ ] Verify claims and recovery with the real provider, then apply the reviewed migration and release.
 
 - [ ] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
+
+  - [x] Open an explicitly selected library from Account; carry scope through previews, filters, mutations and transfer manifests. Reset mounted library state on navigation and clear rendered content when access is denied. **Locally tested.**
+  - [ ] Add My space with a bounded storage allocation and the dedicated switcher, including cross-space queue visibility and return links. Current full navigation pauses transfers; reselecting the original resumes in its captured library.
 - [ ] **P2-05 — Provide explicit publication.** Implement the approved private-to-shared copy flow with source/destination permission checks, audience confirmation, storage accounting, verified completion and clear independent-copy semantics.
 - [ ] **P2-06 — Complete account lifecycle and retention rules.** Recovery, ownership transfer, leaving a space, offboarding, account-deletion handling and shared-content ownership have explicit policies and supported flows. Preserve deletion/revocation decisions through restore.
 
@@ -458,12 +462,27 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Recheck current device ownership, account/session validity, recent sign-in, claim expiry and absence of a previous claim within the atomic write. Concurrent accounts cannot claim the same device; revoked membership cannot be silently restored with another legacy device.
 - [x] Invalidate pending claim attempts on backup restore. Completed claim evidence is preserved.
 - [x] Pass build, lint, TypeScript, full API/security/D1 regression, claim races/revocation tests, eight restore tests and responsive claim UI checks. UI identity responses are mocked; no live provider login is claimed.
-- [ ] Live dependency: user completes the Auth0 database connection sign-up/sign-in and email verification. The alternate Database Connections > More Actions > Try entry opened a separate hosted Auth0 tab, now verified on the Sign up screen and left open for the user. Browser-control policy requires user password entry/submission.
+- [x] Live provider dependency: user completed database connection sign-up/sign-in and email verification; Auth0 shows VERIFIED. Relay callback and recovery remain separate outstanding checks.
 - [ ] Remaining implementation: account membership enforcement across existing file APIs, personal spaces/quotas, switcher, lifecycle and provider recovery/logout verification. Parent Phase 2 items remain unchecked. No production migration or Worker deployment in this increment.
 
 ### Live provider verification - 20 September 2026
 
 - [x] Confirm the hosted database connection test reports Successful transaction and the user account exists.
 - [x] With explicit user approval, send a verification email; Resend reports Delivered for **Verify your email**, message `01a0bf75-43bc-754c-ba8f-4d0605de55c0`.
-- [ ] User clicks the email verification link; confirm the provider flag changes from UNVERIFIED.
+- [x] User clicks the email verification link; Auth0 user details confirmed VERIFIED after reload on 20 September 2026.
+- [x] Investigate reported spam placement: Gmail original-message summary shows SPF PASS, DKIM PASS for `mail.relayalbums.com`, and DMARC FAIL. Gmail describes similarity to past spam; the exact classification cause is not established.
+- [x] Publish the missing `_dmarc.mail.relayalbums.com` TXT record, `v=DMARC1; p=none;`, and confirm Cloudflare saved it and authoritative/Google public DNS resolve it. This initial policy does not enforce rejection or collect reports.
+- [ ] Confirm DMARC PASS and inbox placement on a fresh, user-authorised message after DNS propagation; the previous email cannot validate the new record. Review reporting/enforcement after legitimate sending sources are validated.
 - [ ] Verify real recovery and Relay callback/session integration; a successful provider connection test alone does not complete these.
+
+
+### Account-scoped library access - 20 September 2026
+
+- [x] Add additive migration `0010_gifted_pandemic.sql` for `account_space_actors`; preserve existing media/device foreign keys and every existing record. Attribution rows expire at zero, contain a non-credential marker and cannot authenticate or issue invitations.
+- [x] Require explicit space context and live account/session/membership checks for account file APIs. Invalid scope and denied account access never fall back to a legacy cookie. Current membership role supplies authority; the attribution record does not.
+- [x] Connect Account library links and all library API clients, thumbnails, previews, section covers, original downloads and queued upload/preview publication to immutable scope. Keep legacy clients compatible and account/device controls distinct.
+- [x] Pass real-D1/R2 production-route tests for competing actor creation, cross-browser upload resumption, cross-space denial, exact original bytes, owner/member checks, CSRF, revoked membership/session and disabled account denial. Snapshot export/restore includes the new relationships.
+- [x] Pass lint, TypeScript, production build, full API/security regression, original-save/preview checks, eight recovery checks and the full browser suite (Chrome/Edge/Firefox/WebKit baseline; dedicated account library checks). Recheck account UI after the final stale-response clearing change. Browser account responses are fixtures; no live provider callback is claimed.
+- [x] Inspect desktop/mobile screenshots. No production identity migration or Worker release has been performed.
+- [x] Commit and push the tested account-library increment with user approval on 21 September 2026. Production activation remains outstanding.
+- [ ] Remaining Phase 2: bounded personal spaces, dedicated switcher and cross-space queue, trusted/temporary sessions, person invitations/device linking, lifecycle, live callback/recovery/logout and production release. Parent counts remain 0/7.

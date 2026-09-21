@@ -63,4 +63,16 @@ Local only: additive migration 0008, person/session persistence, Auth0 route int
 
 ## Membership and claim preparation - 20 September 2026
 
-Local only: membership storage, explicit owner-claim API/UI and additive migration 0009. Real-D1 claim race/revocation tests, existing API regressions, restore checks and responsive UI checks pass. Production remains on the previously recorded Worker; migrations 0007-0009 are not applied. Live provider-user verification awaits user password entry and email verification; person-based file access is still under implementation.
+Local only: membership storage, explicit owner-claim API/UI and additive migration 0009. Real-D1 claim race/revocation tests, existing API regressions, restore checks and responsive UI checks pass. Production remains on the previously recorded Worker; migrations 0007-0009 are not applied. Live provider sign-up/sign-in and email verification are complete (Auth0 VERIFIED); person-based file access is still under implementation.
+
+
+## Verification email authentication - 20 September 2026
+
+User completed email verification, but found the message in Spam. Gmail shows SPF/DKIM PASS and DMARC FAIL. Published the missing sending-domain DMARC TXT (`_dmarc.mail.relayalbums.com`, `v=DMARC1; p=none;`) and verified Cloudflare readback plus authoritative and Google public DNS. Fresh-message authentication and inbox placement still need verification. No additional email, Worker release or identity migration occurred.
+
+
+## Account library integration prepared - 20 September 2026
+
+Local only: migration `0010_gifted_pandemic.sql`, stable non-authenticating attribution actors, explicit account-space API access and scoped library UI/transfer paths. Real D1/R2 route tests verify cross-person/space denial, stable uploader identity, exact original bytes, CSRF, role changes and revocation. Production still has no account activation; migrations 0007-0010 remain unapplied. Existing Worker version is unchanged. Personal spaces, switcher, lifecycle and live recovery/callback verification remain outstanding.
+
+Validation: lint, TypeScript, production build, full API/security/D1 regression, the four-browser baseline suite, dedicated account-library browser checks, download-integrity/preview checks and eight recovery checks passed. A pairing rate-limit assertion failed on the first full API run; isolated and complete reruns passed without weakening the assertion. Account UI uses fixtures; real provider callback remains outstanding. User approved committing and pushing this tested increment on 21 September 2026. This source publication does not deploy the Worker or apply migrations.

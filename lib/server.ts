@@ -53,7 +53,8 @@ export async function readJson<T extends z.ZodTypeAny>(request: Request, schema:
   try { return schema.parse(JSON.parse(raw)); }
   catch { throw new ApiError(400, "Some details are missing or invalid. Please try again."); }
 }
-export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member" };
+// Legacy name retained for compatibility; account actors derive authority from live membership.
+export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member"; authentication?: "account" };
 export function requireOwner(device: ActiveDevice) {
   if (device.role !== "owner") throw new ApiError(403, "Only a space owner can do this.");
 }
@@ -104,7 +105,7 @@ export const uploadSchema = z.object({
 export async function initializeUpload(device: ActiveDevice, input: z.infer<typeof uploadSchema>) {
   const existing = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
   if (existing) {
-    if (existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size) throw new ApiError(409, "That transfer belongs to a different file.");
+    if (existing.space_id !== device.space_id || existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size) throw new ApiError(409, "That transfer belongs to a different file.");
     if (!["ready", "uploading"].includes(existing.status) || existing.archived_at) throw new ApiError(409, "This original was removed from the feed.");
     return { id: existing.id, partSize: existing.part_size, status: existing.status, uploadId: existing.upload_id };
   }
@@ -136,7 +137,7 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
     await upload.abort();
     // Two retries may initialize the same UUID concurrently; reuse the winning immutable manifest.
     const winner = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
-    if (winner && winner.device_id === device.id && winner.sha256 === input.sha256 && winner.size === input.size && ["uploading", "ready"].includes(winner.status) && !winner.archived_at) {
+    if (winner && winner.space_id === device.space_id && winner.device_id === device.id && winner.sha256 === input.sha256 && winner.size === input.size && ["uploading", "ready"].includes(winner.status) && !winner.archived_at) {
       return { id: winner.id, partSize: winner.part_size, status: winner.status, uploadId: winner.upload_id };
     }
     throw error;

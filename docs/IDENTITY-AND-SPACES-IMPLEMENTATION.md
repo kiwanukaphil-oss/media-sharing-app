@@ -1,6 +1,6 @@
 # Identity and personal/shared spaces: implementation proposal
 
-**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Account/session routes, person persistence and account UI are now implemented and locally tested. Recovery verification, memberships, identity migration and production activation remain outstanding. No new identity system has been released.
+**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Account/session routes, person persistence and account UI are now implemented and locally tested. Memberships, explicit owner claims and account-scoped library access are implemented locally. Recovery verification, personal spaces, lifecycle, identity migration and production activation remain outstanding. No new identity system has been released.
 
 This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-IMPLEMENTATION.md) is released. Progress remains in the [roadmap](DEVELOPMENT-ROADMAP.md).
 
@@ -162,4 +162,20 @@ The atomic D1 batch rechecks expiry, revocation, account disablement and device 
 
 Membership listing is person-scoped. Existing media APIs still use device authorisation: this is an unactivated membership/claim foundation, not completed account-based library access. Migrations 0007-0009 remain unapplied to production. Tests cover competing accounts, replay, wrong-session/device proofs, post-preview device demotion/revocation/expiry, session revocation, person disablement and revoked-membership denial. The responsive preview/cancel/confirm UI was checked with mocked identity responses.
 
-The user must complete their own database-connection sign-up/sign-in and email-verification test in Auth0. The alternate Database Connections list > More Actions > Try action opened the hosted test in a separate tab. The Sign up screen was verified and left open for the user; no password or real app-user account has been created by the agent. This provider test will not substitute for Relay callback and recovery tests after runtime integration.
+The user completed database-connection sign-up/sign-in and clicked the verification link. Auth0 user details now show VERIFIED after reload. This provider test does not substitute for Relay callback and recovery tests after runtime integration.
+
+
+## Verification email deliverability - 20 September 2026
+
+The user found the verification message in Spam. Gmail original-message summary reports SPF PASS, DKIM PASS for `mail.relayalbums.com`, and DMARC FAIL. Its spam notice cites similarity to previously identified spam; this does not prove a single cause. Cloudflare had no DMARC record. Added TXT `_dmarc.mail.relayalbums.com` with `v=DMARC1; p=none;`; Cloudflare readback, authoritative DNS and Google Public DNS confirm publication. This is an initial non-enforcing policy, without a reporting destination. Fresh-message DMARC results and inbox placement remain unverified; no additional email was sent. Review reporting and enforcement after validating legitimate senders.
+
+
+## Account-scoped library integration - 20 September 2026
+
+Requests select account space through exactly one `space` query value or matching `X-Relay-Space` header. Missing scope retains the legacy device path; present-but-invalid, disabled or inaccessible account scope fails closed without trying the legacy cookie. Every account request verifies the configured origin, hashed session, account state, membership and current role. Cookie mutations require Origin even when Authorization is present.
+
+Migration 0010 adds `account_space_actors`, a unique membership-to-attribution mapping. An expired (`expires_at=0`) compatibility device row preserves existing media foreign keys and stable upload ownership across browsers. Its token field contains an unhashable-as-a-credential marker, no secret is issued, and its stored member role is never authority. It is absent from connected-device listings and cannot issue pairing invitations. This deliberately retains the legacy `device_id`/`deviceName` media contract; a future attribution-schema cleanup is a removal candidate after older-client review. Existing legacy uploads retain their original attribution.
+
+The web library mounts with explicit scope from its URL. Account library links open it; library tools, section covers, previews, streaming saves and upload manifests carry the same scope. Scope is neither global client state nor a browser cookie. Full navigation retains the active-transfer unload warning, clears view state and permits resuming saved manifests at their original destination. A dedicated switcher and cross-space transfer tray remain outstanding. Denied account feed access clears visible library state and stops active transfers; late metadata responses cannot repopulate it. Already issued signed download URLs retain the existing expiry limitation.
+
+Account-scoped device management and pairing return an explicit unavailable response until the person-invitation/device-linking workflow is implemented. Account sign-out remains under Account. No production migrations or login activation have been performed.

@@ -59,6 +59,12 @@ export const spaceMemberships = sqliteTable("space_memberships", {
   revokedAt: integer("revoked_at"),
 }, table => [uniqueIndex("idx_memberships_person_space").on(table.personId, table.spaceId), index("idx_memberships_space").on(table.spaceId)]);
 
+// Non-authenticating compatibility actors preserve media attribution across account sessions.
+export const accountSpaceActors = sqliteTable("account_space_actors", {
+  membershipId: text("membership_id").primaryKey().references(() => spaceMemberships.id),
+  deviceId: text("device_id").notNull().unique().references(() => devices.id),
+});
+
 export const ownerClaimAttempts = sqliteTable("owner_claim_attempts", {
   tokenHash: text("token_hash").primaryKey(),
   sessionId: text("session_id").notNull().references(() => accountSessions.id),

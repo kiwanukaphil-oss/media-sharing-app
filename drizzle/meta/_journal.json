@@ -71,6 +71,13 @@
       "when": 1789892416516,
       "tag": "0009_married_silvermane",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789919474928,
+      "tag": "0010_gifted_pandemic",
+      "breakpoints": true
     }
   ]
 }

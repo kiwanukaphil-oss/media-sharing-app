@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { requestJson } from "@/lib/api-client";
 
@@ -49,7 +50,7 @@ export default function AccountLibraries() {
     {error && <p role="alert" className="mt-4 text-sm text-red-800">{error}</p>}
     {notice && <p role="status" className="mt-4 text-sm text-[var(--green)]">{notice}</p>}
     {spaces.length > 0 && <ul className="mt-5 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] px-5">
-      {spaces.map(space => <li key={space.id} className="flex justify-between gap-4 py-4 text-sm"><span>{space.name}</span><span className="text-[var(--muted)]">{space.role === "owner" ? "Owner" : "Member"}</span></li>)}
+      {spaces.map(space => <li key={space.id} className="flex justify-between gap-4 py-4 text-sm"><Link className="underline underline-offset-4" href={`/?space=${encodeURIComponent(space.id)}`}>{space.name}</Link><span className="text-[var(--muted)]">{space.role === "owner" ? "Owner" : "Member"}</span></li>)}
     </ul>}
     {loaded && spaces.length === 0 && <p className="mt-4 text-sm text-[var(--muted)]">No libraries connected yet.</p>}
     {preview ? <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6" aria-label="Review library connection">

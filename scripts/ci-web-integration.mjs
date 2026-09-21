@@ -8,6 +8,7 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Cho
 const origin = `http://127.0.0.1:${port}`;
 const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
+const accountAccessChecks = process.argv.includes('--account-access');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
 const modules = (await readdir('dist/server', { recursive: true }))
   .filter(path => path.endsWith('.js'))
@@ -22,6 +23,8 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     name: 'relay-ci', modules, modulesRoot: 'dist/server',
     compatibilityDate: config.compatibility_date, compatibilityFlags: config.compatibility_flags,
     d1Databases: ['DB'], r2Buckets: ['BUCKET'],
+    ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_DOMAIN: 'access.auth0.com',
+      AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost' } } : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
   }],
@@ -49,6 +52,11 @@ try {
   if (servePreview) {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
+  } else if (accountAccessChecks) {
+    const { verifyAccountSpaceAccess } = await import('../tests/account-space-access.mjs');
+    await verifyAccountSpaceAccess(database, (url, options) => emulator.dispatchFetch(url, options));
+    const { verifyReadOnlyBackup } = await import('../tests/backup-d1-readonly.mjs');
+    await verifyReadOnlyBackup(database);
   } else if (process.argv.includes('--capacity')) {
     const { verifyLibraryCapacity } = await import('../tests/library-capacity.mjs');
     await verifyLibraryCapacity(database, origin);
@@ -56,7 +64,7 @@ try {
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   } else if (browserChecks) {
-    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser']) await runIntegrationTest(name);
+    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser']) await runIntegrationTest(name);
   } else {
     for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation', 'album-sections']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');

@@ -31,6 +31,7 @@ jobs:
       # Clean checkouts default to the portable execution profile; no machine-local settings are needed.
       - run: npm run build
       - run: node scripts/ci-web-integration.mjs
+      - run: node scripts/ci-web-integration.mjs --account-access
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 20

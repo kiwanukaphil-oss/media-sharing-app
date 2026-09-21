@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, FolderInput, Image as ImageIcon, LayoutTemplate, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { Album, AlbumSection, MediaItem, FeedPage } from "@/lib/contracts";
-import { requestJson } from "@/lib/api-client";
+import { useLibraryApi } from "./library-scope";
 import type { LibraryQuery } from "./library-tools";
 import { WorkspaceSelect } from "./workspace-select";
 
@@ -15,6 +15,7 @@ type Props = {
 
 // Sections are album-local placement controls, not access settings or creative approval states.
 export function AlbumSections({ album, sections, query, onQuery, selected, isOwner, refresh, clearSelection, feedback }: Props) {
+  const { requestJson, apiUrl } = useLibraryApi();
   const [editor, setEditor] = useState<AlbumSection | "new" | "move" | "template" | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
@@ -86,7 +87,7 @@ export function AlbumSections({ album, sections, query, onQuery, selected, isOwn
     <div className="section-navigation">
       {/* Authenticated section covers must not pass through a public image cache. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {active?.coverMediaId && <img className="section-cover" src={`/api/media/${active.coverMediaId}/thumbnail`} alt="" width={36} height={36} />}
+      {active?.coverMediaId && <img className="section-cover" src={apiUrl(`media/${active.coverMediaId}/thumbnail`)} alt="" width={36} height={36} />}
       <WorkspaceSelect label="Album section" value={query.section} onChange={section => onQuery({ ...query, section })} options={[
         { value: "", label: `All in this album (${album.count})` },
         { value: "unsectioned", label: `Unsectioned (${Math.max(0, album.count - sections.reduce((sum, section) => sum + section.count, 0))})` },
