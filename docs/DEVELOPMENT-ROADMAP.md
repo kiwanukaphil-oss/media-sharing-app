@@ -11,7 +11,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete. Phase 2 is deployed as a restricted designated-account pilot; general account access and personal allocation remain closed. Live Worker: `f8ba096e-cb97-41b0-bf67-cc7bcecfee4d` at 100%. Remote migrations are applied through 0018; all existing library rows were verified unchanged. Fresh independent backup/restore verified 20 originals (304,872,656 bytes).
 
-**Next action:** Real callback and eight-hour temporary sign-in are verified; the password-change trigger is connected and applied. The approved recovery email was sent and Resend confirms delivery. Password change and notification-driven revocation are verified before fresh sign-in: the old browser is signed out and D1 records revocation 416 ms after the provider reset timestamp. Gmail shows the recovery email in Inbox with SPF, DKIM and DMARC PASS. Fresh sign-in and provider logout are verified; Auth0 audit confirms Success Logout. Trusted-browser sign-in is verified with a seven-day lifetime. Existing-library ownership connection requires explicit approval; operational gates remain outstanding. Recovery notification passed its hosted synthetic test after correcting an Auth0 CommonJS compatibility issue. Automated failure monitoring, deletion operations, personal budget, live membership/publication checks and general release remain outstanding. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md). The original verification message went to Spam; fresh email authentication and inbox placement still require the recovery test. B02 remains resolved.
+**Next action:** Real callback and eight-hour temporary sign-in are verified; the password-change trigger is connected and applied. The approved recovery email was sent and Resend confirms delivery. Password change and notification-driven revocation are verified before fresh sign-in: the old browser is signed out and D1 records revocation 416 ms after the provider reset timestamp. Gmail shows the recovery email in Inbox with SPF, DKIM and DMARC PASS. Fresh sign-in and provider logout are verified; Auth0 audit confirms Success Logout. Trusted-browser sign-in is verified with a seven-day lifetime. The approved existing-library migration is verified: the designated account owns Our shared space, the primary-origin device is paired and promoted, and both original devices retain access. Operational gates remain outstanding. Recovery notification passed its hosted synthetic test after correcting an Auth0 CommonJS compatibility issue. Automated failure monitoring, deletion operations, personal budget, live membership/publication checks and general release remain outstanding. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md). The original verification message went to Spam; the subsequent recovery message passed inbox and authentication checks. B02 remains resolved.
 
 **Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
@@ -117,7 +117,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** One person can safely use several devices and spaces, with a recoverable private library.
 **Entry:** Phase 0; D05–D07 resolved for this scope; reconcile the current organisation schema.
-**Status:** In progress; production activation blocked on B01. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; protocol/configuration and one-time transaction storage tests pass, and person/session persistence, route orchestration and account UI now pass local checks. Live login, memberships and identity migration remain outstanding.
+**Status:** In progress; restricted production pilot active; general release awaits operational gates. Owner: Codex (implementation), user (provider account/access). Standing execution authority applies. [Implementation design and setup requirements](IDENTITY-AND-SPACES-IMPLEMENTATION.md) prepared; protocol/configuration and one-time transaction storage tests pass, and person/session persistence, route orchestration and account UI now pass local checks. Real login, recovery, logout and the approved legacy owner migration are verified; general release remains outstanding.
 
 - [ ] **P2-01 — Select and review identity design.** Compare suitable authentication providers, recovery, passkey/sign-in options, costs and operational dependencies. Review the trust model before choosing; use mature authentication rather than custom cryptography.
 
@@ -127,7 +127,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Verify the Resend sender, connect Auth0, deliver a test email and confirm inbox receipt. **Verified with the user.**
   - [ ] Finalise production sign-in methods and confirm post-trial/free-plan suitability, including social-provider configuration.
   - [x] Implement authenticated recovery events, monotonic password-change tracking and signed-login reconciliation; revoke older sessions without changing library membership. **Locally tested; migrations 0016-0017 and Auth0 Action sources prepared.**
-  - [ ] Finalise and verify real account recovery and provider logout behaviour.
+  - [x] Verify real password recovery, pre-login notification-driven revocation, fresh sign-in and provider logout. **Live designated-account verification complete; automated failure monitoring remains a separate release gate.**
 
 - [ ] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
 
@@ -147,7 +147,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Complete account-based file/library access with stable upload attribution across account sessions. **Locally tested.**
   - [x] Separate signing in on another device from email-bound person invitations, with preview/explicit acceptance and owner revocation. **Implemented and locally verified; migration 0013 prepared.**
   - [x] Add owner-only paired-device inventory, verified claim labels, individual disconnection and explicit retirement of all paired access while preserving account ownership and files. **Locally tested, including pairing races.**
-  - [ ] Review the actual legacy-device audience and verify the complete migration flow with the real provider.
+  - [x] Review the actual legacy-device audience and verify the complete migration flow with the real provider. **User-approved live claim completed on 21 September: original desktop owner and phone member retained; new primary-origin owner device explicitly linked to the designated account.**
   - [ ] Verify claims and recovery with the real provider, then apply the reviewed migration and release.
 
 - [ ] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
@@ -170,7 +170,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Pass local signed-token, real-D1 identity/session, callback replay, cross-account revocation and CSRF checks. **Local security evidence recorded.**
   - [x] Pass existing API regressions, account UI checks, build, lint, TypeScript and backup-restore checks. **Local verification complete for the current increment.**
   - [x] Commit and push the tested account/session increment and supporting documentation. **`0218360` on main.**
-  - [ ] Verify real Auth0 sign-in, recovery and provider logout end to end.
+  - [x] Verify real Auth0 sign-in, recovery and provider logout end to end. **Live temporary/trusted sign-in, password-change revocation and provider audit evidence recorded.**
   - [ ] Verify membership/claim migration, cross-person and cross-space privacy, in-flight transfers and older-client compatibility.
   - [ ] Apply reviewed production migrations, activate sign-in and record hosted verification and rollback boundaries.
 
@@ -300,7 +300,7 @@ Planning dependencies are not incidents. The active external blocker is:
 
 | ID | Affected work | Required input | Owner | Opened | State |
 | --- | --- | --- | --- | --- | --- |
-| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; sender domain verified and scoped sending key created; Auth0 provider saved and verified; test email delivered; actual recovery testing and runtime integration remain. No secrets in chat or Git. | Codex (recovery verification/integration); user (live account interaction) | 2026-09-20 | Dashboard session expired; user sign-in required; recovery/integration outstanding |
+| B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; sender domain verified and scoped sending key created; Auth0 provider saved and verified; test and recovery emails delivered; restricted runtime, recovery and owner claim verified. No secrets in chat or Git. | Codex | 2026-09-20 | Resolved for restricted pilot: provider access, recovery, logout and owner connection verified; general-release operations tracked separately |
 | B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause reproduced: SQL expression depth exceeded D1 limit. Balanced concatenation passes local D1/API tests and a live read-only snapshot restore. Hosted backup, Backblaze restore and verification passed in run 35491216252. | Codex | 2026-09-20 | Resolved |
 
 Phase 2 account/session, membership/claim, scoped library and personal-space code is implemented locally. Auth0 provider sign-in and email verification succeeded; live Relay callback/recovery, allocation settings and production migrations remain outstanding.
@@ -591,5 +591,12 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Verify the received recovery message has the Gmail Inbox label and SPF/DKIM/DMARC PASS.
 - [x] Verify fresh sign-in with the changed password and provider logout: D1 revocation, return to registered home, and Auth0 Success Logout at 06:54:00.602 UTC.
 - [x] User approved trusted-browser persistence and signed in; UI expiry is 28 September and D1 confirms trusted mode with exactly seven days.
-- [ ] Connect the existing library through its current owner browser. Current owner-device access is on the legacy origin; primary-origin pairing, promotion and account ownership require explicit approval. General activation and personal allocation remain closed pending release gates.
+- [x] Connect the existing library through its current owner browser. User approved primary-origin pairing, promotion and account ownership; completed and verified Owner / Account access plus the three-device audience. General activation and personal allocation remain closed pending release gates.
 - [x] Add a direct Account & libraries entry to the signed-out welcome page and correct outdated account-free wording. Build/static checks, deployment dry run, live health and desktop visual/navigation checks pass; released as f8ba096e-cb97-41b0-bf67-cc7bcecfee4d.
+
+## 21 September 2026 - Approved owner migration verified
+
+- [x] User explicitly approved pairing the primary-domain browser, promoting that device and connecting Our shared space to the designated account. Completed via existing owner controls and the recent-authentication claim preview/confirmation.
+- [x] Account shows Owner; account-scoped library shows Owner / Account access, two live files, one Trash item, Random Stuff with two items, and unchanged 130.7 MB storage.
+- [x] People & access shows one account owner and three paired devices: original desktop owner and phone member remain unlinked; only My desktop · relayalbums.com has the verified account claim. No devices retired or files changed.
+- [ ] Complete operational monitoring, lifecycle execution/rehearsal, bounded personal allocation and hosted publication gates before general release.

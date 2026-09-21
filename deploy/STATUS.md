@@ -174,3 +174,9 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Existing-library preview on the primary origin correctly requires a connected owner browser. The legacy-origin tab has active owner access to Our shared space; its device panel shows one owner and one member. No identity or ownership inferred from display names.
 - Requested explicit approval to pair the primary-origin browser, promote that device through the existing owner, and connect the designated account as owner. This is persistent access expansion and requires browser-policy confirmation. No invitation, promotion, ownership connection or device revocation performed in this preparation.
 - Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.
+
+## 21 September 2026 - Approved account-owner connection
+
+- User explicitly approved primary-origin pairing, device promotion and account ownership. Existing owner browser created a one-use invitation; the new My desktop · relayalbums.com device joined and was promoted through owner controls.
+- Recent-authentication preview named Our shared space, the designated account and the new owner device; confirmed connection succeeded. Account library and People & access show Owner. Explicit account-scoped library shows the same two live files, one Trash item, album and 130.7 MB storage.
+- Reviewed all three paired devices. Original My desktop remains owner and My phone remains member, both unlinked to accounts. Only the newly claimed device is linked to the account. No revocation, data mutation, deployment, schema change or budget change.
