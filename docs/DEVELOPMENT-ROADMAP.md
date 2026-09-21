@@ -807,3 +807,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Run the real synchronized path: zero requests, renewed empty revision 2, both retained archive versions independently verified. No application mutation, new credential, account erasure or live Worker deployment.
 - [x] Test withdrawal during publication, interrupted upload and retry, remote-ahead/history conflicts, idempotence and lock contention; hosted CI now includes the publication suite.
 - [ ] Coordinate application and backup writers for closure and complete a generated-identity end-to-end erasure rehearsal with concrete irreversible-operation authority.
+
+## 22 September 2026 - Closure fence protocol
+
+- [x] Implement isolated D1 primitives for tracked account/linked-device/global-backup admission, closure-generation commit checks, atomic reviewed-intent fencing and scoped credential revocation. Current request revision, provider binding and last-owner handover are rechecked in the fence transaction.
+- [x] Verify actual D1 batch rollback on injected interruption, exact retry, denied post-fence commits, unrelated member/device preservation, registered-work drain and persistent uncertainty. A drained registered set still reports executable false. TypeScript and focused lint pass.
+- [ ] Integrate every application/storage/backup writer and review the schema for migration/restore compatibility before activation. `deploy/closure-fence-prototype.sql` is intentionally outside the migration journal; no production fence or schema change occurred.

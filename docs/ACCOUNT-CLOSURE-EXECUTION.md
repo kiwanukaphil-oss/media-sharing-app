@@ -42,3 +42,11 @@ Withdrawal remains available until the approved execution starts. Once physical 
 - [ ] Verify a complete generated-identity cloud rehearsal with concrete removal authority before exposing fulfilled deletion in production.
 
 The restricted pilot remains the current release boundary. This contract does not introduce a deletion deadline, automatic purge, new service purchase or production identity removal.
+
+## Isolated fence protocol implemented
+
+`lib/account-closure-fence.ts` and `deploy/closure-fence-prototype.sql` implement the first protocol layer, exercised against actual isolated D1. A single batch rechecks request revision, provider identity and shared last-owner protection, then records generation 1, disables the exact person and revokes sessions/positively linked legacy access. Tests prove the batch rolls back on interruption and preserves unrelated members/devices. Exact operation retries are idempotent. Approval digests pin the caller's reviewed evidence; they are not proof of user authority by themselves. No public route invokes this operator primitive.
+
+Write admissions are recorded before effects. A generation predicate denies commits after the fence; current route-specific authority must also be checked. Global backup admissions intersect every closure; positively recorded device claims bind legacy admissions. Active or uncertain work blocks drain indefinitely. Time passage is not settlement, and the primitive provides no automatic clearance of uncertain work. All registered effects must be awaited before a caller records settlement.
+
+This schema is not in the application migration journal and has not been applied to production. Application route integration, tracked storage keys/capabilities, backup writer integration, coverage proof, restore-schema review and closure-status UX remain required. Even zero registered outstanding writes reports `executable: false`; the prototype cannot prove that currently uninstrumented writers have stopped.
