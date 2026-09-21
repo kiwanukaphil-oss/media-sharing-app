@@ -26,12 +26,18 @@ export async function verifyTransferAuthority(database) {
   try {
   const account={id:member,space_id:space,authentication:'account',personId:person,sessionId:session};
   const device={id:legacy,space_id:space};
-  const write = async principal => {
-    const authority=transferAuthority(principal,now);
+  const write = async (principal,ownerOnly=false) => {
+    const authority=transferAuthority(principal,now,ownerOnly);
     return (await database.prepare(`UPDATE spaces SET name='Guarded fixture' WHERE id=? AND ${authority.sql}`)
       .bind(space,...authority.bindings).run()).meta.changes;
   };
   assert.equal(await write(account),1); assert.equal(await write(device),1);
+  assert.equal(await write(account,true),1);assert.equal(await write(device,true),0);
+  await database.prepare("UPDATE devices SET role='owner' WHERE id=?").bind(legacy).run();assert.equal(await write(device,true),1);
+  await database.prepare("UPDATE devices SET role='member' WHERE id=?").bind(legacy).run();assert.equal(await write(device,true),0);
+  await database.prepare("UPDATE space_memberships SET role='member' WHERE id=?").bind(member).run();
+  assert.equal(await write(account),1);assert.equal(await write(account,true),0,'Stale owner role cannot authorize management');
+  await database.prepare("UPDATE space_memberships SET role='owner' WHERE id=?").bind(member).run();
   assert.equal(await write({...account,sessionId:undefined}),0);
   assert.equal(await write({...account,personId:'wrong'}),0);
   assert.equal(await write({...account,space_id:'wrong'}),0);

@@ -828,3 +828,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [ ] Review new-table restore quarantine, expose/deploy the coordinator with a separate secret, activate hosted writer configuration, and verify an actual coordinated backup before any production fence. Existing scheduled backup remains on its current path until that coordinated release.
 - [x] Add actual-schema restore quarantine for the complete closure/backup protocol family: preserve disabled fences for review, retain completed evidence and hold interrupted operations as uncertain. Partial schemas fail and roll back. All 13 backup-recovery tests and focused lint pass.
 - [ ] Review personal-data minimisation for new protocol references before migrating production; the current transformer deliberately remains restricted to schema 0018. Provider live rehearsal approval remains pending in the current owner request.
+
+## 22 September 2026 - Metadata authority race correction
+
+- [x] Recheck live account/session/membership, recovery watermark and current owner role inside album, section, rename, organisation and capture-date mutations. Direct archive/restore and upload-restart commits also recheck authority. Personal-space allocation and existing-space retries now reject authentication predating password recovery.
+- [x] Exercise real library route helpers against isolated D1 with a previously authenticated principal: disabled account, revoked session and downgraded owner attempts leave metadata unchanged, while current-owner workflows succeed. TypeScript, lint and build pass; full local legacy API regression passes.
+- [ ] Complete account-access and hosted checks, then deploy the metadata correction and verify both origins. No new schema or closure executor activation is needed for this correction.

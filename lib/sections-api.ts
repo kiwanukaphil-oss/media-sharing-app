@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, database, readJson, requireOwner, type ActiveDevice } from "./server";
 import type { AlbumSection } from "./contracts";
+import { transferAuthority } from "./transfer-authority";
 
 const revision = z.number().int().nonnegative();
 const sectionName = z.string().trim().min(1).max(100).refine(value => !/[\u0000-\u001f]/.test(value));
@@ -33,19 +34,21 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
       AND m.archived_at IS NULL AND m.preview_ready = 1`).bind(input.albumId, id || null, input.coverMediaId, device.space_id).first();
     if (!cover) throw new ApiError(409, "Choose a file with a preview in this section for its cover.");
   }
-  const guardValues = [input.albumId, device.space_id, input.expectedRevision];
+  const authority = transferAuthority(device, Date.now(), true);
+  const liveAlbumGuard = `${albumGuard} AND ${authority.sql}`;
+  const guardValues = [input.albumId, device.space_id, input.expectedRevision, ...authority.bindings];
   const sectionId = id || crypto.randomUUID();
   let statement;
   if (request.method === "POST" && !id) {
     statement = database().prepare(`INSERT INTO album_sections (album_id, id, name, position)
-      SELECT ?, ?, ?, ? WHERE ${albumGuard}`).bind(input.albumId, sectionId, input.name, input.position, ...guardValues);
+      SELECT ?, ?, ?, ? WHERE ${liveAlbumGuard}`).bind(input.albumId, sectionId, input.name, input.position, ...guardValues);
   } else if (request.method === "PUT" && id) {
     statement = database().prepare(`UPDATE album_sections SET name = ?, position = ?, deleted_at = ?, cover_media_id = CASE WHEN ? THEN ? ELSE cover_media_id END
-      WHERE album_id = ? AND id = ? AND ${albumGuard}`).bind(input.name, input.position, input.deleted ? Date.now() : null, input.coverMediaId !== undefined ? 1 : 0, input.coverMediaId || null, input.albumId, id, ...guardValues);
+      WHERE album_id = ? AND id = ? AND ${liveAlbumGuard}`).bind(input.name, input.position, input.deleted ? Date.now() : null, input.coverMediaId !== undefined ? 1 : 0, input.coverMediaId || null, input.albumId, id, ...guardValues);
   } else throw new ApiError(404, "This section action is unavailable.");
   try {
     const results = await database().batch([statement, database().prepare(`UPDATE albums SET revision = revision + 1
-      WHERE id = ? AND space_id = ? AND revision = ? AND deleted_at IS NULL AND archived_at IS NULL AND changes() = 1`).bind(...guardValues)]);
+      WHERE id = ? AND space_id = ? AND revision = ? AND ${authority.sql} AND deleted_at IS NULL AND archived_at IS NULL AND changes() = 1`).bind(...guardValues)]);
     if (!results[0].meta.changes) throw new ApiError(409, "The album changed or is archived. Refresh before trying again.");
   } catch (error) {
     if (/UNIQUE constraint failed/.test(String(error))) throw new ApiError(409, "A section with this name already exists in this album.");
@@ -60,9 +63,10 @@ async function reorderSections(request: Request, device: ActiveDevice) {
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), expectedRevision: revision,
     ids: z.array(z.string().uuid()).min(1).max(500).refine(ids => new Set(ids).size === ids.length) }));
   const json = JSON.stringify(input.ids);
+  const authority = transferAuthority(device, Date.now(), true);
   const guard = `${albumGuard} AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL) = ?
-    AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL AND id IN (SELECT value FROM json_each(?))) = ?`;
-  const values = [input.albumId, device.space_id, input.expectedRevision, input.albumId, input.ids.length, input.albumId, json, input.ids.length];
+    AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL AND id IN (SELECT value FROM json_each(?))) = ? AND ${authority.sql}`;
+  const values = [input.albumId, device.space_id, input.expectedRevision, input.albumId, input.ids.length, input.albumId, json, input.ids.length, ...authority.bindings];
   const results = await database().batch([
     database().prepare(`UPDATE album_sections SET position = (SELECT CAST(key AS INTEGER) * 10 FROM json_each(?) WHERE value = album_sections.id)
       WHERE album_id = ? AND deleted_at IS NULL AND ${guard}`).bind(json, input.albumId, ...values),
@@ -86,10 +90,11 @@ async function applySectionTemplate(request: Request, device: ActiveDevice) {
   const selectionValues = [json, input.albumId, device.space_id, input.files.length];
   const created = "EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ?)";
   const createdValues = [input.albumId, originalId];
+  const authority = transferAuthority(device, Date.now(), true);
   const results = await database().batch([
     database().prepare(`INSERT INTO album_sections (album_id, id, name, position) SELECT ?, ?, 'Originals', 10
       WHERE ${albumGuard} AND NOT EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND deleted_at IS NULL)
-      AND ${selected}`).bind(input.albumId, originalId, input.albumId, device.space_id, input.expectedRevision, input.albumId, ...selectionValues),
+      AND ${selected} AND ${authority.sql}`).bind(input.albumId, originalId, input.albumId, device.space_id, input.expectedRevision, input.albumId, ...selectionValues, ...authority.bindings),
     database().prepare(`INSERT INTO album_sections (album_id, id, name, position) SELECT ?, ?, 'Final cuts', 20 WHERE ${created}`).bind(input.albumId, finalId, ...createdValues),
     database().prepare(`UPDATE album_media SET section_id = CASE (SELECT category FROM media WHERE id = album_media.media_id) WHEN 'final' THEN ? ELSE ? END
       WHERE album_id = ? AND media_id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${created}`).bind(finalId, originalId, input.albumId, json, ...createdValues),
@@ -108,13 +113,14 @@ export async function placeInSections(request: Request, device: ActiveDevice) {
     id: z.string().uuid(), expectedRevision: revision, sectionId: z.string().uuid().nullable(),
   })).min(1).max(100).refine(files => new Set(files.map(file => file.id)).size === files.length) }));
   const json = JSON.stringify(input.files);
+  const authority = transferAuthority(device, Date.now(), true);
   const guard = `(SELECT COUNT(*) FROM json_each(?) chosen JOIN media m ON m.id = json_extract(chosen.value, '$.id')
     JOIN album_media am ON am.media_id = m.id AND am.album_id = ? JOIN albums a ON a.id = am.album_id
     WHERE m.space_id = ? AND a.space_id = m.space_id AND a.deleted_at IS NULL AND a.archived_at IS NULL
     AND m.status = 'ready' AND m.archived_at IS NULL AND m.revision = json_extract(chosen.value, '$.expectedRevision')
     AND (json_extract(chosen.value, '$.sectionId') IS NULL OR EXISTS (SELECT 1 FROM album_sections s
-      WHERE s.album_id = a.id AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))) = ?`;
-  const guardValues = [json, input.albumId, device.space_id, input.files.length];
+      WHERE s.album_id = a.id AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))) = ? AND ${authority.sql}`;
+  const guardValues = [json, input.albumId, device.space_id, input.files.length, ...authority.bindings];
   const selectedIds = "SELECT json_extract(value, '$.id') FROM json_each(?)";
   const results = await database().batch([
     database().prepare(`SELECT am.media_id AS id, CASE WHEN s.deleted_at IS NULL THEN am.section_id ELSE NULL END AS sectionId,

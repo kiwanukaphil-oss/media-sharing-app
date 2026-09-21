@@ -3,6 +3,7 @@ import { ApiError, database, readJson, requireOwner, type ActiveDevice } from ".
 import { splitFilename, validCaptureDate, validFilename } from "./library-names";
 import type { Album } from "./contracts";
 import { sectionAction, placeInSections } from "./sections-api";
+import { transferAuthority } from "./transfer-authority";
 
 const albumFields = { name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).default("") };
 const selectionSchema = z.array(z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative(), sectionId: z.string().uuid().nullable().optional() })).min(1).max(100).refine(items => new Set(items.map(item => item.id)).size === items.length);
@@ -41,13 +42,17 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
   if (request.method === "POST" && !id) {
     const input = await readJson(request, z.object(albumFields));
     const albumId = crypto.randomUUID();
-    await database().prepare("INSERT INTO albums (id, space_id, name, description, created_at) VALUES (?, ?, ?, ?, ?)").bind(albumId, device.space_id, input.name, input.description, Date.now()).run();
+    const authority = transferAuthority(device, Date.now(), true);
+    const inserted = await database().prepare(`INSERT INTO albums (id, space_id, name, description, created_at) SELECT ?, ?, ?, ?, ? WHERE ${authority.sql}`)
+      .bind(albumId, device.space_id, input.name, input.description, Date.now(), ...authority.bindings).run();
+    if (!inserted.meta.changes) throw new ApiError(409, "Library access changed. Refresh before creating an album.");
     return Response.json({ id: albumId });
   }
   if (request.method === "PUT" && id) {
     const input = await readJson(request, z.object({ ...albumFields, expectedRevision: z.number().int().nonnegative(), archived: z.boolean(), deleted: z.boolean() }));
+    const authority = transferAuthority(device, Date.now(), true);
     const result = await database().prepare(`UPDATE albums SET name = ?, description = ?, archived_at = ?, deleted_at = ?, revision = revision + 1
-      WHERE id = ? AND space_id = ? AND revision = ?`).bind(input.name, input.description, input.archived ? Date.now() : null, input.deleted ? Date.now() : null, id, device.space_id, input.expectedRevision).run();
+      WHERE id = ? AND space_id = ? AND revision = ? AND ${authority.sql}`).bind(input.name, input.description, input.archived ? Date.now() : null, input.deleted ? Date.now() : null, id, device.space_id, input.expectedRevision, ...authority.bindings).run();
     if (!result.meta.changes) throw new ApiError(409, "This album changed. Refresh before trying again.");
     return Response.json({ changed: true, revision: input.expectedRevision + 1 });
   }
@@ -74,11 +79,12 @@ async function renameFiles(request: Request, device: ActiveDevice) {
     WHERE lower(COALESCE(json_extract(sibling.value, '$.name'), m.name)) = lower(json_extract(proposed.value, '$.name')) LIMIT 1`;
   const conflicts = await database().prepare(conflictsQuery).bind(json, json).first();
   if (conflicts) throw new ApiError(409, "A filename already exists in one of these albums. Choose another name or a different starting number.");
+  const authority = transferAuthority(device, Date.now(), true);
   const result = await database().prepare(`UPDATE media SET original_name = COALESCE(original_name, name),
     name = (SELECT json_extract(value, '$.name') FROM json_each(?) WHERE json_extract(value, '$.id') = media.id), revision = revision + 1
     WHERE space_id = ? AND archived_at IS NULL AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard("active")}
-    AND NOT EXISTS (${conflictsQuery})
-    RETURNING id, name, revision`).bind(json, device.space_id, json, json, device.space_id, input.files.length, json, json).all();
+    AND NOT EXISTS (${conflictsQuery}) AND ${authority.sql}
+    RETURNING id, name, revision`).bind(json, device.space_id, json, json, device.space_id, input.files.length, json, json, ...authority.bindings).all();
   if (result.results.length !== input.files.length) throw new ApiError(409, "A file or filename changed. Refresh before renaming; no files were renamed.");
   return Response.json({ files: result.results });
 }
@@ -90,6 +96,8 @@ async function organiseFiles(request: Request, device: ActiveDevice) {
   const json = JSON.stringify(input.files);
   let selected = `media.space_id = ? AND media.status = 'ready' AND media.id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard(input.action === "restore" ? "trashed" : input.action === "remove" ? "any" : "active")}`;
   const selectionValues: (string | number)[] = [device.space_id, json, json, device.space_id, input.files.length];
+  const authority = transferAuthority(device, Date.now(), true);
+  selected += ` AND ${authority.sql}`; selectionValues.push(...authority.bindings);
   if (input.action === "add" || input.action === "remove") {
     if (!input.albumId) throw new ApiError(400, "Choose an album.");
     await requireAlbum(device, input.albumId, input.action === "add");
@@ -119,7 +127,9 @@ async function organiseFiles(request: Request, device: ActiveDevice) {
 async function changeCaptureDate(request: Request, device: ActiveDevice) {
   requireOwner(device);
   const input = await readJson(request, z.object({ id: z.string().uuid(), capturedAt: z.string().refine(validCaptureDate).nullable(), expectedRevision: z.number().int().nonnegative() }));
-  const result = await database().prepare("UPDATE media SET captured_at = ?, revision = revision + 1 WHERE id = ? AND space_id = ? AND status = 'ready' AND revision = ?").bind(input.capturedAt, input.id, device.space_id, input.expectedRevision).run();
+  const authority = transferAuthority(device, Date.now(), true);
+  const result = await database().prepare(`UPDATE media SET captured_at = ?, revision = revision + 1 WHERE id = ? AND space_id = ? AND status = 'ready' AND revision = ? AND ${authority.sql}`)
+    .bind(input.capturedAt, input.id, device.space_id, input.expectedRevision, ...authority.bindings).run();
   if (!result.meta.changes) throw new ApiError(409, "This file changed. Refresh before correcting its date.");
   return Response.json({ revision: input.expectedRevision + 1 });
 }

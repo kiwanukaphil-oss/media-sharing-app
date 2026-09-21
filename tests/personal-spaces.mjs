@@ -20,6 +20,10 @@ export async function verifyPersonalSpaces(database, dispatch) {
   assert.equal(personal.personalStorageBudget({}), 0);
   assert.throws(() => personal.personalStorageBudget({ PERSONAL_STORAGE_BUDGET_BYTES: '-1' }));
   const before = (await database.prepare('SELECT COUNT(*) AS n FROM spaces').first()).n;
+  await database.prepare('UPDATE people SET credentials_changed_at=? WHERE id=?').bind(Date.now()+1000,alice.personId).run();
+  await assert.rejects(personal.createPersonalSpace(database,alice,personal.PERSONAL_SPACE_BYTES*2),/not available/);
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM spaces').first()).n,before,'A stale authenticated request cannot allocate after credential recovery');
+  await database.prepare('UPDATE people SET credentials_changed_at=0 WHERE id=?').bind(alice.personId).run();
   await assert.rejects(personal.createPersonalSpace(database, alice, 0), /not available/);
   assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM spaces').first()).n, before);
   const attempts = await Promise.allSettled([alice, bob].map(person => personal.createPersonalSpace(database, person, personal.PERSONAL_SPACE_BYTES)));
@@ -28,6 +32,9 @@ export async function verifyPersonalSpaces(database, dispatch) {
   const outsider = owner === alice ? bob : alice;
   const created = attempts.find(result => result.status === 'fulfilled').value.space;
   const retried = await personal.createPersonalSpace(database, owner, 0);
+  await database.prepare('UPDATE people SET credentials_changed_at=? WHERE id=?').bind(Date.now()+1000,owner.personId).run();
+  await assert.rejects(personal.createPersonalSpace(database,owner,0),/not available/,'Existing-space retry also rechecks recovery watermark');
+  await database.prepare('UPDATE people SET credentials_changed_at=0 WHERE id=?').bind(owner.personId).run();
   assert.equal(retried.space.id, created.id, 'Lowering creation budget never removes an existing personal library');
   assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM spaces').first()).n, before + 1);
   const request = async (person, path, method = 'GET', body, extra = {}) => {

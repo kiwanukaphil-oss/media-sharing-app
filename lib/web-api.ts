@@ -147,7 +147,10 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     requireOwner(device);
     const item = await requireMedia(device, id);
     if (item.status !== "ready") throw new ApiError(409, "This transfer is not ready.");
-    await database().prepare("UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready'").bind(action === "archive" ? Date.now() : null, id).run();
+    const authority = transferAuthority(device, Date.now(), true);
+    const changed = await database().prepare(`UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready' AND ${authority.sql}`)
+      .bind(action === "archive" ? Date.now() : null, id, ...authority.bindings).run();
+    if (!changed.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before trying again.");
     return Response.json({ changed: true });
   }
   if (resource === "media" && id && !action && method === "DELETE") {
@@ -174,7 +177,9 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     const item = await requireMedia(device, id, true);
     if (item.status !== "uploading") throw new ApiError(409, "Only unfinished uploads can be restarted.");
     const upload = await bucket().createMultipartUpload(item.object_key, { httpMetadata: { contentType: item.mime }, customMetadata: { sha256: item.sha256, filename: item.name } });
-    const changed = await database().prepare("UPDATE media SET upload_id = ? WHERE id = ? AND upload_id = ? AND status = 'uploading'").bind(upload.uploadId, id, item.upload_id).run();
+    const authority = transferAuthority(device);
+    const changed = await database().prepare(`UPDATE media SET upload_id = ? WHERE id = ? AND upload_id = ? AND status = 'uploading' AND ${authority.sql}`)
+      .bind(upload.uploadId, id, item.upload_id, ...authority.bindings).run();
     if (!changed.meta.changes) { await upload.abort(); throw new ApiError(409, "This transfer changed. Refresh and retry."); }
     try { await bucket().resumeMultipartUpload(item.object_key, item.upload_id).abort(); } catch { /* Expired upload parts may already have been removed by R2. */ }
     return Response.json({ id, partSize: item.part_size, status: "uploading", uploadId: upload.uploadId });

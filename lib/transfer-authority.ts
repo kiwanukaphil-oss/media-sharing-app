@@ -3,7 +3,7 @@ import type { ActiveDevice } from "./server";
 // Embed this predicate in the same D1 statement that reserves or publishes transfer metadata.
 // A previously authenticated request must not retain write authority after account/session/membership
 // revocation. Inputs are server-resolved access, never client-supplied roles or identity identifiers.
-export function transferAuthority(device: ActiveDevice, now = Date.now()) {
+export function transferAuthority(device: ActiveDevice, now = Date.now(), ownerOnly = false) {
   if (device.authentication === "account") {
     if (!device.personId || !device.sessionId) return { sql: "0", bindings: [] as (string | number)[] };
     return { sql: `EXISTS (SELECT 1 FROM account_space_actors actor
@@ -12,6 +12,7 @@ export function transferAuthority(device: ActiveDevice, now = Date.now()) {
       LEFT JOIN personal_spaces ps ON ps.space_id=m.space_id
       WHERE d.id=? AND d.space_id=? AND m.space_id=d.space_id AND p.id=? AND a.id=?
       AND m.revoked_at IS NULL AND p.disabled_at IS NULL AND a.revoked_at IS NULL AND a.expires_at>?
+      ${ownerOnly ? "AND m.role='owner'" : ""}
       AND a.authenticated_at>=p.credentials_changed_at
       AND d.expires_at=0 AND d.token_hash='account-attribution:' || m.id
       AND (ps.space_id IS NULL OR (ps.person_id=p.id AND m.role='owner')))`,
@@ -19,6 +20,7 @@ export function transferAuthority(device: ActiveDevice, now = Date.now()) {
   }
   return { sql: `EXISTS (SELECT 1 FROM devices d WHERE d.id=? AND d.space_id=?
     AND d.revoked_at IS NULL AND d.expires_at>?
+    ${ownerOnly ? "AND d.role='owner'" : ""}
     AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id=d.space_id))`,
   bindings: [device.id,device.space_id,now] };
 }

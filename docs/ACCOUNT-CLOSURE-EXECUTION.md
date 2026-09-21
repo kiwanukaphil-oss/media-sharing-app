@@ -27,7 +27,7 @@ Withdrawal remains available until the approved execution starts. Once physical 
 | Direct multipart parts | URLs last up to one hour; access revocation stops later authenticated requests | Stop issuance under the fence; abort/reconcile exact multipart IDs and account for requests already admitted by storage |
 | Preview upload | Server receives a bounded JPEG and rechecks authority before reservation/commit | Track in-flight storage work so a late object cannot appear after final erasure verification |
 | Publication | Lease, authority and source checks precede visibility; attempt keys are tracked | Fence both admission and completion; independently reconcile all late attempt writes |
-| Other metadata APIs | Request authentication plus route-specific checks | Audit every mutation for an atomic generation check, including profile/claim/invitation transitions |
+| Library metadata APIs | Album/section/rename/organisation/date mutations now recheck live account/session/membership and current owner role atomically; personal allocation rechecks recovery | Deploy the correction; complete generation coverage and audit remaining profile/claim/invitation transitions |
 | Backups | Independent scheduled writer; all versions are retained | Shared fencing protocol, active-writer acknowledgement and historical replacement verification |
 | Decision evidence | Verified protected custody, independent archive recovery and single-operator live intent synchronization | Bind verified executor outcomes; coordinate application and backup writers before fulfilment |
 
