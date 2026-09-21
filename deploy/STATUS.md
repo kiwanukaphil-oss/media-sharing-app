@@ -216,3 +216,12 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Both primary and legacy origins return 200 for application and operational health. Primary anonymous account-deletion preview returns 401; legacy-origin account routes retain their deliberate 403 boundary.
 - No schema, secret, pilot audience or budget change; no account or media was erased. Owner signing custody and the initial independent empty archive were separately verified; general lifecycle execution remains open.
 - Hosted Web checks `35652294580` passed verification and full browser jobs for deployed source `828bb9f`.
+
+## 22 September 2026 - Library metadata authority
+
+- Deployed source `df7f4b3` as Worker `2b08bccf-a9ce-4962-8942-7c698d99c613`; remote readback confirms 100% (21 September 22:29 UTC / 22 September 01:29 Nairobi).
+- Library owner mutations now recheck live authority inside D1, including current owner role. Direct archive/restore and restart commits recheck access; personal-space allocation/retry rejects authentication preceding recovery.
+- Focused actual-D1 stale-authority tests, full local API/account-access regressions, lint, TypeScript, build and deployment dry run pass. Hosted Web checks `35662558689` passed both verification and browser jobs.
+- Both origins returned health/operational-health 200 and anonymous feed 401. Primary hosted sections passed create/upload/move/Undo/remove/restore/deep-link/exact-byte download. One tiny generated original remains in Relay verification; no user original was removed.
+- Pilot audience, 1 GiB personal budget, existing secrets and migrations through 0018 remain unchanged. Closure/backup-coordinator prototypes are not activated. Provider removal rehearsal awaits the specific owner approval described in `docs/PROVIDER-ERASURE-REHEARSAL.md`.
+- Independent backup refresh `35663011013` passed inventory, copy and separate Backblaze restoration. Snapshot `2026-09-21T22-31-05-943Z-8d72d96c-46cb-402f-a6f5-57c8e8bad75b` protects all 25 originals (321,680,743 bytes); one content object uploaded and 24 reused. Hash/relationship/access-revocation verification passed; failure reporting was correctly skipped.
