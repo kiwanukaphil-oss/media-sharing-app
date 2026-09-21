@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
 import { acceptRecoveryEvent } from "@/lib/account-recovery";
+import { acceptOperationsReport, readOperationsHealth } from "@/lib/operations-health";
 import { listLegacyAccess, revokeLegacyAccess } from "@/lib/legacy-reconciliation";
 import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
@@ -23,6 +24,13 @@ async function serveRequest(request: Request) {
     const segments = new URL(request.url).pathname.slice(5).split("/");
     if (segments.length > 4 || new URL(request.url).search.length > 2048) throw new ApiError(400, "Invalid request address.");
     await limitPublicRequest(request, segments[0]);
+    if (segments.length === 2 && segments[0] === "operations" && segments[1] === "health") {
+      if (!["GET", "POST"].includes(request.method)) throw new ApiError(405, "Method not allowed.");
+      const response = request.method === "GET" ? await readOperationsHealth(bucket(), process.env.RELAY_MONITOR_SECRET) :
+        await acceptOperationsReport(request, bucket(), process.env.RELAY_MONITOR_SECRET);
+      for (const [name, value] of Object.entries(privateResponseHeaders(requestId))) response.headers.set(name, value);
+      return response;
+    }
     if (segments.length === 2 && segments[0] === "auth" && segments[1] === "recovery-event") {
       const response = await acceptRecoveryEvent(request, database(), readAuth0Settings(process.env), process.env.AUTH0_RECOVERY_SECRET);
       for (const [name, value] of Object.entries(privateResponseHeaders(requestId))) response.headers.set(name, value);

@@ -22,6 +22,11 @@ export async function verifySecurityHardening(origin, dispatch = fetch) {
   assert.equal(unauthenticated.status, 401);
   assert.equal(unauthenticated.headers.get('x-content-type-options'), 'nosniff');
   assert.ok(unauthenticated.headers.get('x-request-id'));
+  const operations = await dispatch(`${origin}/api/operations/health`);
+  assert.equal(operations.status, 503, 'Unconfigured monitoring must fail closed.');
+  assert.deepEqual(await operations.json(), { status: 'degraded' });
+  assert.equal(operations.headers.get('cache-control'), 'no-store');
+  assert.equal((await probeSecurityRoute(`${origin}/api/operations/health`, { method: 'POST', headers, body: '{"status":"success"}' })).status, 403);
   assert.equal((await probeSecurityRoute(`${origin}/api/feed?q=${'x'.repeat(2050)}`)).status, 400);
   assert.equal((await probeSecurityRoute(`${origin}/api/connect`, { method: 'POST', headers, body: 'x'.repeat(1024 * 1024 + 1) })).status, 413);
   let limited = false;

@@ -47,3 +47,11 @@ The current [pricing comparison](https://auth0.com/pricing) places log streaming
 - Hosted run 35579243839 failed closed on a rejected provider request. Safe diagnostics now include only the request stage and HTTP status, never the provider response body. Monitoring is not yet scheduled or declared healthy.
 
 - Diagnostic run 35579333179 isolated the rejection to profile retrieval (HTTP 400), after token and log requests succeeded. Profile retrieval now uses the documented field-exclusion mode to avoid including last_password_reset in the provider field allowlist. Tests verify exclusion of profile/identity metadata and retention of the required reset evidence. Hosted verification follows.
+
+## Free-plan missed-run detection
+
+- Hosted provider run 35579499914 passed after correcting profile field selection. Both scopes are sufficient; no wider grant needed.
+- Better Stack marks an additional heartbeat as billable. No heartbeat or upgrade was created. The existing backup heartbeat stays separate.
+- A small authenticated reporting endpoint, `/api/operations/health`, is implemented for the existing Worker. GitHub reports success only if both provider and identity checks pass. Public GET returns only ok/degraded; a failure, absent/corrupt report, missing key or report older than 90 minutes yields HTTP 503. Reports contain no identities, counts or provider details.
+- A separate HMAC reporting key can update only the one R2 operational status object. Requests are bounded to 1 KiB and five-minute delivery freshness. Conditional writes prevent delayed or concurrent success from masking newer failure; duplicate reports do not refresh the deadline. This grants no account/media/recovery authority. Status is disposable operational state, not part of original-file backup manifests; an isolated restore starts unhealthy until checks run again.
+- Real R2 emulator tests cover signatures, streaming limits, replay, ordering/races, freshness and fail-closed behaviour. Ordinary HTTP monitoring will be configured after hosted receiver verification; no alerting activation is claimed yet.

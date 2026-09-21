@@ -1,5 +1,5 @@
 name: Auth0 recovery monitor
-# Manual activation only until dedicated read-only provider access and alert delivery are verified.
+# Manual activation until the receiver and external HTTP monitor are verified.
 on:
   workflow_dispatch:
 permissions:
@@ -21,8 +21,22 @@ jobs:
         with:
           node-version: '24'
       - name: Inspect provider failures and reconcile known reset timestamps without writes
+        id: provider
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
           AUTH0_MONITOR_CLIENT_ID: ${{ secrets.AUTH0_MONITOR_CLIENT_ID }}
           AUTH0_MONITOR_CLIENT_SECRET: ${{ secrets.AUTH0_MONITOR_CLIENT_SECRET }}
         run: node --disable-warning=ExperimentalWarning scripts/check-auth0-recovery.mjs
+      - name: Inspect the identity review queue and recorded session consistency
+        id: identity
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
+        run: node --disable-warning=ExperimentalWarning scripts/check-identity-operations.mjs
+      - name: Report combined health without private diagnostics
+        if: always()
+        env:
+          RELAY_MONITOR_SECRET: ${{ secrets.RELAY_MONITOR_SECRET }}
+          IDENTITY_CHECK_OUTCOME: ${{ steps.identity.outcome }}
+          PROVIDER_CHECK_OUTCOME: ${{ steps.provider.outcome }}
+        run: node scripts/report-identity-health.mjs

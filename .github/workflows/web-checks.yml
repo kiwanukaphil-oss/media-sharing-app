@@ -28,6 +28,7 @@ jobs:
       - run: node tests/identity-migration.mjs
       - run: node tests/identity-runtime.mjs
       - run: node --disable-warning=ExperimentalWarning tests/identity-operations.mjs
+      - run: node tests/operations-health.mjs
       - run: node tests/auth0-client.mjs
       - run: node tests/auth0-recovery-actions.mjs
       - run: node --disable-warning=ExperimentalWarning tests/auth0-recovery-monitor.mjs

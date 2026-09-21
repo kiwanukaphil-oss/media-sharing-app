@@ -615,3 +615,7 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] User authorised dedicated provider access; exact read:logs/read:users grant and main-only encrypted GitHub credential storage verified. Extra read:logs_users selection removed.
 - [x] Hosted Web checks passed source 256a614 (run 35576738489).
 - [ ] Resolve the first hosted provider request rejection (run 35579243839); safe stage/status diagnostics added. Provider monitor remains manual and release gate open.
+
+- [x] Hosted provider reconciliation passed (run 35579499914); Auth0 profile inclusion rejected the reset field, so supported exclusions now minimise the response.
+- [x] Implement signed aggregate health reporting with fail-closed 90-minute freshness and real R2 race/replay tests. This avoids a paid second heartbeat while preserving the independent backup heartbeat.
+- [ ] Deploy/report-check the endpoint and configure ordinary external HTTP monitoring before scheduling the combined job.
