@@ -1,0 +1,25 @@
+{
+  "name": "relay-publication-rehearsal",
+  "main": "publication-rehearsal-worker.ts",
+  "account_id": "5afd1facc45c9ddd86114155b09fc2e2",
+  "compatibility_date": "2026-09-21",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "relay-publication-rehearsal",
+      "database_id": "a22d670e-2a20-4266-9f07-0601406a0d56",
+      "migrations_dir": "../drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "relay-publication-rehearsal"
+    }
+  ],
+  "vars": {
+    "REHEARSAL_EXPIRES_AT": "0",
+    "REHEARSAL_RUN_ENABLED": "false"
+  }
+}

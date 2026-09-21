@@ -9,7 +9,7 @@
 
 Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Memberships, explicit legacy owner claims and account-scoped library access are live for the designated-account pilot; live sign-in/recovery/claim checks passed. General release and remaining operational gates are outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**At a glance:** 2 phases complete; 11/47 parent work items complete. Phase 2 is deployed as a restricted designated-account pilot; general account access remains closed; the designated-account personal pilot has a 1 GiB total allocation. Live Worker: `fe4fa894-f45e-4c7d-93a6-4ced1a355774` at 100%. Remote migrations are applied through 0018; all existing library rows were verified unchanged. Latest independent backup/restore verified 23 originals (304,899,366 bytes); all 20 earlier original records remain unchanged.
+**At a glance:** 2 phases complete; 15/47 parent work items complete. Phase 2 is deployed as a restricted designated-account pilot; general account access remains closed; the designated-account personal pilot has a 1 GiB total allocation. Live Worker: `fe4fa894-f45e-4c7d-93a6-4ced1a355774` at 100%. Remote migrations are applied through 0018; all existing library rows were verified unchanged. Latest independent backup/restore verified 23 originals (304,899,366 bytes); all 20 earlier original records remain unchanged.
 
 **Next action:** Confirm monitor email receipt and observe the first scheduled run; complete live personal/publication checks and lifecycle operations. Isolated operator repair rehearsal passed. Real callback and eight-hour temporary sign-in are verified; the password-change trigger is connected and applied. The approved recovery email was sent and Resend confirms delivery. Password change and notification-driven revocation are verified before fresh sign-in: the old browser is signed out and D1 records revocation 416 ms after the provider reset timestamp. Gmail shows the recovery email in Inbox with SPF, DKIM and DMARC PASS. Fresh sign-in and provider logout are verified; Auth0 audit confirms Success Logout. Trusted-browser sign-in is verified with a seven-day lifetime. The approved existing-library migration is verified: the designated account owns Our shared space, the primary-origin device is paired and promoted, and both original devices retain access. Operational gates remain outstanding. Recovery notification passed its hosted synthetic test after correcting an Auth0 CommonJS compatibility issue. Automated failure monitoring, deletion operations, personal budget, live membership/publication checks and general release remain outstanding. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md). The original verification message went to Spam; the subsequent recovery message passed inbox and authentication checks. B02 remains resolved.
 
@@ -19,7 +19,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 | --- | --- | --- | --- | --- |
 | 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
 | 1 | Albums with custom sections | Done | 6/6 | Live; hosted and recovery checks passed |
-| 2 | People, recoverable accounts and personal/shared spaces | In progress | 0/7 complete features; completed milestones checked below | Memberships, legacy claims and live recovery verification |
+| 2 | People, recoverable accounts and personal/shared spaces | In progress | 4/7 complete features in restricted pilot | Deletion/retention execution and remaining operational gates |
 | 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
 | 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
@@ -129,7 +129,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Implement authenticated recovery events, monotonic password-change tracking and signed-login reconciliation; revoke older sessions without changing library membership. **Locally tested; migrations 0016-0017 and Auth0 Action sources prepared.**
   - [x] Verify real password recovery, pre-login notification-driven revocation, fresh sign-in and provider logout. **Live designated-account verification complete; automated failure monitoring remains a separate release gate.**
 
-- [ ] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
+- [x] **P2-02 — Implement person and session foundations.** Add identities and space memberships, link authorised sessions, enforce requested-space access on the server, and support session listing, temporary/trusted sessions and remote sign-out.
 
   - [x] Implement stable provider identities and separate, hashed account-session storage. **Locally tested; migration 0008 prepared.**
   - [x] Implement one-time, browser-bound sign-in transactions and replay protection. **Locally tested; migration 0007 prepared.**
@@ -139,7 +139,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Enforce person membership and explicit requested-space context at the shared file/library API boundary; connect account libraries, previews, edits and captured upload destinations to the UI. **Locally tested; migration 0010 prepared.**
   - [x] Implement temporary/trusted session choices and connect account sessions to authorised space access. **Locally tested; migration 0012 prepared. Temporary defaults to 8 hours; trusted is an explicit 7-day choice.**
 
-- [ ] **P2-03 — Migrate legacy access deliberately.** Provide verified account/space claims and recovery; separate Connect my device from Invite a person. Never merge users by device labels, overwrite existing memberships or relabel shared spaces as personal.
+- [x] **P2-03 — Migrate legacy access deliberately.** Provide verified account/space claims and recovery; separate Connect my device from Invite a person. Never merge users by device labels, overwrite existing memberships or relabel shared spaces as personal.
 
   - [x] Implement owner-claim preview and confirmation using a verified account plus a current owner-device credential. **Locally tested.**
   - [x] Bind claims to a recent account session, expire previews after five minutes, prevent replay/conflicting claims and record immutable claim evidence. **Real-D1 race and revocation tests passed.**
@@ -148,15 +148,15 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Separate signing in on another device from email-bound person invitations, with preview/explicit acceptance and owner revocation. **Implemented and locally verified; migration 0013 prepared.**
   - [x] Add owner-only paired-device inventory, verified claim labels, individual disconnection and explicit retirement of all paired access while preserving account ownership and files. **Locally tested, including pairing races.**
   - [x] Review the actual legacy-device audience and verify the complete migration flow with the real provider. **User-approved live claim completed on 21 September: original desktop owner and phone member retained; new primary-origin owner device explicitly linked to the designated account.**
-  - [ ] Verify claims and recovery with the real provider, then apply the reviewed migration and release.
+  - [x] Verify claims and recovery with the real provider, apply migrations through 0018 and release within the designated-account pilot. General onboarding remains gated by P2-07.
 
-- [ ] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
+- [x] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
 
   - [x] Open an explicitly selected library from Account; carry scope through previews, filters, mutations and transfer manifests. Reset mounted library state on navigation and clear rendered content when access is denied. **Locally tested.**
   - [x] Add My space with a fixed 1 GiB allocation per person and an explicit operator-set total allocation budget, disabled by default. Preserve existing shared-space quotas. **Locally tested; migration 0011 prepared.**
   - [x] Add a grouped library switcher, cross-space queue restoration and destination links. Only current account memberships can restore local manifests; upload/cancel/restart retain the manifest destination. Full navigation warns for active transfers and reselecting the original resumes in its captured library. **Browser tested with identity fixtures.**
-  - [ ] Configure the production allocation budget and verify My space and switching with real identities before release.
-- [ ] **P2-05 — Provide explicit publication.** Implement the approved private-to-shared copy flow with source/destination permission checks, audience confirmation, storage accounting, verified completion and clear independent-copy semantics.
+  - [x] Configure a 1 GiB total pilot allocation and verify My space, upload destination, separate shared counts and switching with the real designated identity. Cross-person denial and transfer retention pass the actual-schema/browser suites.
+- [x] **P2-05 — Provide explicit publication.** Implement the approved private-to-shared copy flow with source/destination permission checks, audience confirmation, storage accounting, verified completion and clear independent-copy semantics.
 - [ ] **P2-06 — Complete account lifecycle and retention rules.** Recovery, ownership transfer, leaving a space, offboarding, account-deletion handling and shared-content ownership have explicit policies and supported flows. Preserve deletion/revocation decisions through restore.
 
   - [x] Invalidate restored account sessions and pending sign-in attempts so old credentials cannot revive. **Restore tests passed.**
@@ -171,11 +171,11 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Pass existing API regressions, account UI checks, build, lint, TypeScript and backup-restore checks. **Local verification complete for the current increment.**
   - [x] Commit and push the tested account/session increment and supporting documentation. **`0218360` on main.**
   - [x] Verify real Auth0 sign-in, recovery and provider logout end to end. **Live temporary/trusted sign-in, password-change revocation and provider audit evidence recorded.**
-  - [ ] Verify membership/claim migration, cross-person and cross-space privacy, in-flight transfers and older-client compatibility.
-  - [ ] Apply reviewed production migrations, activate sign-in and record hosted verification and rollback boundaries.
+  - [x] Verify live claim/migration and personal/shared UI boundaries; actual-schema cross-person/cross-space and browser in-flight destination tests plus legacy API regressions pass. Hosted isolated D1/R2 publication race checks also pass.
+  - [x] Apply migrations through 0018, activate restricted pilot sign-in and record hosted verification and rollback boundaries. General release remains closed until operational/lifecycle gates pass.
 
 
-**Checkbox guide:** Checked milestones above are complete at the stated level. Unchecked parent items still contain outstanding work; locally tested code is not yet a live feature. Phases 0 and 1 remain fully checked off.
+**Checkbox guide:** P2-02 through P2-05 are completed features in the restricted live pilot, supported by local/hosted evidence. Phase 2 and general onboarding remain incomplete because P2-01/P2-06/P2-07 still have release gates. Checked milestones above are complete at the stated level. Unchecked parent items still contain outstanding work; locally tested code is not yet a live feature. Phases 0 and 1 remain fully checked off.
 
 **Acceptance scenarios:** Joining Family does not expose My space or replace Studio membership. A lost device can be revoked without deleting shared work. Recovery requires ownership proof. Personal content cannot be discovered through counts, covers, search, activity, Trash or original download routes. Restoring a backup does not revive revoked sessions.
 
@@ -633,10 +633,19 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Publish the synthetic 1,127-byte PNG only after the live dialog explains the shared audience and independent-copy semantics. Copy published successfully; original-byte backup verification follows.
 - [x] Independently restore snapshot 2026-09-21T09-04-10-836Z-76478b50-0d2d-4ba9-97a3-73fea8e7536b: 23 originals / 304,899,366 bytes, every hash and database relationship verified. Personal test source and shared copy have distinct object keys/spaces and matching expected SHA-256. All 20 baseline original rows remain unchanged.
 - [x] Fix misleading initial account-library labels and publication progress: opening a personal library no longer briefly says Shared library / Not paired; active publication/cancellation has accurate progress wording. Lint, types, build, deployment and live opening-state readback passed (fe4fa894-f45e-4c7d-93a6-4ced1a355774 at 100%).
-- [ ] Complete remaining hosted interruption/revocation scenarios.
+- [x] Pass separate cloud D1/R2 rehearsal of normal copy, interruption/retry, destination revocation before visibility and cancellation; all four generated sources survive, two intended copies remain, no unfinished operations. Rehearsal endpoint disarmed after verification.
 
 ## 21 September 2026 - Account-erasure review inventory
 
 - [x] Add a read-only private erasure planner for a local database snapshot and an existing request. Exact personal ownership determines scope; shared attribution never makes shared files deletion candidates.
 - [x] Verify actual-schema cases: personal Trash and unfinished uploads included, shared copies retained, other people's personal files excluded, B2 duplicate-content dependencies identified, last-owner and withdrawn/restored intent blocked. Planning makes no database changes and always remains non-executable.
 - [ ] Complete provider/live-object/all-backup-version inventory, write freeze, minimisation and restore-ledger execution/rehearsal. Concrete irreversible-operation authority remains required; no real account deletion was requested or performed.
+
+## 21 September 2026 - Isolated hosted publication rehearsal
+
+- [x] Prepare a separately authenticated, expiring test Worker with dedicated D1/R2 resources and generated fixtures. Initialisation refuses any populated app database/bucket; no production credentials or provider calls.
+- [x] Seed and independently inventory four synthetic cases, then run the unchanged production copy/session/membership modules against actual cloud D1/R2: normal copy; post-write interruption and retry; destination revocation during the write; cancellation during the write.
+- [x] Verify four sources survive and two independent copies have matching hashes. Final D1 state: six ready originals, two ready publications, two cancelled publications and zero unfinished publications. Temporary copy attempts are cleaned by the tested workflow; generated source originals remain retained.
+- [x] Disarm/expire the dedicated test endpoint after verification. Separate resource IDs, versions and reproducible checks are in [the rehearsal record](HOSTED-PUBLICATION-REHEARSAL.md). Resources are flagged for later retirement, not purged.
+
+P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verified within the restricted pilot. Operational/lifecycle general-release gates remain explicit; this does not open sign-up or change the pilot audience.
