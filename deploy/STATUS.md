@@ -1,5 +1,9 @@
 # Direct Cloudflare deployment
 
+## Latest web polish - 21 September 2026
+
+Worker `fe4fa894-f45e-4c7d-93a6-4ced1a355774` is at 100%, with the same 1 GiB pilot allocation and schema. Account-library loading now uses neutral Library / Opening labels until verified scope arrives; People & access waits for a confirmed shared library. Publication and cancellation show their actual busy state. Lint, type checking, production build, dry run, deployment readback, live health and live loading-state UI verification passed. Recovery monitoring manual run 35581282633 also passed. Snapshot 2026-09-21T09-04-10-836Z-76478b50-0d2d-4ba9-97a3-73fea8e7536b independently restored all 23 originals (304,899,366 bytes). Original test source/copy hashes match, keys differ, and all 20 baseline original records remain unchanged. The two clearly named synthetic PNGs are retained as verification evidence; no user originals were changed or removed.
+
 ## Latest personal pilot configuration - 21 September 2026
 
 Worker `f096dd18-8262-46b8-af0c-fa7e23a87da3` is verified at 100%. The only runtime setting change is a 1 GiB total personal allocation (`1073741824`); the designated-account pilot, provider audience and existing shared quotas are unchanged. Runtime-config tests, deployment dry run and live public/private-boundary health passed. My space creation, personal upload, separate shared counts, grouped switching and deliberate publication of a synthetic PNG are verified through the signed-in UI. Independent restoration and remaining adversarial publication verification are ongoing. No schema change. Combined recovery monitoring is scheduled at minutes 13/43 UTC; test-alert receipt remains pending.

@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker f096dd18-8262-46b8-af0c-fa7e23a87da3 is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Total personal allocation is 1 GiB for the designated-account pilot.
+Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker fe4fa894-f45e-4c7d-93a6-4ced1a355774 is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Total personal allocation is 1 GiB for the designated-account pilot.
 
 ## Prepared and verified locally
 
@@ -59,3 +59,5 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 5. If activation fails, disable new identity sign-in/allocation and return to the last compatible Worker while retaining the added schema and data. Do not roll the database back after users have created personal spaces, memberships or publications: an old snapshot can lose files or revive revoked access. Existing account users need a clear service-status/recovery path; a rollback to a legacy-only Worker is not feature-equivalent.
 
 Both Auth0 handoffs are verified. The user authorised one recovery email to the designated test account on 21 September; it was sent and Resend confirms delivery (01a0c2b0-56c2-723b-aeff-b671fdde0bf5). The restricted pilot receiver is live and hosted synthetic notification succeeds. Real sign-in and password-change trigger binding are verified. Password change, old-session revocation before fresh login, and Inbox authentication are verified. New sign-in and provider logout are verified. Trusted-browser verification is complete. Existing-library owner connection and actual device audience are verified. Next: operational release gates. Automated monitoring remains outstanding. Later collaboration/privacy phases remain dependent on these identity release gates.
+
+Latest recovery point: 2026-09-21T09-04-10-836Z-76478b50-0d2d-4ba9-97a3-73fea8e7536b independently restored 23 originals / 304,899,366 bytes. The synthetic personal original and published copy have distinct R2 keys and matching expected SHA-256. All 20 baseline original rows remain unchanged. Recovery checks passed again after allocation activation (35581282633). Hosted adversarial interruption/revocation and lifecycle execution remain open.

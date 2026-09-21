@@ -25,7 +25,8 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
   const [intent, setIntent] = useState<Publication | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [destinationLoaded, setDestinationLoaded] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState<"publishing" | "cancelling" | null>(null);
+  const busy = operation !== null;
   const [published, setPublished] = useState(false);
   const [error, setError] = useState("");
   const destinationApi = useMemo(() => createLibraryApi(destinationId), [destinationId]);
@@ -67,22 +68,22 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
   async function publishCopy() {
     const captured = intent || { id: crypto.randomUUID(), sourceId: item.id, sourceRevision: item.revision || 0,
       destinationSpaceId: destinationId, albumId: albumId || null, sectionId: sectionId || null };
-    setIntent(captured); setBusy(true); setError("");
+    setIntent(captured); setOperation("publishing"); setError("");
     try {
       await sourceApi.requestJson("publications", { method: "POST", body: JSON.stringify({ ...captured,
         albumId: captured.albumId || undefined, sectionId: captured.sectionId || undefined, confirmed: true }) });
       setPublished(true);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "The copy could not be completed. Retry or cancel it."); }
-    finally { setBusy(false); }
+    finally { setOperation(null); }
   }
 
   // A server-confirmed cancellation releases the reservation; closing a failed dialog merely leaves it resumable.
   async function cancelCopy() {
     if (!intent) { onClose(); return; }
-    setBusy(true); setError("");
+    setOperation("cancelling"); setError("");
     try { await sourceApi.requestJson(`publications/${intent.id}`, { method: "DELETE" }); onClose(); }
     catch (failure) { setError(failure instanceof Error ? failure.message : "Cancellation failed. Please retry."); }
-    finally { setBusy(false); }
+    finally { setOperation(null); }
   }
 
   const destinationName = destinations.find(destination => destination.id === destinationId)?.name || "Unavailable library";
@@ -101,8 +102,8 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
       </div>}
       <div className="publication-audience"><strong>Who can see this copy</strong><p>Everyone with access to {destinationName}, including paired devices and people its owners invite later.</p><p>This is an independent original, including any embedded location or other metadata. Deleting it from My space will not remove the shared copy or anyone&apos;s downloads.</p></div>
       {intent && !busy && <p className="small-muted">This publication keeps its original destination. Retry it, or cancel before choosing another.</p>}
-      {busy && <p role="status" className="publication-progress"><LoaderCircle size={18} className="spin" /> Copying and checking the original. Keep this tab open.</p>}
-      <div className="confirmation-actions"><button className="button secondary" disabled={busy} onClick={() => void cancelCopy()}>{intent ? "Cancel publication" : "Cancel"}</button><button className="button primary" disabled={busy || intent?.phase === "cancelling" || !loaded || !destinationLoaded || !destinationId || !destinations.some(destination => destination.id === destinationId)} onClick={() => void publishCopy()}>{intent ? "Retry publication" : "Publish copy"}</button></div>
+      {busy && <p role="status" className="publication-progress"><LoaderCircle size={18} className="spin" /> {operation === "cancelling" ? "Cancelling the copy and releasing its reserved storage." : "Copying and checking the original. Keep this tab open."}</p>}
+      <div className="confirmation-actions"><button className="button secondary" disabled={busy} onClick={() => void cancelCopy()}>{intent ? "Cancel publication" : "Cancel"}</button><button className="button primary" disabled={busy || intent?.phase === "cancelling" || !loaded || !destinationLoaded || !destinationId || !destinations.some(destination => destination.id === destinationId)} onClick={() => void publishCopy()}>{busy ? operation === "cancelling" ? "Cancelling…" : "Publishing…" : intent ? "Retry publication" : "Publish copy"}</button></div>
     </>}
   </dialog>;
 }
