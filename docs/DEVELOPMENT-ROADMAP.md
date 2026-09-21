@@ -656,3 +656,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Verify old/hidden versions, both pagination formats, duplicate/out-of-scope records, unknown actions, missing cursors and service failures; add regression coverage to CI.
 - [x] Run against the live backup prefix: 43 versions, zero unfinished uploads, private report saved. No objects or credentials changed.
 - [ ] Reconcile historical snapshot identity references, live R2/multipart state, write freeze, minimisation and independent erasure-ledger evidence. A complete catalog is not an atomic inventory or deletion authority; P2-06 remains unchecked.
+
+## 21 September 2026 - Isolated erased-snapshot minimisation
+
+- [x] Implement and test an in-memory snapshot transformation bound to the historical provider identity; future tables/columns require explicit review.
+- [x] Remove synthetic private-library records and identifying account fields while retaining independent shared originals, other personal libraries and valid tombstone references. Verify replay stability and disabled restored access.
+- [x] Pass all 11 existing backup recovery tests plus the new actual-schema minimisation suite. No production snapshot, original, account or backup version changed.
+- [ ] Authenticate the external erasure ledger and complete live/provider/object/all-version execution and end-to-end restore verification. Rehearsal output remains quarantined and does not claim cloud erasure.
