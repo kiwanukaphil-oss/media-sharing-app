@@ -17,7 +17,8 @@ async function readProviderJson(request, path, options) {
   try {
     response = await request(`${providerOrigin}${path}`, { ...options, redirect: 'error', signal: AbortSignal.timeout(15000) });
   } catch { fail('Auth0 monitoring request could not complete.'); }
-  if (!response.ok) fail('Auth0 monitoring request was rejected; review credentials, rate limits or provider availability.');
+  const stage = path === '/oauth/token' ? 'token' : path.startsWith('/api/v2/logs?') ? 'logs' : 'profile';
+  if (!response.ok) fail(`Auth0 monitoring request was rejected (${stage}, HTTP ${response.status}); review credentials, rate limits or provider availability.`);
   const chunks = [];
   let length = 0;
   try {

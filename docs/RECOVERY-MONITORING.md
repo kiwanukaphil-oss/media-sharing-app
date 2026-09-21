@@ -1,6 +1,6 @@
 # Recovery monitoring and reconciliation
 
-Updated 21 September 2026. Provider-side monitor implemented and locally tested; dedicated Auth0 authorisation and hosted activation remain outstanding. No new provider credential has been created. Restricted pilot remains active.
+Updated 21 September 2026. Provider-side monitor implemented and locally tested; dedicated Auth0 authorisation and protected credential installation are complete. First hosted execution rejected a provider request; activation remains incomplete. Restricted pilot remains active.
 
 ## What is already running
 
@@ -39,3 +39,9 @@ Actual-schema tests cover the local queue and revocation invariants. Provider-bo
 Auth0 documents [log retrieval through the Management API](https://auth0.com/docs/deploy-monitor/logs/retrieve-log-events-using-mgmt-api), [user-read scope](https://auth0.com/docs/manage-users/user-accounts/manage-users-using-the-management-api), and [Action failure event filters](https://auth0.com/docs/customize/log-streams/event-filters). Detailed execution traces remain a dashboard investigation; the generic log API is not a replacement for Action Details.
 
 The current [pricing comparison](https://auth0.com/pricing) places log streaming on paid tiers. Polling avoids making the trial's stream availability a production dependency. Tokens for Auth0's own Management API [do not count against custom-API M2M token quotas](https://auth0.com/docs/secure/tokens/access-tokens/management-api-access-tokens); rate limits still apply. No paid upgrade is authorised or selected. Recheck actual tenant entitlement after trial expiry.
+
+## 21 September activation evidence
+
+- User created Relay Recovery Monitor and saved permissions. An extra read:logs_users selection was removed; readback confirms exactly read:users and read:logs (2/273). Client ID: 1Rakur48pyVj6WOVy3Yyb4cY31E0IEpb.
+- Both monitor settings were installed in the main-only relay-backup-copy environment. No credential printed or committed.
+- Hosted run 35579243839 failed closed on a rejected provider request. Safe diagnostics now include only the request stage and HTTP status, never the provider response body. Monitoring is not yet scheduled or declared healthy.
