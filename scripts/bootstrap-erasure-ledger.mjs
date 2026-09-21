@@ -8,6 +8,7 @@ import { auditErasureLedgerArchive,erasureArchivePrefix,prepareErasureArchiveEnt
 import { readCurrentErasureArchive } from './read-erasure-ledger-archive.mjs';
 import { inventoryBackupVersions } from './inventory-backup-versions.mjs';
 import { authorizeBackupRole,downloadBackupFile,operationsDirectory,runPrivateCommand,storageRequest,uploadBackupFile } from './backup-storage.mjs';
+import { withErasureWriterLock } from './erasure-writer-lock.mjs';
 
 // Bootstrap can sign only an empty decision set, including freshness renewal while setup is unfinished.
 // Once a real decision exists, this entry point refuses to act; it cannot replace or fulfil a request.
@@ -77,6 +78,6 @@ async function bootstrapVerifiedCustody() {
 }
 
 if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
-  try {await bootstrapVerifiedCustody();}
+  try {await withErasureWriterLock(resolve(operationsDirectory,'erasure-signing-custody'),bootstrapVerifiedCustody);}
   catch {console.error('Ledger bootstrap held for custody/archive review; no account erasure performed.');process.exitCode=1;}
 }

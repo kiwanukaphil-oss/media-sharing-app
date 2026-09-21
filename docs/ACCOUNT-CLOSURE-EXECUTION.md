@@ -29,7 +29,7 @@ Withdrawal remains available until the approved execution starts. Once physical 
 | Publication | Lease, authority and source checks precede visibility; attempt keys are tracked | Fence both admission and completion; independently reconcile all late attempt writes |
 | Other metadata APIs | Request authentication plus route-specific checks | Audit every mutation for an atomic generation check, including profile/claim/invitation transitions |
 | Backups | Independent scheduled writer; all versions are retained | Shared fencing protocol, active-writer acknowledgement and historical replacement verification |
-| Decision evidence | Signature verification and isolated minimisation helpers | Independent recoverable signing custody, append history, current-head reader and real transition producer |
+| Decision evidence | Verified protected custody, independent archive recovery and single-operator live intent synchronization | Bind verified executor outcomes; coordinate application and backup writers before fulfilment |
 
 **Waiting one hour is not proof of a freeze.** A presigned URL's expiry bounds admission, not necessarily the completion of a request admitted earlier. Equal before/after listings detect observed changes but do not exclude a late writer. The executor must prove writer quiescence or continue reconciliation and remain unfulfilled. It must not convert a convenient settling interval into an erasure guarantee.
 
