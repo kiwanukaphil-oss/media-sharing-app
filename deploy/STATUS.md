@@ -121,3 +121,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Added honest retention and operator execution runbook, read-only queue query and restored-request review hold. Verified irreversible erasure/backup reconciliation and request monitoring remain release gates.
 - Passed lint, TypeScript, build, account-access/D1 regressions, account phone/desktop browser tests and 11 backup checks. Phone request-status screenshot inspected. Hosted CI passed recovery commit `7871635` and legacy reconciliation commit `89db785`.
 - Production unchanged. Migrations 0007-0018 remain local; no live deletion or account request was performed.
+
+
+## 21 September 2026 - Phase 2 release preparation
+
+- Populated Phase 1 upgrade rehearsal through migration 0018 passed without changing existing credentials, media/object references, uploads, Trash, albums or custom sections/covers. Added the rehearsal to hosted CI.
+- `deploy/identity-runtime.json` now explicitly controls public Auth0 settings and total personal allocation. Current values keep identity disabled and allocation at zero; the preparation script rejects unknown/secret fields and invalid origins/budgets. Configuration checks and lint passed.
+- Provider setup is waiting for user sign-in because Auth0's dashboard session expired. The dashboard tab is retained for that handoff. No provider Action, secret, migration or release was applied live.
+- Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.

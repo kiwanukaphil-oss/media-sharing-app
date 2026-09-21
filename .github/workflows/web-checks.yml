@@ -25,6 +25,8 @@ jobs:
       - run: node tests/preparation-progress.mjs
       - run: node tests/preview-lifecycle.mjs
       - run: node tests/album-section-migration.mjs
+      - run: node tests/identity-migration.mjs
+      - run: node tests/identity-runtime.mjs
       - run: node tests/auth0-client.mjs
       - run: node tests/auth0-recovery-actions.mjs
       - run: node tests/device-role-migration.mjs
