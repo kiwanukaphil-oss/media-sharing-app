@@ -98,4 +98,10 @@ Setup independently downloads the pinned B2 version, verifies its bytes, decrypt
 
 Even a successful current-head read reports `cutoverAllowed: false` and `cloudErasureVerified: false`. It authenticates current decision evidence; it does not perform account erasure, freeze writers or verify retained original bytes.
 
+## Empty archive bootstrap prepared
+
+After verified owner custody, `node scripts/bootstrap-erasure-ledger.mjs` can initialise and publish an **empty** signed journal using the Windows-protected key. It verifies the protected/public roots agree, audits any existing remote chain, uploads only missing matching immutable revisions and independently reads the final current head. A different/ahead remote history stops for review. All operator details remain private.
+
+The bootstrap is deliberately incapable of creating, changing or fulfilling a person's decision. It refuses any populated journal. Re-running a fresh empty bootstrap is idempotent; an expired empty manifest can be renewed while retaining its earlier signed history. These paths and wrong-key rejection pass synthetic tests. Actual execution remains pending the owner's password/custody handoff; no production journal/archive has been created yet. General decision publishing and coordinated production writers remain separate implementation work.
+
 Output remains limited to the named legacy device profiles with `cutoverAllowed: false` and `cloudErasureVerified: false`. Deliberately shared filenames, organisation and original-file metadata remain governed by the shared-content retention policy; these tests do not claim complete anonymisation.
