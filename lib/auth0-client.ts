@@ -6,7 +6,9 @@ export const AUTH0_TRANSACTION_LIFETIME_MS = 10 * 60 * 1000;
 export type Auth0LoginTransaction = {
   state: string; nonce: string; verifier: string; browserBinding: string; expiresAt: number; sessionMode?: AccountSessionMode;
 };
-export type VerifiedAuth0Identity = { issuer: string; subject: string; displayName: string; verifiedEmail: string | null; providerSessionId?: string };
+export const PASSWORD_CHANGE_CLAIM = "https://relayalbums.com/credentials_changed_at";
+export type VerifiedAuth0Identity = { issuer: string; subject: string; displayName: string; verifiedEmail: string | null;
+  authenticatedAt: number; credentialsChangedAt: number; providerSessionId?: string };
 
 // Use the maintained OIDC implementation and require signed ID tokens as well as TLS, issuer and audience checks.
 export async function discoverAuth0Client(settings: Auth0Settings, transport?: oidc.CustomFetch) {
@@ -55,8 +57,13 @@ export async function completeAuth0Login(settings: Auth0Settings, configuration:
   });
   const claims = tokens.claims();
   if (!claims || typeof claims.sub !== "string" || !claims.sub || claims.iss !== settings.issuer) throw new Error("A verified account identity was not returned.");
+  const changedAt = claims[PASSWORD_CHANGE_CLAIM];
+  if (typeof claims.auth_time !== "number" || !Number.isSafeInteger(claims.auth_time) || claims.auth_time <= 0 ||
+      typeof changedAt !== "number" || !Number.isSafeInteger(changedAt) || changedAt < 0 || changedAt > now ||
+      claims.auth_time * 1000 < changedAt) throw new Error("Account recovery verification is unavailable. Start sign-in again.");
   // Never return access/refresh/ID tokens to the browser or use email equality to merge accounts.
   return { issuer: claims.iss, subject: claims.sub,
+    authenticatedAt: claims.auth_time * 1000, credentialsChangedAt: changedAt,
     displayName: typeof claims.name === "string" ? claims.name.slice(0, 100) : "Relay account",
     verifiedEmail: claims.email_verified === true && typeof claims.email === "string" ? claims.email : null,
     ...(typeof claims.sid === "string" && claims.sid.length > 0 && claims.sid.length <= 512 ? { providerSessionId: claims.sid } : {}) };

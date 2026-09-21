@@ -223,3 +223,25 @@ The publication identifier is idempotent and binds person/source/revision/destin
 Restore converts unfinished publications into cancellation-required state, with memberships and sessions already suspended. It never resumes a historical sharing intent automatically. Published records and independent original bytes remain part of normal backup verification.
 
 Checksum semantics were checked against [Cloudflare R2 Workers API reference](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/). Local tests exercise real D1/R2 and production routes. Race tests use a tiny-fixture Node bridge to inject changes before the production commit; this buffering exists only in the test bridge. Hosted runtime/large-file verification remains outstanding.
+
+
+## Password-change invalidation (21 September 2026, local)
+
+`lib/account-recovery.ts`, migrations 0016-0017 and `deploy/auth0/*.cjs` implement provider-to-Relay recovery coordination. The trusted identity key remains issuer + subject, never email. Password timestamps are integer Unix milliseconds; signed `auth_time` is converted from seconds. Authentication in the same second but before the precise reset timestamp is deliberately rejected: start a fresh sign-in rather than relaxing the boundary.
+
+The Post Login Action adds the required `https://relayalbums.com/credentials_changed_at` ID-token claim, using 0 only when Auth0 reports no password-reset history. Relay requires this claim and a fresh signed authentication time. A database batch advances the person's watermark, revokes older authentication and issues a new session only at or after that watermark. A stale in-flight callback cannot recreate access after a reset. A successful sign-in also reconciles a reset whose notification was missed.
+
+The Post Change Password Action sends only issuer, subject and reset time to `POST /api/auth/recovery-event`. This exact route uses HMAC-SHA256 verification instead of browser Origin authentication; no other account mutation is exempted. It authenticates the timestamp plus body, bounds the body to 4 KiB, allows a five-minute delivery window, and uses Web Crypto verification. D1 stores one monotonic watermark per identity, including notifications before an identity exists locally. Duplicate and reordered events do not revoke newer authentication. Unknown identities receive the same response. No passwords or provider tokens are sent or stored.
+
+### Activation checklist (outstanding)
+
+- [ ] Create an independent 32-byte random secret (64 lowercase hex characters) through the secure local handoff. Store the identical ASCII hex value as Worker `AUTH0_RECOVERY_SECRET` and Action `RELAY_RECOVERY_SECRET`; never place it in Git or output.
+- [ ] Install `deploy/auth0/post-login.cjs` in the Post Login flow; set Action `RELAY_CLIENT_ID` to Relay Web's client ID. Missing or mis-scoped installation prevents sign-in by design.
+- [ ] Install `deploy/auth0/post-change-password.cjs` in the Post Change Password flow; set `RELAY_ISSUER` to the exact tenant issuer and `RELAY_ORIGIN` to `https://relayalbums.com`. The Action sends only to that pinned production origin and follows no redirects.
+- [ ] Apply migrations and configure the webhook before enabling the Action/login. Test with a designated account, including two Relay sessions, password reset, revoked old sessions, fresh sign-in, and genuine provider logout.
+- [ ] Configure redacted alerting for Action delivery failures and exercise reconciliation: inspect the affected provider identity securely, obtain its current reset timestamp, and replay a correctly signed event through the operator channel. A password reset is not declared verified until delivery and monitoring work.
+- [ ] Before disaster-recovery cutover, reconcile provider reset timestamps/current account status and recovery watermarks alongside membership decisions. Restored sessions and memberships already start revoked.
+
+The Action awaits up to two four-second HTTP attempts and reports only a fixed error on failure. Auth0 runs this trigger asynchronously and does not block a successful password reset on delivery. Thus notification is **not a guarantee of instantaneous invalidation**; an outage can leave an old session valid until successful reconciliation, explicit revocation or expiry. Signed-login reconciliation reduces that window when the user signs in again. The current work does not claim the real recovery gate is complete.
+
+Primary references: [Auth0 Post Change Password trigger](https://auth0.com/docs/customize/actions/explore-triggers/post-change-password), [Post Login event user fields](https://auth0.com/docs/actions/reference/post-login/post-login-event-object). Tests cover authentic/forged notifications, body limits, expiry, issuer isolation, duplicate/out-of-order delivery, pre-signup events, callback races, unaffected accounts, missing signed claims and Action retry limits. No live Action configuration or recovery email was performed in this increment.

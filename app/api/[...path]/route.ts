@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
+import { acceptRecoveryEvent } from "@/lib/account-recovery";
 import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
@@ -21,6 +22,11 @@ async function serveRequest(request: Request) {
     const segments = new URL(request.url).pathname.slice(5).split("/");
     if (segments.length > 4 || new URL(request.url).search.length > 2048) throw new ApiError(400, "Invalid request address.");
     await limitPublicRequest(request, segments[0]);
+    if (segments.length === 2 && segments[0] === "auth" && segments[1] === "recovery-event") {
+      const response = await acceptRecoveryEvent(request, database(), readAuth0Settings(process.env), process.env.AUTH0_RECOVERY_SECRET);
+      for (const [name, value] of Object.entries(privateResponseHeaders(requestId))) response.headers.set(name, value);
+      return response;
+    }
     // Native clients have no browser Origin; browser mutations retain strict CSRF checks.
     const nativePairing = segments[0] === "native" && segments[1] === "connect";
     if (request.method !== "GET" && (request.headers.has("Origin") || (!nativePairing && !request.headers.has("Authorization")))) assertSameOrigin(request);

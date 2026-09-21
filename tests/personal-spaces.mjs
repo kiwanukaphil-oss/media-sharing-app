@@ -12,7 +12,7 @@ const settings = { issuer: 'https://access.auth0.com/', clientId: 'access-test',
 export async function verifyPersonalSpaces(database, dispatch) {
   const login = async subject => {
     const result = await accounts.createAccountSession(database, settings,
-      { issuer: settings.issuer, subject, displayName: subject, verifiedEmail: `${subject}@example.test` }, null);
+      { issuer: settings.issuer, subject, displayName: subject, authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: `${subject}@example.test` }, null);
     return { ...result, ...await accounts.readAccountSession(database, settings, result.token) };
   };
   const alice = await login('personal-alice');

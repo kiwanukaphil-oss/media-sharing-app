@@ -12,7 +12,7 @@ export async function verifySpacePeople(database, dispatch) {
   const now = Date.now();
   const login = async subject => {
     const created = await accounts.createAccountSession(database, settings, { issuer: settings.issuer, subject,
-      displayName: subject, verifiedEmail: `${subject}@example.test` }, null);
+      displayName: subject, authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: `${subject}@example.test` }, null);
     return { ...created, ...await accounts.readAccountSession(database, settings, created.token) };
   };
   const [owner, guest, stranger] = await Promise.all(['people-owner', 'people-guest', 'people-stranger'].map(login));

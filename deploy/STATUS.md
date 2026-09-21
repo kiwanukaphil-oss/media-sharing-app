@@ -98,3 +98,11 @@ Migration `0013_concerned_naoko.sql` adds bounded person invitations, membership
 ## Verified publication prepared - 21 September 2026
 
 Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add durable publication intent and attempt-key history. Explicit private-to-shared copies, quota reservations, checksum validation, retries/cancellation and the web workflow are locally verified. Hosted streaming/interruption checks remain release gates. No production migration, allocation change or Worker release was performed; production remains at Phase 1 and migrations 0007-0015 are prepared only.
+
+
+## 21 September 2026 - P2 recovery invalidation (local only)
+
+- Added migrations 0016-0017, required signed password-change/authentication claims and authenticated provider recovery notifications. Older Relay sessions are revoked atomically; current identities, memberships and media are preserved.
+- Auth0 Action source and installation/monitoring checklist are in `deploy/auth0` and `docs/IDENTITY-AND-SPACES-IMPLEMENTATION.md`. Nothing was installed in the live tenant; no recovery email was sent.
+- Passed lint, TypeScript, production build, protocol/Action tests, full API/security and account-access/D1 regressions, and ten backup checks. Hosted CI for the preceding publication commit `22f024e` passed.
+- Live Worker remains `76609db5-810c-4c08-8968-6c8b4dcd97d7`; migrations 0007-0017 remain unapplied remotely. Actual provider recovery/logout/callback, notification failure monitoring, lifecycle/legacy reconciliation and release checks remain gates.

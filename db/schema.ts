@@ -16,7 +16,15 @@ export const people = sqliteTable("people", {
   verifiedEmail: text("verified_email").notNull(),
   createdAt: integer("created_at").notNull(),
   disabledAt: integer("disabled_at"),
+  credentialsChangedAt: integer("credentials_changed_at").notNull().default(0),
 }, table => [uniqueIndex("idx_people_provider_identity").on(table.issuer, table.subject)]);
+
+// Keep a monotonic recovery watermark even when a reset precedes the first Relay sign-in.
+export const recoveryWatermarks = sqliteTable("recovery_watermarks", {
+  issuer: text("issuer").notNull(),
+  subject: text("subject").notNull(),
+  changedAt: integer("changed_at").notNull(),
+}, table => [primaryKey({ columns: [table.issuer, table.subject] })]);
 
 // Account credentials cannot be used as legacy device credentials or grant space access.
 export const accountSessions = sqliteTable("account_sessions", {
@@ -29,6 +37,7 @@ export const accountSessions = sqliteTable("account_sessions", {
   revokedAt: integer("revoked_at"),
   sessionMode: text("session_mode", { enum: ["temporary", "trusted"] }).notNull().default("trusted"),
   providerSessionId: text("provider_session_id"),
+  authenticatedAt: integer("authenticated_at").notNull().default(0),
 }, table => [index("idx_account_sessions_person").on(table.personId)]);
 
 // Short-lived login attempts are separate from identities and never grant space access.

@@ -10,7 +10,7 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   const now = Date.now();
   const createLogin = async subject => {
     const login = await accounts.createAccountSession(database, settings,
-      { issuer: settings.issuer, subject, displayName: subject, verifiedEmail: subject + '@example.test' }, null);
+      { issuer: settings.issuer, subject, displayName: subject, authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: subject + '@example.test' }, null);
     return { ...login, ...await accounts.readAccountSession(database, settings, login.token) };
   };
   const alice = await createLogin('alice');

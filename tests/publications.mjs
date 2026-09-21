@@ -10,7 +10,7 @@ const settings = { issuer: 'https://access.auth0.com/', clientId: 'access-test',
 
 // Use actual D1/R2 and production routes. Inject races only at storage completion, before the real publication commit.
 export async function verifyPublications(database, bucket, dispatch) {
-  const identity = { issuer: settings.issuer, subject: 'publisher', displayName: 'Publisher', verifiedEmail: 'publisher@example.test' };
+  const identity = { issuer: settings.issuer, subject: 'publisher', displayName: 'Publisher', authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: 'publisher@example.test' };
   const login = await accounts.createAccountSession(database, settings, identity, null);
   const account = await accounts.readAccountSession(database, settings, login.token);
   const personal = crypto.randomUUID();

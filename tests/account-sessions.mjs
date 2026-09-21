@@ -9,7 +9,7 @@ const sessions = modules.find(module => module.createAccountSession);
 const settings = { issuer: 'https://test.auth0.com/', clientId: 'test-client', clientSecret: 'test-secret',
   appOrigin: 'https://relay.example', callbackUrl: 'https://relay.example/api/auth/callback' };
 const randomValue = () => Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
-const identity = subject => ({ issuer: settings.issuer, subject, displayName: 'Test account', verifiedEmail: 'same@example.test' });
+const identity = subject => ({ issuer: settings.issuer, subject, displayName: 'Test account', authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: 'same@example.test' });
 const request = (action, cookie = '', method = 'GET', origin = settings.appOrigin) => new Request(`${settings.appOrigin}/api/auth/${action}`,
   { method, headers: { Cookie: cookie, Origin: origin } });
 
@@ -62,7 +62,7 @@ export async function verifyAccountSessions(database) {
   await database.prepare('UPDATE people SET disabled_at = ? WHERE id = ?').bind(now, bob.personId).run();
   assert.equal(await sessions.readAccountSession(database, settings, second.token, now), null);
   await assert.rejects(sessions.createAccountSession(database, settings, identity('bob'), null, now), /unavailable/);
-  await assert.rejects(sessions.createAccountSession(database, settings, { ...identity('unverified'), verifiedEmail: null }, null, now), /Verify/);
+  await assert.rejects(sessions.createAccountSession(database, settings, { ...identity('unverified'), authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: null }, null, now), /Verify/);
   assert.deepEqual(await (await api.accountAction(request('session'), database, null)).json(), { enabled: false, account: null });
   await assert.rejects(api.accountAction(request('login'), database, null), /not available/);
   await verifyCallbackOrchestration(database);

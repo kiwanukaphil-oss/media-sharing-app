@@ -25,7 +25,7 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     d1Databases: ['DB'], r2Buckets: ['BUCKET'],
     ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_DOMAIN: 'access.auth0.com',
       AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
-      PERSONAL_STORAGE_BUDGET_BYTES: '2147483648' } } : {}),
+      AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648' } } : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
   }],
@@ -54,6 +54,8 @@ try {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
   } else if (accountAccessChecks) {
+    const { verifyAccountRecovery } = await import('../tests/account-recovery.mjs');
+    await verifyAccountRecovery(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyAccountSpaceAccess } = await import('../tests/account-space-access.mjs');
     await verifyAccountSpaceAccess(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyPersonalSpaces } = await import('../tests/personal-spaces.mjs');

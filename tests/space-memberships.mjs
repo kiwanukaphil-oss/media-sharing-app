@@ -17,7 +17,7 @@ export async function verifySpaceMemberships(database) {
   await database.prepare('INSERT INTO spaces (id,name,created_at) VALUES (?, ?, ?)').bind(spaceId, 'Claim fixture', now).run();
   const person = async subject => {
     const login = await accounts.createAccountSession(database, settings,
-      { issuer: settings.issuer, subject, displayName: subject, verifiedEmail: subject + '@example.test' }, null, now);
+      { issuer: settings.issuer, subject, displayName: subject, authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: subject + '@example.test' }, null, now);
     return accounts.readAccountSession(database, settings, login.token, now);
   };
   const device = async (role = 'owner') => {

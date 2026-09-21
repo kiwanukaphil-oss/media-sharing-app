@@ -113,6 +113,20 @@
       "when": 1789968109462,
       "tag": "0015_romantic_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1789969170294,
+      "tag": "0016_optimal_thor_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1789969200481,
+      "tag": "0017_salty_valkyrie",
+      "breakpoints": true
     }
   ]
 }

@@ -36,6 +36,11 @@ export function clearAccountCookie() {
 export async function createAccountSession(database: D1Database, settings: Auth0Settings,
   identity: VerifiedAuth0Identity, previousToken: string | null, now = Date.now(), mode: AccountSessionMode = "temporary") {
   const lifetime = accountSessionLifetime(mode);
+  if (!Number.isSafeInteger(identity.authenticatedAt) || identity.authenticatedAt <= 0 || identity.authenticatedAt > now + 60_000 ||
+      !Number.isSafeInteger(identity.credentialsChangedAt) || identity.credentialsChangedAt < 0 ||
+      identity.credentialsChangedAt > now || identity.authenticatedAt < identity.credentialsChangedAt) {
+    throw new AccountError(403, "Account recovery verification is unavailable. Sign in again.");
+  }
   if (identity.issuer !== settings.issuer || !identity.subject || identity.subject.length > 255 ||
       !identity.verifiedEmail || identity.verifiedEmail.length > 320) {
     throw new AccountError(403, "Verify your email address before signing in to Relay.");
@@ -45,18 +50,23 @@ export async function createAccountSession(database: D1Database, settings: Auth0
   const binding = await configurationHash(settings);
   const previousHash = previousToken && validToken(previousToken) ? await digest(previousToken) : "";
   const results = await database.batch([
-    database.prepare(`INSERT INTO people (id, issuer, subject, display_name, verified_email, created_at)
-      VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(issuer, subject) DO UPDATE SET
-      display_name = excluded.display_name, verified_email = excluded.verified_email WHERE people.disabled_at IS NULL`)
-      .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now),
-    database.prepare(`INSERT INTO account_sessions (id, person_id, token_hash, configuration_hash, created_at, expires_at, session_mode, provider_session_id)
-      SELECT ?, id, ?, ?, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL`)
-      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.issuer, identity.subject),
+    database.prepare(`INSERT INTO people (id, issuer, subject, display_name, verified_email, created_at, credentials_changed_at)
+      VALUES (?, ?, ?, ?, ?, ?, MAX(?, COALESCE((SELECT changed_at FROM recovery_watermarks WHERE issuer = ? AND subject = ?), 0))) ON CONFLICT(issuer, subject) DO UPDATE SET
+      display_name = excluded.display_name, verified_email = excluded.verified_email,
+      credentials_changed_at = MAX(people.credentials_changed_at, excluded.credentials_changed_at) WHERE people.disabled_at IS NULL`)
+      .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now, identity.credentialsChangedAt, identity.issuer, identity.subject),
+    database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE revoked_at IS NULL AND person_id IN
+      (SELECT id FROM people WHERE issuer = ? AND subject = ?) AND authenticated_at <
+      (SELECT credentials_changed_at FROM people WHERE issuer = ? AND subject = ?)` )
+      .bind(now, identity.issuer, identity.subject, identity.issuer, identity.subject),
+    database.prepare(`INSERT INTO account_sessions (id, person_id, token_hash, configuration_hash, created_at, expires_at, session_mode, provider_session_id, authenticated_at)
+      SELECT ?, id, ?, ?, ?, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL AND credentials_changed_at <= ?`)
+      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.authenticatedAt, identity.issuer, identity.subject, identity.authenticatedAt),
     database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE token_hash = ? AND configuration_hash = ?
       AND revoked_at IS NULL AND EXISTS (SELECT 1 FROM account_sessions WHERE id = ?)`)
       .bind(now, previousHash, binding, sessionId),
   ]);
-  if (!results[1].meta.changes) throw new AccountError(403, "This account is unavailable.");
+  if (!results[2].meta.changes) throw new AccountError(403, "This account is unavailable.");
   return { token, sessionId };
 }
 
@@ -67,7 +77,7 @@ export async function readAccountSession(database: D1Database, settings: Auth0Se
     p.verified_email AS verifiedEmail, s.created_at AS createdAt, s.expires_at AS expiresAt, s.session_mode AS sessionMode
     FROM account_sessions s JOIN people p ON p.id = s.person_id
     WHERE s.token_hash = ? AND s.configuration_hash = ? AND s.revoked_at IS NULL
-    AND s.expires_at > ? AND p.disabled_at IS NULL`)
+    AND s.expires_at > ? AND p.disabled_at IS NULL AND s.authenticated_at >= p.credentials_changed_at`)
     .bind(await digest(token), await configurationHash(settings), now).first<AccountSession>();
 }
 
