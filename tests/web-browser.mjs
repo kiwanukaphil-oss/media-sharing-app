@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium, firefox, webkit } from '@playwright/test';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 
 const origin = process.env.RELAY_TEST_ORIGIN || 'http://localhost:5173';
 if (!['localhost', '127.0.0.1'].includes(new URL(origin).hostname)) throw new Error('Browser fixtures require the local test database.');
@@ -14,7 +14,13 @@ async function verifyBrowser(engine, options, label) {
   const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1440, height: 1000 } });
   await context.addInitScript(() => { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); });
   const page = await context.newPage();
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  let intentionalOffline = false;
+  const errors = [], diagnostics = [];
+  page.on('pageerror', error => {
+    errors.push(error.message);
+    diagnostics.push({event:'pageerror',name:error.name,message:error.message,stack:error.stack,intentionalOffline});
+  });
+  page.on('requestfailed', request => diagnostics.push({event:'requestfailed',url:request.url(),failure:request.failure(),intentionalOffline}));
   page.on('dialog', dialog => dialog.accept());
   try {
     await page.goto(origin);
@@ -79,12 +85,18 @@ async function verifyBrowser(engine, options, label) {
     await page.locator('.category-filter-disclosure summary').click();
     await page.locator('.filter-tabs').getByRole('button', { name: /^All files/ }).click();
     await expect(page.locator('article')).toHaveCount(2);
+    intentionalOffline = true;
     await context.setOffline(true);
     await expect(page.getByText(/Connection interrupted. Your queue/)).toBeVisible();
     await context.setOffline(false);
     await expect(page.getByText(/Connection interrupted. Your queue/)).toHaveCount(0);
+    intentionalOffline = false;
     assert.deepEqual(errors, []);
     console.log(`PASS ${label}: upload, exact-byte download, search, trash/restore, final cut, quota, dialog, responsive layout, persistent pairing, offline feedback.`);
+  } catch (failure) {
+    await writeFile(`.sites-runtime/browser-results/${label}-failure.json`,JSON.stringify({message:failure.message,diagnostics},null,2));
+    await page.screenshot({path:`.sites-runtime/browser-results/${label}-failure.png`,fullPage:true}).catch(()=>{});
+    throw failure;
   } finally { await browser.close(); }
 }
 

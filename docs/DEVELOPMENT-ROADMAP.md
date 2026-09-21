@@ -729,3 +729,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Add and test unsigned association evidence preparation from an independently digest-pinned source snapshot. Check exact provider identity, recorded claim/session/membership relationships, space agreement and chronology; never infer ownership from matching labels.
 - [x] Prepare private evidence from the verified production backup for one person and one recorded legacy claim. No account, original or backup changed; no fulfilment decision was signed.
 - [ ] Independently establish historical completeness and retain provenance through the deployed ledger workflow. Local preparation explicitly reports incomplete verification and cannot authorise erasure or restore cutover. See [erasure ledger](ERASURE-LEDGER.md).
+
+## 21 September 2026 - Transfer commit revocation safeguards
+
+- [x] Recheck current account/session/recovery/membership or legacy-device authority atomically when reserving uploads and publishing completed originals/previews. Reject cached request authority after revocation; clean up rejected new allocations and previews.
+- [x] Verify real D1 revocation, expiry, cross-person/space denial, personal ownership and recovery-watermark cases. Production-module API suites pass, including existing multipart, quota, publication and library workflows.
+- [ ] Finish browser/hosted checks and deploy this increment. This is a prerequisite for lifecycle freezing; issued direct-transfer capabilities and other writers still need coordinated fencing. P2-06 remains unchecked.
+- [x] Add failure artifacts for an intermittent hosted WebKit offline-test error seen in run `35620693844`; keep the strict no-page-error assertion. No speculative frontend change or relaxed assertion is included.

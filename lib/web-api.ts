@@ -3,6 +3,7 @@ import { libraryAction, requireAlbum } from "./library-api";
 import { ApiError, bucket, database, requireMedia, requireOwner, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
 import type { MediaItem } from "./contracts";
 import { cancelPublication } from "./publications";
+import { transferAuthority } from "./transfer-authority";
 
 // Stable keyset pagination avoids duplicates when a new drop arrives between page requests.
 export async function readFeed(request: Request, device: ActiveDevice) {
@@ -97,13 +98,21 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   if (size < 4 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[size - 2] !== 255 || bytes[size - 1] !== 217) throw new ApiError(415, "Invalid JPEG preview.");
+  const authority = transferAuthority(device);
   const reserved = await database().prepare(`UPDATE media SET preview_size = ? WHERE id = ? AND status = 'ready' AND preview_ready = 0 AND preview_size = 0
-    AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE space_id = ?) + ? <= ?`).bind(size, id, device.space_id, size, spaceLimitBytes(device)).run();
+    AND archived_at IS NULL AND ${authority.sql}
+    AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE space_id = ?) + ? <= ?`)
+    .bind(size, id,...authority.bindings,device.space_id, size, spaceLimitBytes(device)).run();
   if (!reserved.meta.changes) return Response.json({ ready: false });
   try {
     await bucket().put(`${item.object_key}.preview.jpg`, bytes, { httpMetadata: { contentType: "image/jpeg" } });
-    const committed = await database().prepare("UPDATE media SET preview_ready = 1 WHERE id = ? AND status = 'ready'").bind(id).run();
-    if (!committed.meta.changes) await bucket().delete(`${item.object_key}.preview.jpg`);
+    const current = transferAuthority(device);
+    const committed = await database().prepare(`UPDATE media SET preview_ready = 1 WHERE id = ? AND status = 'ready'
+      AND archived_at IS NULL AND ${current.sql}`).bind(id,...current.bindings).run();
+    if (!committed.meta.changes) {
+      await bucket().delete(`${item.object_key}.preview.jpg`);
+      throw new ApiError(409, "This preview could not be saved because the file or library access changed.");
+    }
   } catch (failure) {
     await database().prepare("UPDATE media SET preview_size = 0 WHERE id = ? AND preview_ready = 0").bind(id).run(); throw failure;
   }

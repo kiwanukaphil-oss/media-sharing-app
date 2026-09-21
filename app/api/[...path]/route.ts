@@ -12,6 +12,7 @@ import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
 import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, requireOwner, sessionCookie, signedObjectUrl, spaceLimitBytes, storageMode, tokenHash, uploadSchema } from "@/lib/server";
+import { transferAuthority } from "@/lib/transfer-authority";
 
 export const dynamic = "force-dynamic";
 const deviceName = z.string().trim().min(1).max(60);
@@ -226,8 +227,12 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
         await bucket().delete(item.object_key);
         throw new ApiError(409, "File size did not match. Restart this transfer to send the original again.");
       }
-      const published = await database().prepare("UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ?").bind(item.id, device.id, item.upload_id).run();
+      const authority = transferAuthority(device);
+      const published = await database().prepare(`UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ? AND ${authority.sql}`)
+        .bind(item.id, device.id, item.upload_id,...authority.bindings).run();
       if (!published.meta.changes) {
+        if (!await database().prepare(`SELECT 1 WHERE ${authority.sql}`).bind(...authority.bindings).first())
+          throw new ApiError(403, "Library access changed. This transfer has not been published.");
         const latest = await database().prepare("SELECT status FROM media WHERE id = ?").bind(item.id).first<{ status: string }>();
         if (latest?.status === "ready") return Response.json({ ready: true });
         // Completion can race an explicit cancellation; remove a late R2 object left by that race.

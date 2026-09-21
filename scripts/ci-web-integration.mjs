@@ -60,6 +60,8 @@ try {
     await verifyAccountRecovery(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyAccountSpaceAccess } = await import('../tests/account-space-access.mjs');
     await verifyAccountSpaceAccess(database, (url, options) => emulator.dispatchFetch(url, options));
+    const { verifyTransferAuthority } = await import('../tests/transfer-authority.mjs');
+    await verifyTransferAuthority(database);
     const { verifyPersonalSpaces } = await import('../tests/personal-spaces.mjs');
     await verifyPersonalSpaces(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyLegacyReconciliation } = await import('../tests/legacy-reconciliation.mjs');
