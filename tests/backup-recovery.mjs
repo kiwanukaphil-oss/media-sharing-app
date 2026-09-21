@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
 import { checkDatabase, completedOriginals, sanitizeRestoredAccess } from '../scripts/relay-backup.mjs';
 import { backupBucketId, validateFileDigest, validateKeyScope } from '../scripts/backup-storage.mjs';
 
@@ -120,4 +121,40 @@ test('restoration prevents unfinished publication from resuming and preserves co
     assert.deepEqual({ ...database.prepare("SELECT phase,lease_expires_at FROM publications WHERE id='in-flight'").get() }, { phase: 'cancelling', lease_expires_at: 0 });
     assert.equal(database.prepare("SELECT phase FROM publications WHERE id='finished'").get().phase, 'ready');
   } finally { database.close(); }
+});
+
+test('restoration quarantines closure and interrupted backup/storage work without inventing completion', () => {
+  const database=new DatabaseSync(':memory:');
+  try {
+    // Apply actual reviewed migrations plus the isolated protocol, not a simplified schema imitation.
+    const migrations=JSON.parse(readFileSync('drizzle/meta/_journal.json','utf8')).entries;
+    for(const path of [...migrations.map(row=>`drizzle/${row.tag}.sql`),'deploy/closure-fence-prototype.sql'])database.exec(readFileSync(path,'utf8'));
+    database.exec(`INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES('person','https://fixture.invalid/','fixture','Fixture','fixture@example.invalid',1);
+      INSERT INTO account_deletion_requests VALUES('request','person',1,'review_required',2);
+      INSERT INTO closure_fences VALUES('fence','person','request',1,1,'draining','plan','decision','approval',2);
+      INSERT INTO closure_write_admissions(id,kind,person_id,generation,state,started_at) VALUES('account','account','person',0,'active',1);
+      INSERT INTO closure_write_admissions(id,kind,generation,state,started_at) VALUES('backup','backup',0,'active',1),('finished','backup',0,'settled',1);
+      INSERT INTO closure_backup_runs VALUES('backup','snapshot',NULL,1),('finished','older','receipt',1);
+      INSERT INTO closure_storage_effects(id,admission_id,object_key,operation,state,started_at) VALUES
+        ('effect','account','fixture/object','put','active',1),('old-effect','finished','fixture/old','put','acknowledged',1);`);
+    sanitizeRestoredAccess(database,12345);
+    assert.equal(database.prepare('SELECT phase FROM closure_fences').get().phase,'review_required');
+    assert.equal(database.prepare('SELECT disabled_at FROM people').get().disabled_at,12345);
+    assert.deepEqual(database.prepare('SELECT state FROM closure_write_admissions ORDER BY id').all().map(row=>row.state),['uncertain','uncertain','settled']);
+    assert.deepEqual(database.prepare('SELECT state FROM closure_storage_effects ORDER BY id').all().map(row=>row.state),['uncertain','acknowledged']);
+    assert.equal(database.prepare("SELECT receipt_digest FROM closure_backup_runs WHERE id='backup'").get().receipt_digest,null);
+    assert.equal(database.prepare("SELECT receipt_digest FROM closure_backup_runs WHERE id='finished'").get().receipt_digest,'receipt');
+    sanitizeRestoredAccess(database,12346);
+    assert.equal(database.prepare('SELECT disabled_at FROM people').get().disabled_at,12345);
+    checkDatabase(database);
+  } finally {database.close();}
+});
+
+test('partial closure schema cannot silently pass recovery sanitisation', () => {
+  const database=recoveryFixture();
+  try {
+    database.exec('CREATE TABLE closure_fences(id TEXT PRIMARY KEY)');
+    assert.throws(()=>sanitizeRestoredAccess(database,12345),/Incomplete closure schema/);
+    assert.equal(database.prepare('SELECT revoked_at FROM devices').get().revoked_at,null,'Failed review rolls back the entire sanitisation transaction');
+  } finally {database.close();}
 });

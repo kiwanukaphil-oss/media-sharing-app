@@ -49,10 +49,24 @@ export function completedOriginals(database) {
   return rows;
 }
 
+// An old snapshot cannot establish current writer completion or closure intent. Preserve its evidence,
+// hold every fence for review and prevent interrupted writers from resuming on the restored database.
+function quarantineRestoredClosureWork(database,now) {
+  const tables=['closure_fences','closure_write_admissions','closure_storage_effects','closure_backup_runs'];
+  const present=tables.filter(name=>database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(name));
+  if(!present.length)return;
+  if(present.length!==tables.length)throw new Error('Incomplete closure schema requires recovery review.');
+  database.exec("UPDATE closure_fences SET phase='review_required'");
+  database.prepare('UPDATE people SET disabled_at=COALESCE(disabled_at,?) WHERE id IN(SELECT person_id FROM closure_fences)').run(now);
+  database.prepare("UPDATE closure_write_admissions SET state='uncertain',settled_at=? WHERE state='active'").run(now);
+  database.exec("UPDATE closure_storage_effects SET state='uncertain' WHERE state='active'");
+}
+
 // Retain records for audit, but invalidate every old session/invitation before any restored app can use them.
 export function sanitizeRestoredAccess(database, now = Date.now()) {
   database.exec('BEGIN');
   try {
+    quarantineRestoredClosureWork(database,now);
     database.prepare('UPDATE devices SET revoked_at=?, expires_at=0').run(now);
     database.prepare('UPDATE invitations SET expires_at=0, redeemed_at=COALESCE(redeemed_at, ?)').run(now);
     // Ephemeral login attempts must not become usable again after restoring an older snapshot.
