@@ -694,6 +694,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Obtain the required approval, install the four existing credentials encrypted and activate the twice-hourly cron. Version `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2` verified at 100%; no additional provider permissions.
 - [x] Verify the first real cron invocation at 15:19 UTC: success, no exceptions, signed R2 report readback and HTTP 200 health. Hosted timing: 3,225 ms wall / 10 ms CPU.
 - [ ] Resolve Free-plan CPU headroom, continued coverage and pending external-alert receipt. Current Workers Free confirmed in dashboard; earlier $5 subscription note requires clarification before any billing change.
+- [x] Remove unnecessary Node compatibility from the dedicated monitor using bounded native decoding and Web Crypto. Regressions, real Workers runtime, TypeScript and lint pass; deployed version `49576315-efae-4b4d-b815-29532e4aac8d`. Reported startup fell 8 ms to 3 ms; actual scheduled invocation CPU remains to be measured.
 
 ## 21 September 2026 - Authenticated restore decision boundary
 

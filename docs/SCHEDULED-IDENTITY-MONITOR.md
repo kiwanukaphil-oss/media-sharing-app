@@ -36,3 +36,9 @@ The browser requires approval before copying the existing provider secret into a
 If credential installation or checks fail, keep the Worker disabled and use the existing manual combined workflow while investigating. Do not claim unattended monitoring is complete until hosted scheduled execution has been observed.
 
 The scheduled-execution observation gate is now met. [Cloudflare's current limits](https://developers.cloudflare.com/workers/platform/limits/#cpu-time) permit limited occasional CPU overruns, but sustained overruns can terminate execution. The observed success at 10 ms therefore does not justify broader pilot capacity or removing the independent missed-run alert. GitHub manual combined run `35616520323` also passed during activation; it remains a separate diagnostic path.
+
+## Runtime overhead reduction
+
+At 15:23 UTC, version `49576315-efae-4b4d-b815-29532e4aac8d` replaced the initial monitor version. It uses native streaming UTF-8 decoding and [Web Crypto HMAC](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/) rather than Node Buffer/crypto compatibility. Credentials, checks, response limits, signature bytes and twice-hourly schedule are unchanged. This dedicated Worker has no remaining Node dependencies, so removing its compatibility flag is deliberate; the main app's runtime is unaffected.
+
+Provider regressions, independent Node-HMAC signature comparisons, R2 delivery tests, native Workers success/failure events, UTF-8 boundary/size tests, TypeScript and lint pass. Deployment-reported startup fell from 8 ms to 3 ms. **Startup time is not invocation CPU time:** a real scheduled run of the new version is still needed before claiming CPU improvement. The initial 15:19 run remains the evidence for actual unattended scheduling, not for the new version's CPU capacity.

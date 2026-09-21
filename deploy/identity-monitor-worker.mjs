@@ -1,6 +1,7 @@
 import { inspectAuth0Recovery, recoveryPeopleQuery } from '../lib/provider-recovery-monitor.mjs';
 import { identityOperationsQuery, evaluateIdentityOperations } from '../lib/identity-operations-monitor.mjs';
 import { reportIdentityHealth } from '../lib/identity-health-report.mjs';
+import { readBoundedMonitorJson } from '../lib/monitor-json.mjs';
 
 const queryUrl='https://api.cloudflare.com/client/v4/accounts/5afd1facc45c9ddd86114155b09fc2e2/d1/database/6ee89ea2-f2b2-4b8e-a14f-601f22a61142/query';
 
@@ -11,9 +12,7 @@ async function readMonitorRows(token,sql,request) {
   const response=await request(queryUrl,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
     body:JSON.stringify({sql}),redirect:'error',signal:AbortSignal.timeout(15000)});
   if(!response.ok)throw new Error('Monitor database read failed.');
-  let length=0;const chunks=[];
-  for await(const chunk of response.body){length+=chunk.length;if(length>128*1024)throw new Error('Monitor inventory exceeds its bound.');chunks.push(chunk);}
-  const result=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  const result=await readBoundedMonitorJson(response);
   const entry=result.result?.[0];
   if(result.success!==true||result.result?.length!==1||entry?.success!==true||!Array.isArray(entry.results)||
     entry.meta?.changed_db!==false||entry.meta?.rows_written!==0)throw new Error('Monitor read verification failed.');

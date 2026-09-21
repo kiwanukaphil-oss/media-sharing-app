@@ -57,10 +57,10 @@ assert.deepEqual(await runScheduledIdentityMonitor(disabled.env,disabled.request
 assert.equal(disabled.calls.length,0);assert.equal(disabled.reports.length,0);
 assert.equal(worker.fetch(new Request('https://fixture/anything')).status,404);
 
-// Exercise the actual Workers runtime and Node-compat crypto import; disabled scheduling performs no IO.
-const compiled=await build({entryPoints:['deploy/identity-monitor-worker.mjs'],bundle:true,write:false,format:'esm',platform:'browser',external:['node:crypto']});
+// No Node compatibility or polyfills are permitted: checks/reporting use only native Workers Web APIs.
+const compiled=await build({entryPoints:['deploy/identity-monitor-worker.mjs'],bundle:true,write:false,format:'esm',platform:'browser'});
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'scheduled-monitor-test',modules:true,script:compiled.outputFiles[0].text,
-  compatibilityDate:'2026-09-21',compatibilityFlags:['nodejs_compat'],bindings:{MONITOR_ENABLED:'false'}}]}));
+  compatibilityDate:'2026-09-21',bindings:{MONITOR_ENABLED:'false'}}]}));
 try {
   assert.equal((await runtime.dispatchFetch('https://fixture/')).status,404);
   const runtimeWorker=await runtime.getWorker();
@@ -71,7 +71,7 @@ for(const providerFailure of [false,true]) {
   const bindings={...integration.env};
   delete bindings.RELAY;
   const enabledRuntime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'enabled-monitor-test',modules:true,
-    script:compiled.outputFiles[0].text,compatibilityDate:'2026-09-21',compatibilityFlags:['nodejs_compat'],bindings,
+    script:compiled.outputFiles[0].text,compatibilityDate:'2026-09-21',bindings,
     outboundService:async request=>integration.request(request.url,{method:request.method,headers:request.headers,
       body:request.method==='POST'?await request.text():undefined,redirect:'manual',signal:request.signal}),
     serviceBindings:{RELAY:async request=>{
