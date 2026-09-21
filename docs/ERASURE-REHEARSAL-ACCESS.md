@@ -1,12 +1,12 @@
 # Isolated backup-erasure rehearsal access
 
-Status: prepared on 21 September 2026; Backblaze browser sign-in required. No new credential has been created and no backup version has been deleted.
+Status: Backblaze sign-in verified on 21 September 2026. The first approved dashboard key was created, inspected and immediately revoked unused because its bundled role included bucket-setting writes. No backup object was changed. A replacement key form is staged for a separate empty private test bucket; revised-scope approval is pending.
 
 ## Purpose and exact boundary
 
-Exercise removal of obsolete versions of generated personal test data, preservation of a separately retained shared copy, and restoration of a minimised test snapshot. Use only generated identities, SQL and byte fixtures under `relay/erasure-rehearsal/2026-09-21/` in the existing private backup bucket. Production originals and snapshots live under different prefixes and are outside this test credential's scope.
+Exercise removal of obsolete versions of generated personal test data, preservation of a separately retained shared copy, and restoration of a minimised test snapshot. Use only generated identities, SQL and byte fixtures under `relay/erasure-rehearsal/2026-09-21/` in the separate private, encrypted bucket `relay-erasure-rehearsal-20260921-a72c` (ID `ddc78f086527c63bae090c11`). Production bucket `6d377f58d5e7b62bae090c11` is explicitly rejected by the test credential validator.
 
-Existing production roles remain unchanged: upload-only writer; read/list-only restore reader. A rehearsal credential must be limited to the existing bucket, this exact test prefix and a short expiry (one day at most). Necessary capabilities are list/read/delete files for verification and cleanup of generated versions; uploads use the existing writer. Do not grant bucket deletion, key management, retention bypass or access to production prefixes. If the dashboard cannot express that scope, prepare a safer supported route before requesting access approval.
+Existing production roles remain unchanged: upload-only writer; read/list-only restore reader. The dashboard's Read and Write role also grants bucket settings, including encryption, lifecycle, logging, notifications and replication. File prefixes do not make that role acceptable on the production bucket. The revised proposal isolates those permissions to the new test bucket, additionally restricts file names to the test prefix, disables listing all bucket names and expires after 3,600 seconds. No key administration, bucket deletion or retention/governance bypass is accepted. New test uploads use this test credential; the production writer cannot access the isolated bucket.
 
 The browser confirmation policy requires approval at the point of granting new security-sensitive access. Stage and show the exact achievable scope first. Store the credential through the existing ignored encrypted local handoff; never chat, Git or public CI. A signed-in account is needed to reach that concrete step. This document itself authorises no credential grant or production purge.
 
@@ -14,7 +14,10 @@ The browser confirmation policy requires approval at the point of granting new s
 
 - [x] Current all-version backup listing uses read-only access and includes hidden/old versions and unfinished uploads.
 - [x] Local minimisation uses an isolated database, binds the historical identity, preserves shared originals and disables restored access.
-- [ ] Create and verify a narrowly scoped, expiring rehearsal credential after the required browser approval.
+- [x] Verify signed-in access; reject and revoke the first overbroad dashboard key unused.
+- [x] Create a separate private encrypted empty test bucket and stage a one-hour key with the exact test prefix.
+- [x] Test production-bucket/prefix rejection, unexpected permissions/versions, checksums and preservation controls.
+- [ ] Obtain revised-scope approval, create the isolated-bucket credential and verify/store it through the local encrypted handoff.
 - [ ] Upload generated fixture versions and record a pinned manifest; reject any pre-existing or unexpected object in the rehearsal scope.
 - [ ] Verify removal is limited to the generated manifest's exact versions; preserve the test shared copy and minimise the replacement snapshot.
 - [ ] Independently list versions and restore the surviving test records/bytes; verify no removed identity or private original is reconstructed.

@@ -302,7 +302,7 @@ Planning dependencies are not incidents. The active external blocker is:
 | --- | --- | --- | --- | --- | --- |
 | B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; sender domain verified and scoped sending key created; Auth0 provider saved and verified; test and recovery emails delivered; restricted runtime, recovery and owner claim verified. No secrets in chat or Git. | Codex | 2026-09-20 | Resolved for restricted pilot: provider access, recovery, logout and owner connection verified; general-release operations tracked separately |
 | B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause reproduced: SQL expression depth exceeded D1 limit. Balanced concatenation passes local D1/API tests and a live read-only snapshot restore. Hosted backup, Backblaze restore and verification passed in run 35491216252. | Codex | 2026-09-20 | Resolved |
-| B03 | P2-06 cloud erasure rehearsal | Backblaze browser session is signed out. Existing automated backup credentials deliberately lack deletion capability. [Prepared rehearsal scope](ERASURE-REHEARSAL-ACCESS.md) restricts any future credential to generated test files; no new credential or purge performed. Local minimisation and read-only live inventories are complete. | User: sign in; Codex: stage scope and verify | 2026-09-21 | Awaiting Backblaze sign-in; browser access grant requires confirmation at the concrete action |
+| B03 | P2-06 cloud erasure rehearsal | Sign-in verified. First approved dashboard key unexpectedly included bucket-setting writes; revoked unused. Separate private encrypted test bucket created; replacement one-hour key staged. [Exact scope and safeguards](ERASURE-REHEARSAL-ACCESS.md). | User: revised access approval; Codex: execute and verify | 2026-09-21 | Awaiting required browser approval for the isolated test-bucket key |
 
 Phase 2 account/session, membership/claim, scoped library and personal-space code is implemented locally. Auth0 provider sign-in and email verification succeeded; live Relay callback/recovery, allocation settings and production migrations remain outstanding.
 
@@ -664,3 +664,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Remove synthetic private-library records and identifying account fields while retaining independent shared originals, other personal libraries and valid tombstone references. Verify replay stability and disabled restored access.
 - [x] Pass all 11 existing backup recovery tests plus the new actual-schema minimisation suite. No production snapshot, original, account or backup version changed.
 - [ ] Authenticate the external erasure ledger and complete live/provider/object/all-version execution and end-to-end restore verification. Rehearsal output remains quarantined and does not claim cloud erasure.
+
+## 21 September 2026 - Isolated erasure access safeguards
+
+- [x] Verify Backblaze sign-in and stage the approved prefix-limited key. Inspect issued permissions and revoke it unused when the dashboard includes bucket-setting writes. No secret stored and no backup data changed.
+- [x] Create separate empty, private, encrypted test bucket; stage a one-hour replacement key restricted to that bucket and test prefix. Revised scope awaits browser-required approval.
+- [x] Add guards/tests that reject the production bucket, wider prefixes, unexpected permissions, mismatched/unknown versions and missing shared-copy/snapshot preservation controls. Prepare same-origin, one-use, encrypted local credential handoff.
+- [x] Hosted Web checks passed the previous minimisation and documentation increments (35584536808 and 35584707696).
+- [ ] Complete the cloud erasure/restore rehearsal after the narrowly scoped access handoff.

@@ -31,6 +31,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/account-erasure-plan.mjs
       - run: node tests/backup-version-inventory.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs
+      - run: node tests/erasure-rehearsal-scope.mjs
       - run: node tests/operations-health.mjs
       - run: node tests/publication-rehearsal.mjs
       - run: node tests/auth0-client.mjs
