@@ -622,4 +622,4 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Create external monitor 4956708 on the existing Better Stack Free plan; verify Up, exact HTTP 200, three-minute checks/confirmation/recovery, TLS verification and email-only alerts. No paid upgrade.
 - [x] Send the user-authorised monitor test alert; Better Stack confirms sent.
 - [ ] Confirm inbox receipt and activate the twice-hourly combined workflow.
-- [ ] Rehearse operator repair with designated synthetic data before general release.
+- [x] Rehearse operator repair in isolated actual-schema D1 with designated synthetic identities and provider fixtures; detection, signed repair, independent readback, session isolation and unchanged library fingerprints passed. This is not a production-account repair.

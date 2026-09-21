@@ -29,7 +29,7 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Verify hosted provider and identity checks, signed failure reporting and recovery after real checks pass (35579499914, 35580179355, 35580503181).
 - [x] Configure external aggregate-health monitor 4956708 and verify Up on the Free plan. Missing/failed/stale reports fail closed; tests cover 90-minute expiry.
 - [ ] Verify test-alert receipt and schedule combined monitoring.
-- [ ] Rehearse operator repair with designated synthetic data.
+- [x] Rehearse operator repair with designated synthetic identities in isolated actual-schema D1: monitor detection, signed replay, independent watermark readback, old-session revocation, newer/unrelated-session preservation, library fingerprints and replay ordering passed. Real provider/receiver verification is recorded separately.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.
 - [x] Verify the real Relay callback and eight-hour temporary session with the designated account. No library access is inferred.

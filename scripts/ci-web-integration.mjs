@@ -70,6 +70,8 @@ try {
     await verifyPublications(database, await emulator.getR2Bucket('BUCKET'), (url, options) => emulator.dispatchFetch(url, options));
     const { verifyReadOnlyBackup } = await import('../tests/backup-d1-readonly.mjs');
     await verifyReadOnlyBackup(database);
+    const { verifyRecoveryRepair } = await import('../tests/recovery-repair-rehearsal.mjs');
+    await verifyRecoveryRepair(database);
   } else if (process.argv.includes('--capacity')) {
     const { verifyLibraryCapacity } = await import('../tests/library-capacity.mjs');
     await verifyLibraryCapacity(database, origin);
