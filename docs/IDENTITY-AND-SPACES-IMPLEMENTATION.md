@@ -235,7 +235,8 @@ The Post Change Password Action sends only issuer, subject and reset time to `PO
 
 ### Activation checklist (outstanding)
 
-- [ ] Create an independent 32-byte random secret (64 lowercase hex characters) through the secure local handoff. Store the identical ASCII hex value as Worker `AUTH0_RECOVERY_SECRET` and Action `RELAY_RECOVERY_SECRET`; never place it in Git or output.
+- [x] Generate an independent 32-byte random secret (64 lowercase hex characters) in an ignored local file, without printing it.
+- [ ] Complete user entry/submission in Auth0 and store the identical ASCII hex value as Worker `AUTH0_RECOVERY_SECRET` and Action `RELAY_RECOVERY_SECRET`; never place it in Git or output.
 - [ ] Install `deploy/auth0/post-login.cjs` in the Post Login flow; set Action `RELAY_CLIENT_ID` to Relay Web's client ID. Missing or mis-scoped installation prevents sign-in by design.
 - [ ] Install `deploy/auth0/post-change-password.cjs` in the Post Change Password flow; set `RELAY_ISSUER` to the exact tenant issuer and `RELAY_ORIGIN` to `https://relayalbums.com`. The Action sends only to that pinned production origin and follows no redirects.
 - [ ] Apply migrations and configure the webhook before enabling the Action/login. Test with a designated account, including two Relay sessions, password reset, revoked old sessions, fresh sign-in, and genuine provider logout.
@@ -261,3 +262,15 @@ The confirmation names the effect on native clients, preservation of shared file
 Migration 0018 and `lib/account-deletion.ts` add auditable requests with a unique active request per person. Account API routes preview, explicitly submit and withdraw; submission requires a live account authenticated within five minutes and no shared library lacking a surviving account owner. Requests are idempotent under concurrency. They do not disable an account, erase media or notify an external recipient.
 
 The Account screen explains shared-copy retention and the actual all-version backup policy before confirmation, then shows an honest pending/withdrawn status. Restore changes pending intent to `review_required`, never back into executable deletion authority. [Account deletion and retention](ACCOUNT-DELETION-AND-RETENTION.md) defines the operator review query, inventories, authorisation, revocation/deletion ordering, independent verification and restore gates. Request monitoring and the irreversible executor/rehearsal remain outstanding; the parent lifecycle feature is not complete.
+
+## Provider configuration evidence (21 September 2026)
+
+Dashboard access is restored. Relay Web retains the enabled Username-Password-Authentication connection. Google was enabled with Auth0 development keys; it is now disabled for Relay Web only. The connection and other applications are preserved. Dedicated production credentials and provider verification are prerequisites for offering Google later. Passwordless/passkeys are not configured for this launch.
+
+The [published Auth0 plan](https://auth0.com/pricing) includes database login on Free; the dashboard displays a free allowance of 30 active Actions/Forms, sufficient for these two Actions. No paid upgrade was selected. The tenant is still marked Development and displays 20 trial days remaining. This is baseline suitability, not proof of post-trial operation or failure-monitoring availability. [Auth0's development-key guidance](https://support.auth0.com/center/s/article/Warning-Occurs-About-Development-Keys-When-Tenant-Is-In-Production) supports withholding this Google connection from production.
+
+- **Relay password-change claim** (`14093a4e-0323-4097-8e01-df1f78987ee2`): Post Login, Node 22, Relay client setting saved, source deployed. Hosted testing with a complete synthetic event returned the expected ID-token claim and timestamp `1789862400000`. Connecting it in the flow remains pending: automated drag did not persist, so the prepared flow is handed to the user for drag and Apply. A deployed Action is not a bound trigger.
+- **Relay recovery notification** (`1f615ce8-2e02-4c42-8680-02d91b7afd38`): Post Change Password, Node 22, public issuer/origin settings saved. Corrected and verified the entire saved draft against `deploy/auth0/post-change-password.cjs` (normalised LF SHA-256 `8f2771f2e9ac5d24f9a485840d503d6702da40c378ca03b139697562b79a0b70`). The Define Secret dialog is prepared for user entry of `RELAY_RECOVERY_SECRET`. The Action is not deployed or bound. Do not bind it before the receiver and monitoring are ready.
+- Application inventory showed Relay Web and Default App. Post Change Password is tenant-wide for database users; future applications must account for this scope. Unknown-identity notifications establish only a recovery watermark, never membership or access.
+
+The recovery secret is generated locally and ignored by Git. Browser credential-entry rules require the user to enter and submit it in Auth0. No matching Worker secret or live receiver was installed in this increment. Recovery-email authorisation remains pending; no new email was sent. Production remains Phase 1 with remote migrations only through 0006.

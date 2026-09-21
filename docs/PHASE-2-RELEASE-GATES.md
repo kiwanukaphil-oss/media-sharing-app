@@ -15,8 +15,13 @@ Updated 21 September 2026. Production remains Phase 1; no remote migration or de
 
 ## Provider and user handoffs
 
-- [ ] Sign back in to the Auth0 dashboard. The previously authenticated browser session expired; the open **Log in | Auth0 Dashboard** tab is reserved for the user.
-- [ ] Confirm the final production connection configuration and free-plan suitability. Review Google provider credentials before advertising social sign-in.
+- [x] Restore and verify Auth0 dashboard access (21 September).
+- [x] Review initial connections: Relay Web retains email/password; Google is disabled for this application because its connection uses Auth0 development keys. Dedicated Google credentials remain a future prerequisite.
+- [x] Review baseline free-plan suitability: database login and the two Actions fit published free capabilities and the tenant's displayed Action allowance. No paid upgrade was selected. Production monitoring and post-trial verification remain separate gates.
+- [x] Create, configure, deploy and pass the hosted test for **Relay password-change claim**. Deployment alone does not connect the login flow.
+- [ ] Connect that Action between Start and Complete in Post Login and Apply. Automated drag did not persist; the user has the open flow tab.
+- [x] Prepare **Relay recovery notification**, set its public issuer/origin settings, and verify the saved source matches the repository exactly. Generate the independent recovery secret in an ignored local file without printing it.
+- [ ] User enters and saves `RELAY_RECOVERY_SECRET` in the prepared Auth0 dialog. Browser credential-entry rules require this handoff.
 - [ ] Install and connect the reviewed Post Login and Post Change Password Actions; complete any required secure credential handoff. The latter is tenant-wide for database password changes: verify this tenant remains dedicated to Relay or explicitly constrain the operational scope before installation.
 - [ ] Configure the matching Worker recovery secret, Action failure monitoring and reconciliation path. Verify failures are visible without logging secrets or account details.
 - [ ] With explicit email authority, send the designated recovery email; the user completes the password change personally. Check fresh delivery authentication/inbox placement and observe revocation of an older Relay session plus successful new sign-in.
@@ -38,4 +43,4 @@ Updated 21 September 2026. Production remains Phase 1; no remote migration or de
 4. Record the Worker version, migration journal, verified behaviour and allocation in the roadmap and deployment log. Check parent items only after all their acceptance criteria pass.
 5. If activation fails, disable new identity sign-in/allocation and return to the last compatible Worker while retaining the added schema and data. Do not roll the database back after users have created personal spaces, memberships or publications: an old snapshot can lose files or revive revoked access. Existing account users need a clear service-status/recovery path; a rollback to a legacy-only Worker is not feature-equivalent.
 
-The next critical-path step is restoring Auth0 dashboard access, then configuring the provider and performing the user-owned password-recovery test. Later collaboration/privacy phases remain dependent on these identity release gates.
+The next critical-path steps are the two prepared Auth0 handoffs (connect the login Action and save the recovery secret), followed by receiver/monitoring configuration and the user-owned password-recovery test. Recovery-email authorisation remains pending; no new email was sent. Later collaboration/privacy phases remain dependent on these identity release gates.

@@ -127,5 +127,12 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 
 - Populated Phase 1 upgrade rehearsal through migration 0018 passed without changing existing credentials, media/object references, uploads, Trash, albums or custom sections/covers. Added the rehearsal to hosted CI.
 - `deploy/identity-runtime.json` now explicitly controls public Auth0 settings and total personal allocation. Current values keep identity disabled and allocation at zero; the preparation script rejects unknown/secret fields and invalid origins/budgets. Configuration checks and lint passed.
-- Provider setup is waiting for user sign-in because Auth0's dashboard session expired. The dashboard tab is retained for that handoff. No provider Action, secret, migration or release was applied live.
+- Provider setup was waiting for user sign-in because Auth0's dashboard session expired. This handoff was resolved in the subsequent increment below.
+
+## 21 September 2026 - Auth0 dashboard preparation
+
+- Dashboard access restored. Relay Web retains email/password; its Google connection was disabled after confirming Auth0 development keys. No connection deleted and no paid upgrade selected.
+- Relay password-change claim is deployed and passed Auth0's hosted test. Flow binding is still pending the user drag/Apply handoff.
+- Relay recovery notification draft and issuer/origin settings are saved; source hash matches the repository. New recovery secret is in an ignored local file; user entry into the prepared Auth0 dialog is pending. Notification Action remains undeployed/unbound and no Worker secret changed.
+- Latest hosted CI passed through source commit `89e78a4`. This increment changes provider preparation and records evidence only; no recovery email, remote migration or Worker deployment. Live Worker remains `76609db5-810c-4c08-8968-6c8b4dcd97d7` and production remains Phase 1.
 - Remaining provider, lifecycle, operations and rollback requirements are consolidated in `docs/PHASE-2-RELEASE-GATES.md`.
