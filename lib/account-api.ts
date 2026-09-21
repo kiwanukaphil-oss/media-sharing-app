@@ -5,6 +5,7 @@ import { AccountError, accountCookie, clearAccountCookie, createAccountSession, 
 import { confirmOwnerClaim, listPersonSpaces, prepareOwnerClaim, readLegacyClaimCredential } from "./space-memberships";
 import { createPersonalSpace, personalStorageBudget, PERSONAL_SPACE_BYTES } from "./personal-spaces";
 import { acceptPersonInvitation, previewPersonInvitation } from "./space-people";
+import { previewAccountDeletion, requestAccountDeletion, withdrawAccountDeletion } from "./account-deletion";
 
 type LoginProvider = {
   prepare(settings: Auth0Settings): Promise<{ url: string; transaction: Auth0LoginTransaction }>;
@@ -85,6 +86,13 @@ export async function accountAction(request: Request, database: D1Database, sett
     return Response.json({ enabled: true, account: session }, { headers: privateHeaders });
   }
   if (!session) throw new AccountError(401, "Sign in to your account to continue.");
+  if (action === "deletion" && request.method === "GET") return Response.json(await previewAccountDeletion(database, session), { headers: privateHeaders });
+  if (action === "deletion" && request.method === "POST") {
+    if (request.headers.get("X-Relay-Confirm") !== "request-account-deletion") throw new AccountError(400, "Confirm the account deletion request.");
+    return Response.json(await requestAccountDeletion(database, session), { headers: privateHeaders });
+  }
+  const deletionId = /^deletion\/([a-f0-9-]{36})$/.exec(action)?.[1];
+  if (deletionId && request.method === "DELETE") return Response.json(await withdrawAccountDeletion(database, session, deletionId), { headers: privateHeaders });
   if (action === "invitation-preview" && request.method === "POST") {
     return Response.json(await previewPersonInvitation(database, session, request.headers.get("X-Relay-Invitation") || ""), { headers: privateHeaders });
   }

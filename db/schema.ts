@@ -26,6 +26,16 @@ export const recoveryWatermarks = sqliteTable("recovery_watermarks", {
   changedAt: integer("changed_at").notNull(),
 }, table => [primaryKey({ columns: [table.issuer, table.subject] })]);
 
+// Requests are auditable intent, never permission for an unattended destructive cleanup job.
+export const accountDeletionRequests = sqliteTable("account_deletion_requests", {
+  id: text("id").primaryKey(),
+  personId: text("person_id").notNull().references(() => people.id),
+  requestedAt: integer("requested_at").notNull(),
+  status: text("status").notNull().default("pending"),
+  updatedAt: integer("updated_at").notNull(),
+}, table => [index("idx_account_deletion_person").on(table.personId),
+  uniqueIndex("idx_account_deletion_pending").on(table.personId).where(sql`${table.status} IN ('pending', 'review_required')`)]);
+
 // Account credentials cannot be used as legacy device credentials or grant space access.
 export const accountSessions = sqliteTable("account_sessions", {
   id: text("id").primaryKey(),

@@ -11,6 +11,8 @@ page.on('pageerror', error => errors.push(error.message));
 const currentId = crypto.randomUUID();
 const otherId = crypto.randomUUID();
 let signedIn = true;
+let deletionRequest = null;
+let deletionSubmissions = 0;
 let rejectRevocation = true;
 let libraryConnected = false;
 let claimConfirmations = 0;
@@ -36,6 +38,14 @@ try {
       assert.equal(route.request().headers()['x-relay-claim'], 'c'.repeat(64));
       claimConfirmations++; libraryConnected = true;
       return route.fulfill({ json: { connected: true } });
+    }
+    if (url.pathname.startsWith('/api/auth/deletion')) {
+      if (route.request().method() === 'POST') {
+        assert.equal(route.request().headers()['x-relay-confirm'], 'request-account-deletion');
+        deletionSubmissions++; deletionRequest = { id: otherId, status: 'pending', requestedAt: Date.now() };
+      }
+      if (route.request().method() === 'DELETE') deletionRequest = { ...deletionRequest, status: 'withdrawn' };
+      return route.fulfill({ json: { request: deletionRequest, ownershipBlockers: [], recentSignIn: true } });
     }
     if (route.request().method() === 'DELETE') {
       if (rejectRevocation) return route.fulfill({ status: 503, json: { error: 'Sign-out is temporarily unavailable. Please retry.' } });
@@ -66,6 +76,18 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await mkdir('.sites-runtime/account-preview', { recursive: true });
   await page.screenshot({ path: '.sites-runtime/account-preview/mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Review deletion & request status', exact: true }).click();
+  await page.getByRole('button', { name: 'Request account deletion', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('does not erase anything immediately');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(deletionSubmissions, 0);
+  await page.getByRole('button', { name: 'Request account deletion', exact: true }).click();
+  await page.getByRole('button', { name: 'Submit request', exact: true }).click();
+  await expect(page.getByText('Deletion request awaiting review', { exact: true })).toBeVisible();
+  assert.equal(deletionSubmissions, 1);
+  await page.screenshot({ path: '.sites-runtime/account-preview/deletion-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Withdraw request', exact: true }).click();
+  await expect(page.getByText('Your previous request was withdrawn.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Sign out browser signed in/ }).click();
   await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
   await expect(page.getByText('Another browser', { exact: true })).toBeVisible();

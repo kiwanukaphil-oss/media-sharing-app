@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AccountLibraries from "@/components/account-libraries";
 import AccountInvitation from "@/components/account-invitation";
+import AccountDeletion from "@/components/account-deletion";
 import { ArrowLeft, ArrowRight, ShieldCheck, Monitor, LogOut } from "lucide-react";
 
 type Session = { sessionId: string; displayName: string; verifiedEmail: string; expiresAt: number };
@@ -89,6 +90,7 @@ export default function AccountPage() {
           {sessions.map(session => <li key={session.id} className="flex items-center gap-4 py-5"><Monitor size={20} className="shrink-0 text-[var(--muted)]" /><div className="min-w-0 flex-1"><strong className="text-sm font-medium">{session.id === state.account!.sessionId ? "This browser" : "Another browser"}</strong><p className="mt-1 text-xs text-[var(--muted)]">{session.sessionMode === "temporary" ? "Temporary" : "Trusted"} &middot; Signed in {new Date(session.createdAt).toLocaleString()}</p><p className="mt-1 text-xs text-[var(--muted)]">Expires {new Date(session.expiresAt).toLocaleString()}</p></div><button disabled={busy} onClick={() => void signOutSession(session.id)} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm hover:bg-[var(--surface)]" aria-label={session.id === state.account!.sessionId ? "Sign out this browser" : `Sign out browser signed in ${new Date(session.createdAt).toLocaleString()}`}><LogOut size={16} /><span className="hidden sm:inline">Sign out</span></button></li>)}
         </ul>
       </section>
+      <AccountDeletion key={`deletion-${state.account.sessionId}`} />
     </>}
   </main>;
 }

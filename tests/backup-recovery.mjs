@@ -28,6 +28,16 @@ test('complete originals include Trash and exclude unfinished uploads', () => {
   finally { database.close(); }
 });
 
+test('restoration holds pending deletion requests without reviving withdrawn intent', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("CREATE TABLE account_deletion_requests(id TEXT PRIMARY KEY,status TEXT,updated_at INTEGER); INSERT INTO account_deletion_requests VALUES('pending','pending',1),('withdrawn','withdrawn',2)");
+    sanitizeRestoredAccess(database, 12345);
+    assert.equal(database.prepare("SELECT status FROM account_deletion_requests WHERE id='pending'").get().status, 'review_required');
+    assert.equal(database.prepare("SELECT status FROM account_deletion_requests WHERE id='withdrawn'").get().status, 'withdrawn');
+  } finally { database.close(); }
+});
+
 test('restoration invalidates device and invitation access while preserving records', () => {
   const database = recoveryFixture();
   try {

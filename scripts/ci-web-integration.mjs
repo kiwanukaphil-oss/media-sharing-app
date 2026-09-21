@@ -54,6 +54,8 @@ try {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
   } else if (accountAccessChecks) {
+    const { verifyAccountDeletion } = await import('../tests/account-deletion.mjs');
+    await verifyAccountDeletion(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyAccountRecovery } = await import('../tests/account-recovery.mjs');
     await verifyAccountRecovery(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyAccountSpaceAccess } = await import('../tests/account-space-access.mjs');

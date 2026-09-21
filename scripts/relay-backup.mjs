@@ -74,6 +74,10 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='publications'").get()) {
       database.exec("UPDATE publications SET phase='cancelling', lease_expires_at=0 WHERE phase NOT IN ('ready','cancelled')");
     }
+    // An old snapshot cannot prove that a request remains wanted; never replay destructive intent after restore.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='account_deletion_requests'").get()) {
+      database.prepare("UPDATE account_deletion_requests SET status='review_required', updated_at=? WHERE status='pending'").run(now);
+    }
     // Pending authority changes must also expire when restoring an older snapshot.
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='owner_claim_attempts'").get()) {
       database.prepare('UPDATE owner_claim_attempts SET expires_at=0, consumed_at=COALESCE(consumed_at, ?)').run(now);

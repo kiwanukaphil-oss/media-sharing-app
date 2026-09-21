@@ -113,3 +113,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Added owner-only account-scoped paired-device inventory and individual/all retirement in People & access. Explicit confirmation covers native-client access, preserved account memberships/files and non-recallable downloads.
 - Real D1 tests passed for owner/member boundaries, claim labels, foreign space and CSRF denial, last paired-owner retirement and concurrent pairing. Lint, TypeScript, build, account-access regression and phone/desktop browser checks passed; updated phone screenshot inspected.
 - No migration added by this increment, no live devices revoked and no deployment. Phase 2 production gates remain open.
+
+
+## 21 September 2026 - P2 deletion review (local only)
+
+- Migration 0018 and account UI/API implement explicit deletion requests, ownership handover checks, recent authentication, pending status and withdrawal. Nothing is erased or disabled by a request.
+- Added honest retention and operator execution runbook, read-only queue query and restored-request review hold. Verified irreversible erasure/backup reconciliation and request monitoring remain release gates.
+- Passed lint, TypeScript, build, account-access/D1 regressions, account phone/desktop browser tests and 11 backup checks. Phone request-status screenshot inspected. Hosted CI passed recovery commit `7871635` and legacy reconciliation commit `89db785`.
+- Production unchanged. Migrations 0007-0018 remain local; no live deletion or account request was performed.
