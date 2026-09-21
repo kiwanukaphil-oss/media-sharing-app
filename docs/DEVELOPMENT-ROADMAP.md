@@ -600,3 +600,9 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Account shows Owner; account-scoped library shows Owner / Account access, two live files, one Trash item, Random Stuff with two items, and unchanged 130.7 MB storage.
 - [x] People & access shows one account owner and three paired devices: original desktop owner and phone member remain unlinked; only My desktop · relayalbums.com has the verified account claim. No devices retired or files changed.
 - [ ] Complete operational monitoring, lifecycle execution/rehearsal, bounded personal allocation and hosted publication gates before general release.
+
+## 21 September 2026 - Operational monitoring increment
+
+- [x] Implement private, aggregate-only identity operations checks using the existing D1 read-only credential. Real-schema tests cover pending/withdrawn/restored requests, unknown states, recovery watermark mismatch, disabled people and expired/revoked session boundaries.
+- [x] Expand scheduled public health probes to both relayalbums.com and the legacy origin. Primary-domain live probe passed.
+- [ ] Verify the new hosted identity workflow and both-origin health matrix. End-to-end alerts, missed-run detection and provider-side Action monitoring remain outstanding.

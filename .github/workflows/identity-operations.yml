@@ -1,0 +1,27 @@
+name: Identity operations
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: relay-identity-operations
+  cancel-in-progress: false
+jobs:
+  review:
+    if: github.repository == 'kiwanukaphil-oss/media-sharing-app' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: relay-backup-copy
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Check private operational queues using existing read-only access
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_READ_TOKEN }}
+        run: node --disable-warning=ExperimentalWarning scripts/check-identity-operations.mjs

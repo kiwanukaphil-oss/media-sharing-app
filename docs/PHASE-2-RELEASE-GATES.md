@@ -33,6 +33,9 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 
 ## Lifecycle and operations
 
+- [x] Implement aggregate-only queue and known recovery/session consistency checks with actual-schema tests; scheduled workflow reuses existing D1 read-only access.
+- [ ] Verify hosted operational checks, operator notifications and missed-run detection; provider delivery cannot be inferred from a consistent local watermark.
+
 - [ ] Establish a monitored deletion-request queue, authorised executor, backup removal/minimisation policy and independent erasure/restore rehearsal. Follow [the retention runbook](ACCOUNT-DELETION-AND-RETENTION.md); no irreversible cleanup is inferred from project-wide development authority.
 - [x] Verify actual legacy owner claim and current paired-device audience without guessing people from names. User approved and completed primary-origin pairing/promotion/account claim on 21 September. Account-scoped files and roles verified; original desktop owner and phone member retained. No live device retired.
 - [ ] Choose and record a bounded personal allocation budget; personal creation remains disabled until the budget is set. Review aggregate R2/B2 growth before expanding it.

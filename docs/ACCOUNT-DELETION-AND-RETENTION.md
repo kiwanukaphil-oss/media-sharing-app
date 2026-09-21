@@ -1,6 +1,6 @@
 # Account deletion and retention
 
-Status: local request workflow implemented and tested on 21 September 2026. Operator execution, request monitoring and an end-to-end erasure rehearsal remain release gates. This document records the actual present retention behaviour; it does not promise an unimplemented deletion deadline.
+Status: local request workflow implemented and tested on 21 September 2026. Operator execution, alert-delivery verification and an end-to-end erasure rehearsal remain release gates. A read-only scheduled queue check is now implemented; hosted activation evidence is recorded separately. This document records the actual present retention behaviour; it does not promise an unimplemented deletion deadline.
 
 ## What users can do
 
@@ -42,3 +42,9 @@ Restoration already revokes sessions, legacy access and memberships. It addition
 ## Verification
 
 Real-D1 tests cover sole-owner denial, handover, recent authentication, concurrent request idempotence, account isolation, withdrawal, CSRF, revoked sessions and preserved access. Browser fixtures cover preview, confirmation cancellation, submission, honest pending status and withdrawal. Restore tests cover pending intent held for renewed review and preserved withdrawal. These are local results; no real account or data was deleted.
+
+## Operational queue check
+
+`Identity operations` runs twice hourly on main using the existing D1 read-only environment credential. It fails when pending or restore-held requests exist, when request states are unknown, or when known recovery watermarks/disabled accounts disagree with live sessions. It reports static categories only; no identities, request IDs, counts, filenames or credentials enter job logs. GitHub scheduling and notifications are best effort; successful manual execution alone does not prove notification delivery or missed-run detection.
+
+The project operator reviews failed runs and uses `deploy/account-deletion-review.sql` privately to assess requests. A red run is a review task, never authority to erase data. Pending requests continue to flag until withdrawn or a future reviewed execution workflow records completion; do not silence the check to imply fulfilment. This check cannot detect an Auth0 reset whose event never reached Relay. Provider-side monitoring remains a separate gate.

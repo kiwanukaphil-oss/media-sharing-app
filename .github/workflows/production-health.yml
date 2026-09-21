@@ -10,6 +10,12 @@ concurrency:
   cancel-in-progress: true
 jobs:
   probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        origin:
+          - https://relayalbums.com
+          - https://relay-media-exchange.kiwanukaphil.workers.dev
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -18,3 +24,5 @@ jobs:
         with:
           node-version: '24'
       - run: node scripts/check-production.mjs
+        env:
+          RELAY_TEST_ORIGIN: ${{ matrix.origin }}
