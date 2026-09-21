@@ -11,7 +11,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 
 **At a glance:** 2 phases complete; 15/47 parent work items complete. Phase 2 is deployed as a restricted designated-account pilot; general account access remains closed; the designated-account personal pilot has a 1 GiB total allocation. Live Worker: `fe4fa894-f45e-4c7d-93a6-4ced1a355774` at 100%. Remote migrations are applied through 0018; all existing library rows were verified unchanged. Latest independent backup/restore verified 23 originals (304,899,366 bytes); all 20 earlier original records remain unchanged.
 
-**Next action:** Complete account lifecycle execution and backup/restore reconciliation; confirm the already-sent monitor email receipt and resolve monitoring CPU headroom. The first independent scheduled combined run passed at 15:19 UTC, but used 10 ms CPU on Workers Free. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
+**Next action:** Complete account lifecycle execution and backup/restore reconciliation; confirm the already-sent monitor email receipt and collect continued monitoring capacity evidence. Independent scheduled checks passed at 15:19 and 15:49 UTC; optimisation reduced observed CPU from 10 ms to 8 ms on Workers Free. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
 
 **Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
@@ -736,3 +736,15 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Verify real D1 revocation, expiry, cross-person/space denial, personal ownership and recovery-watermark cases. Production-module API suites pass, including existing multipart, quota, publication and library workflows.
 - [ ] Finish browser/hosted checks and deploy this increment. This is a prerequisite for lifecycle freezing; issued direct-transfer capabilities and other writers still need coordinated fencing. P2-06 remains unchecked.
 - [x] Add failure artifacts for an intermittent hosted WebKit offline-test error seen in run `35620693844`; keep the strict no-page-error assertion. No speculative frontend change or relaxed assertion is included.
+
+## 21 September 2026 - Scheduled monitor optimisation verified
+
+- [x] Observe the actual 15:49 UTC cron on optimised version `49576315-efae-4b4d-b815-29532e4aac8d`: success, no exceptions, 8 ms CPU / 2,776 ms wall time. Independently verify delivered R2 status and public health HTTP 200.
+- [ ] Collect continued coverage and expansion capacity evidence; confirm alert receipt. One improved sample does not establish broad Free-plan capacity. No plan upgrade or purchase was made.
+- [x] Document the [closure execution contract](ACCOUNT-CLOSURE-EXECUTION.md), including pending-request withdrawal, explicit irreversible-operation authority, durable writer fencing and backup coordination. Implementation and generated-identity end-to-end acceptance remain open.
+
+## 21 September 2026 - Page lifecycle polling repair
+
+- [x] Hosted failure artifacts identify WebKit fetches from a page being unloaded, from the library's background poll. Pause polling and abort its requests on pagehide, resume once on back/forward-cache return, and skip hidden/offline pages and overlapping refreshes.
+- [x] Test navigation cancellation, queued stale callbacks, bfcache resume, hidden/offline behaviour and genuine failure reporting. Keep strict browser error assertions.
+- [ ] Complete browser/hosted verification and deploy with the transfer-commit safeguards. General-release and full account-closure gates remain unchanged.

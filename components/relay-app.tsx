@@ -18,6 +18,7 @@ import { RequestError, createLibraryApi, requestJson as requestAccountJson } fro
 import { formatBytes, MAX_FILE_SIZE, type Category, type Device, type MediaItem, type Session, type FeedPage, type StorageUsage, type Album, type AlbumSection } from "@/lib/contracts";
 import { persistTransfer, restoreTransfers, forgetTransfer, forgetDeviceTransfers, uploadOriginal, type Transfer } from "@/lib/transfers";
 import { saveVerifiedOriginal, supportsVerifiedSave } from "@/lib/downloads";
+import { startLibraryPolling } from "@/lib/library-polling";
 
 type AccountLibrary = { id: string; name: string; role: string; kind?: "personal" | "shared"; actorId?: string | null };
 type LibraryView = "grid" | "list";
@@ -131,22 +132,22 @@ function RelayWorkspace() {
   const feedRevision = useRef(0);
 
   // Refresh every loaded page with stable cursors, keeping filters and cross-device changes consistent.
-  const refreshFeed = useCallback(async () => {
+  const refreshFeed = useCallback(async (signal?: AbortSignal) => {
     const revision = ++feedRevision.current;
     const query = feedQuery.current;
     try {
       let cursor: string | null = null; const collected: MediaItem[] = []; let result: FeedPage;
       for (let page = 0; page < pageDepth.current; page++) {
-        result = await requestJson<FeedPage>(`feed?${query}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+        result = await requestJson<FeedPage>(`feed?${query}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, { signal });
         collected.push(...result.items); cursor = result.nextCursor;
         if (!cursor) break;
       }
-      if (revision !== feedRevision.current || libraryAccessLost.current) return;
+      if (signal?.aborted || revision !== feedRevision.current || libraryAccessLost.current) return;
       setLoadedQuery(query); setFeedFailure(null);
       setItems(collected); setCounts(result!.counts); setTotal(result!.total); setNextCursor(cursor); setOnline(true);
       setSession(current => current && current.role !== result!.role ? { ...current, role: result!.role } : current);
     } catch (failure) {
-      if (revision !== feedRevision.current) return;
+      if (signal?.aborted || revision !== feedRevision.current) return;
       if (accountSpaceId !== undefined && failure instanceof RequestError && [401, 403].includes(failure.status)) {
         libraryAccessLost.current = true;
         controllers.current.forEach(controller => controller.abort());
@@ -165,7 +166,7 @@ function RelayWorkspace() {
     try { await refreshFeed(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't load more files."); }
     finally { setFeedBusy(false); }
   }
-  const refreshAlbums = useCallback(async () => { const result = await requestJson<{ albums: Album[]; sections?: AlbumSection[] }>("albums"); if (libraryAccessLost.current) return; setAlbums(result.albums); setSections(result.sections || []); }, [requestJson]);
+  const refreshAlbums = useCallback(async (signal?: AbortSignal) => { const result = await requestJson<{ albums: Album[]; sections?: AlbumSection[] }>("albums", { signal }); if (signal?.aborted || libraryAccessLost.current) return; setAlbums(result.albums); setSections(result.sections || []); }, [requestJson]);
   const refreshStorage = useCallback(async () => { const result = await requestJson<StorageUsage>("storage"); if (!libraryAccessLost.current) setStorage(result); }, [requestJson]);
   const refreshDevices = useCallback(async () => {
     if (accountSpaceId !== undefined) { setDevices([]); return; }
@@ -221,11 +222,10 @@ function RelayWorkspace() {
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!session) return;
-    const timer = setInterval(() => { if (document.visibilityState === "visible") void Promise.all([refreshFeed(), refreshAlbums()]).catch(failure => {
+    return startLibraryPolling(signal => Promise.all([refreshFeed(signal), refreshAlbums(signal)]), failure => {
       setOnline(navigator.onLine);
       if (failure instanceof RequestError && failure.status === 401) { setSession(null); setItems([]); setError(failure.message); }
-    }); }, 10000);
-    return () => clearInterval(timer);
+    });
   }, [session, refreshFeed, refreshAlbums]);
   useEffect(() => {
     if (!session) return;
