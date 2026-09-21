@@ -9,7 +9,7 @@
 
 Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Memberships, explicit legacy owner claims and account-scoped library access are live for the designated-account pilot; live sign-in/recovery/claim checks passed. General release and remaining operational gates are outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**At a glance:** 2 phases complete; 15/47 parent work items complete. Phase 2 is deployed as a restricted designated-account pilot; general account access remains closed; the designated-account personal pilot has a 1 GiB total allocation. Live Worker: `fe4fa894-f45e-4c7d-93a6-4ced1a355774` at 100%. Remote migrations are applied through 0018; all existing library rows were verified unchanged. Latest independent backup/restore verified 23 originals (304,899,366 bytes); all 20 earlier original records remain unchanged.
+**At a glance:** 2 phases complete; 15/47 parent work items complete. Phase 2 is deployed as a restricted designated-account pilot; general account access remains closed; the designated-account personal pilot has a 1 GiB total allocation. Live Worker: `59b996f4-aea4-4ece-a808-3798a2d783b3` at 100%; hosted CI and isolated exact-byte transfer checks pass. Remote migrations remain through 0018. Latest independent backup/restore verified 23 originals (304,899,366 bytes); the later hosted verification added one generated test original. Post-release live storage reconciliation finds 32 objects, no unfinished uploads and no anomalies. No user original was removed.
 
 **Next action:** Complete account lifecycle execution and backup/restore reconciliation; confirm the already-sent monitor email receipt and collect continued monitoring capacity evidence. Independent scheduled checks passed at 15:19 and 15:49 UTC; optimisation reduced observed CPU from 10 ms to 8 ms on Workers Free. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
 
@@ -289,7 +289,7 @@ For identity or access changes, test loss of access during an open viewer, queue
 | D02 | Organisation semantics | One section level, optional templates, zero/one placement per album, many albums per asset | Resolved: recommended default / standing execution authority |
 | D03 | Default browsing scope | Active space only; general Shared library distinct from restricted content later | Resolved: recommended default / standing execution authority |
 | D04 | Cross-audience publication | Explicit verified independent copy initially; no automatic union of album audiences | Resolved: recommended default / standing execution authority |
-| D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Auth0 selected; Relay Web registered; recovery verification pending / P2 implementation |
+| D05 | Identity/provider and legacy claims | Recoverable person identity, mature auth, explicit ownership proof | Auth0 email/password selected; recovery, logout and explicit owner claim verified in restricted pilot. Free-plan follow-up/general-release gates remain tracked under P2 |
 | D06 | Ownership and offboarding | Shared work belongs to the space; personal work remains separate; explicit transfer/recovery | Proposed / P2 lifecycle design |
 | D07 | Retention and deletion | Document Trash, history, backups, account deletion and restore reconciliation separately | Open / P2 lifecycle design; revisit guest artifacts in P5 |
 | D08 | Restricted content and administrators | Explicit audited administrator grants; no access to members' personal spaces | Proposed / P4 design |
@@ -299,23 +299,23 @@ For identity or access changes, test loss of access during an open viewer, queue
 
 ## Risks, blockers and deferred scope
 
-Planning dependencies are not incidents. The active external blocker is:
+Planning dependencies are not incidents. Current access, operational and verification dependencies are:
 
 | ID | Affected work | Required input | Owner | Opened | State |
 | --- | --- | --- | --- | --- | --- |
 | B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; sender domain verified and scoped sending key created; Auth0 provider saved and verified; test and recovery emails delivered; restricted runtime, recovery and owner claim verified. No secrets in chat or Git. | Codex | 2026-09-20 | Resolved for restricted pilot: provider access, recovery, logout and owner connection verified; general-release operations tracked separately |
 | B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause reproduced: SQL expression depth exceeded D1 limit. Balanced concatenation passes local D1/API tests and a live read-only snapshot restore. Hosted backup, Backblaze restore and verification passed in run 35491216252. | Codex | 2026-09-20 | Resolved |
 | B03 | P2-06 cloud erasure rehearsal | Sign-in and revised isolated-bucket access approved. Generated-only cloud version removal/restoration passed; temporary credential revoked. [Evidence](ERASURE-REHEARSAL-ACCESS.md). | Codex | 2026-09-21 | Resolved for this rehearsal; independent ledger, live/provider executor and lifecycle release remain open |
-| B04 | P2 monitoring reliability/capacity | Independent Cloudflare cron passed at 15:19 UTC with signed delivery and healthy readback. Initial CPU 10 ms is at the confirmed Free-plan limit. [Evidence](SCHEDULED-IDENTITY-MONITOR.md). | Codex: capacity/continued coverage; user: clarify earlier $5 subscription note | 2026-09-21 | Scheduled execution verified; CPU headroom and external alert receipt remain open. No paid change made |
+| B04 | P2 monitoring reliability/capacity | Independent Cloudflare cron passed at 15:19 and 15:49 UTC with signed delivery and healthy readback. Optimisation reduced the observed CPU sample from 10 ms to 8 ms on confirmed Workers Free. [Evidence](SCHEDULED-IDENTITY-MONITOR.md). | Codex: capacity/continued coverage; user: pending alert receipt and earlier subscription clarification | 2026-09-21 | Scheduled execution verified; expansion capacity and external alert receipt remain open. No paid change made |
 
-Phase 2 account/session, membership/claim, scoped library and personal-space code is implemented locally. Auth0 provider sign-in and email verification succeeded; live Relay callback/recovery, allocation settings and production migrations remain outstanding.
+Phase 2 account/session, membership/claim, scoped library and personal-space foundations are deployed in the designated-account pilot. Live callback/recovery/logout, owner claim, 1 GiB pilot allocation and migrations through 0018 are verified. Lifecycle execution, independent ledger custody, continued monitoring evidence and general-release acceptance remain open.
 
 | ID | Risk / response | Owner | State |
 | --- | --- | --- | --- |
-| R01 | Mistaken legacy identity claims: require proof, recovery review and migration fixtures | Unassigned | Open planning risk |
-| R02 | Multiple album references widen visibility: explicit asset scopes and negative tests | Unassigned | Open planning risk |
-| R03 | New policy bypassed by old clients/caches/exports: central policy and capability gates | Unassigned | Open planning risk |
-| R04 | Guest intake, copies, versions and exports increase storage/processing costs: quota reservation and bounded jobs | Unassigned | Open planning risk |
+| R01 | Mistaken legacy identity claims: require proof, recovery review and migration fixtures | Codex | Claim proof and migration fixtures verified; historical completeness remains under review |
+| R02 | Multiple album references widen visibility: explicit asset scopes and negative tests | Codex | Phase 4 planning risk; present references stay within their space |
+| R03 | New policy bypassed by old clients/caches/exports: central policy and capability gates | Codex | Ongoing release requirement; current pilot compatibility checks pass |
+| R04 | Guest intake, copies, versions and exports increase storage/processing costs: quota reservation and bounded jobs | Codex | Bounded personal/publication pilot verified; future intake/export limits remain open |
 | R05 | Restore revives access or deletion state: extend backup schema and verify reconciliation | Unassigned | Open planning risk |
 | R06 | Scope expands beyond useful core workflows: phase-specific acceptance and demand gates | Unassigned | Open planning risk |
 
@@ -484,8 +484,8 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] User clicks the email verification link; Auth0 user details confirmed VERIFIED after reload on 20 September 2026.
 - [x] Investigate reported spam placement: Gmail original-message summary shows SPF PASS, DKIM PASS for `mail.relayalbums.com`, and DMARC FAIL. Gmail describes similarity to past spam; the exact classification cause is not established.
 - [x] Publish the missing `_dmarc.mail.relayalbums.com` TXT record, `v=DMARC1; p=none;`, and confirm Cloudflare saved it and authoritative/Google public DNS resolve it. This initial policy does not enforce rejection or collect reports.
-- [ ] Confirm DMARC PASS and inbox placement on a fresh, user-authorised message after DNS propagation; the previous email cannot validate the new record. Review reporting/enforcement after legitimate sending sources are validated.
-- [ ] Verify real recovery and Relay callback/session integration; a successful provider connection test alone does not complete these.
+- [x] Confirm DMARC PASS and inbox placement on the fresh, user-authorised recovery message on 21 September; SPF/DKIM also passed. Future reporting/enforcement review remains separate from this completed delivery check.
+- [x] Verify real password recovery, Relay callback/session integration, old-session revocation and fresh sign-in on 21 September. Evidence is recorded in the Phase 2 release gates.
 
 
 ### Account-scoped library access - 20 September 2026
@@ -518,7 +518,7 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Revoke Relay access before directing current-browser sign-out to the fixed Auth0 OIDC logout endpoint. Store only the signed provider session hint, never provider tokens; remote revocation does not redirect the current browser. Provider consent remains enabled; no federated social-account logout is requested.
 - [x] Display session type and expiry, explain restored-browser-session limitations and make the trusted choice explicit. Check mobile/desktop layout and signed-out choice interactions.
 - [x] Pass lint, TypeScript, build, signed-token protocol checks, full API/D1 regression, account-space/personal-space checks, eight backup checks and account browser fixtures. Hosted CI also passed earlier commits `55abfd9`, `25ccf71` and `a1c29c1`.
-- [ ] Verify the real provider logout, recovery and callback flow before activation. Migration 0012 is local only; production remains at Phase 1.
+- [x] Subsequently verify the real provider logout, recovery and callback flow on 21 September. Migration 0012 and the later migrations through 0018 are now applied in the restricted production pilot.
 
 
 ### People, invitations and membership lifecycle - 21 September 2026
@@ -578,7 +578,7 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Prepare Relay recovery notification with the exact issuer/origin and verify saved code against the tested repository source. Generate the recovery secret in an ignored file without exposing it.
 - [x] User connected and applied the deployed login Action; verified its presence in the flow and All changes are live on 21 September.
 - [x] User saved the recovery secret; verified the setting name and saved draft without reading the value. Matching Worker receiver and monitoring remain outstanding.
-- [ ] Complete authorised real recovery-email, callback and logout tests. No recovery email sent during this increment; no Worker deployment or remote migration performed.
+- [x] Subsequently complete the authorised real recovery-email, callback and logout tests on 21 September. The restricted pilot is deployed; this earlier preparation increment itself sent no email or deployment.
 - [x] Hosted CI passed source commits 89e78a4, 76e9232, 89db785, 7871635 and 22f024e. Phase 2 parent counts remain unchanged.
 
 ### 21 September 2026 - Restricted identity pilot preparation
@@ -613,7 +613,7 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Verify hosted identity operations ([run 35576462943](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35576462943)) and both-origin health ([run 35576467793](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35576467793)). End-to-end alerts and missed-run detection remain outstanding.
 
 - [x] Prepare and locally test dedicated read-only Auth0 failure and password-reset reconciliation monitoring. [Runbook and exact access proposal](RECOVERY-MONITORING.md) record the scopes, data minimisation, cost basis and response procedure. Manual workflow is prepared but not activated.
-- [ ] Authorise the dedicated Relay Recovery Monitor client (read:logs/read:users), securely install its credential, run hosted verification and verify alert delivery before scheduling. Browser form is staged; no new client/grant/credential exists yet.
+- [x] Subsequently authorise the dedicated Relay Recovery Monitor client with exactly read:logs/read:users, securely install its credential and pass hosted verification on 21 September. External test-alert receipt remains separately unchecked below.
 
 ## 21 September 2026 - Provider monitoring activation
 
@@ -627,7 +627,8 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Create external monitor 4956708 on the existing Better Stack Free plan; verify Up, exact HTTP 200, three-minute checks/confirmation/recovery, TLS verification and email-only alerts. No paid upgrade.
 - [x] Send the user-authorised monitor test alert; Better Stack confirms sent.
 - [x] Configure twice-hourly combined checks at minutes 13 and 43 UTC, after hosted receiver/failure/recovery and external Up verification.
-- [ ] Confirm test-email inbox receipt and observe the first scheduled run.
+- [ ] Confirm the already-sent test-email inbox receipt.
+- [x] Observe independent scheduled combined runs at 15:19 and 15:49 UTC on 21 September, with signed health delivery and healthy public readback.
 - [x] Rehearse operator repair in isolated actual-schema D1 with designated synthetic identities and provider fixtures; detection, signed repair, independent readback, session isolation and unchanged library fingerprints passed. This is not a production-account repair.
 
 ## 21 September 2026 - Bounded personal-space pilot
@@ -675,7 +676,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Create separate empty, private, encrypted test bucket; stage a one-hour replacement key restricted to that bucket and test prefix. Revised scope awaits browser-required approval.
 - [x] Add guards/tests that reject the production bucket, wider prefixes, unexpected permissions, mismatched/unknown versions and missing shared-copy/snapshot preservation controls. Prepare same-origin, one-use, encrypted local credential handoff.
 - [x] Hosted Web checks passed the previous minimisation and documentation increments (35584536808 and 35584707696).
-- [ ] Complete the cloud erasure/restore rehearsal after the narrowly scoped access handoff.
+- [x] Complete the generated cloud erasure/restore rehearsal after the narrowly scoped access handoff: run `cde4ced5-c85f-43fd-945c-14cb84373485` at 11:52 UTC on 21 September. Only generated rehearsal versions were removed; the temporary key was revoked. Full provider/ledger lifecycle acceptance remains open.
 
 ## 21 September 2026 - Generated cloud erasure and restore verified
 
@@ -684,7 +685,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Verify restored shared-copy bytes, minimised identity, revoked access and valid relationships. Revoke the temporary key; retain generated control evidence. [Cloud record](ERASURE-REHEARSAL-ACCESS.md).
 - [ ] Complete authenticated external erasure ledger, provider/live-object execution and full lifecycle acceptance.
 - [x] Detect stale unattended-monitor evidence: the active GitHub schedule had not dispatched a recovery run since 09:05 UTC; public health correctly returned 503. Real manual combined run 35596479265 passed and restored 200.
-- [ ] Resolve unattended scheduling reliability before general release; manual success is not proof of scheduled coverage.
+- [x] Establish an independent unattended schedule and observe two actual cron successes with signed delivery, rather than relying on manual runs. Continued CPU capacity and external-alert receipt remain open in B04.
 
 ## 21 September 2026 - Independent scheduled monitor prepared
 
@@ -734,7 +735,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 
 - [x] Recheck current account/session/recovery/membership or legacy-device authority atomically when reserving uploads and publishing completed originals/previews. Reject cached request authority after revocation; clean up rejected new allocations and previews.
 - [x] Verify real D1 revocation, expiry, cross-person/space denial, personal ownership and recovery-watermark cases. Production-module API suites pass, including existing multipart, quota, publication and library workflows.
-- [ ] Finish browser/hosted checks and deploy this increment. This is a prerequisite for lifecycle freezing; issued direct-transfer capabilities and other writers still need coordinated fencing. P2-06 remains unchecked.
+- [x] Finish full local browser checks and hosted CI `35621810303`; deploy Worker `59b996f4-aea4-4ece-a808-3798a2d783b3` at 100%. Hosted private-access boundaries, direct multipart/CORS, cross-session visibility, exact-byte download and receiver revocation passed in the isolated verification library. This is a prerequisite for lifecycle freezing; issued capabilities and other writers still need coordinated fencing. P2-06 remains unchecked.
 - [x] Add failure artifacts for an intermittent hosted WebKit offline-test error seen in run `35620693844`; keep the strict no-page-error assertion. No speculative frontend change or relaxed assertion is included.
 
 ## 21 September 2026 - Scheduled monitor optimisation verified
@@ -747,4 +748,4 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 
 - [x] Hosted failure artifacts identify WebKit fetches from a page being unloaded, from the library's background poll. Pause polling and abort its requests on pagehide, resume once on back/forward-cache return, and skip hidden/offline pages and overlapping refreshes.
 - [x] Test navigation cancellation, queued stale callbacks, bfcache resume, hidden/offline behaviour and genuine failure reporting. Keep strict browser error assertions.
-- [ ] Complete browser/hosted verification and deploy with the transfer-commit safeguards. General-release and full account-closure gates remain unchanged.
+- [x] Complete full local browser and hosted CI verification, then deploy with the transfer-commit safeguards in Worker `59b996f4-aea4-4ece-a808-3798a2d783b3`. General-release and full account-closure gates remain unchanged.

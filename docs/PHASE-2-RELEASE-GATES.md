@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker fe4fa894-f45e-4c7d-93a6-4ced1a355774 is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Total personal allocation is 1 GiB for the designated-account pilot.
+Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker `59b996f4-aea4-4ece-a808-3798a2d783b3` is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Total personal allocation is 1 GiB for the designated-account pilot. Latest release adds atomic transfer-commit authority and navigation-aware polling; hosted CI `35621810303`, private-access boundaries and isolated exact-byte transfer verification passed.
 
 ## Prepared and verified locally
 
@@ -29,7 +29,8 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Verify hosted provider and identity checks, signed failure reporting and recovery after real checks pass (35579499914, 35580179355, 35580503181).
 - [x] Configure external aggregate-health monitor 4956708 and verify Up on the Free plan. Missing/failed/stale reports fail closed; tests cover 90-minute expiry.
 - [x] Configure combined monitoring at minutes 13 and 43 UTC each hour; GitHub scheduling is best effort.
-- [ ] Verify test-alert receipt and observe the first scheduled run.
+- [x] Observe independent Cloudflare scheduled combined runs at 15:19 and 15:49 UTC on 21 September, with signed delivery and healthy public readback; optimised CPU sample is 8 ms on Free.
+- [ ] Verify the already-sent test-alert receipt and continued coverage/capacity before expansion.
 - [x] Rehearse operator repair with designated synthetic identities in isolated actual-schema D1: monitor detection, signed replay, independent watermark readback, old-session revocation, newer/unrelated-session preservation, library fingerprints and replay ordering passed. Real provider/receiver verification is recorded separately.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.

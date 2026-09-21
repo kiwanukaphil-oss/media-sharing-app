@@ -1,5 +1,15 @@
 # Direct Cloudflare deployment
 
+## Transfer authority and page lifecycle release - 21 September 2026
+
+Worker `59b996f4-aea4-4ece-a808-3798a2d783b3` is live at **100%**, deployment read back at 15:55 UTC. Source `30fe826` includes atomic transfer-commit access checks and navigation-aware background polling. No schema, account audience, secret or 1 GiB pilot-budget change. Previous version: `fe4fa894-f45e-4c7d-93a6-4ced1a355774`.
+
+Full local API/account/browser suites passed; hosted CI `35621810303` passed both verification and browser jobs, including the WebKit reload case that had failed before the polling repair. TypeScript, lint, production build and direct-deployment dry run passed. Both primary-origin health endpoints return 200. Anonymous session/feed/device access remains denied and invitation-only entry remains enforced. The hosted isolated transfer passed direct R2 multipart/CORS, cross-session visibility, exact SHA-256 download and receiver revocation. Its generated test original is retained in the existing Relay verification library; no user original was removed.
+
+The independent monitor's optimised version `49576315-efae-4b4d-b815-29532e4aac8d` also passed its real 15:49 UTC cron at 8 ms CPU with signed delivery and healthy readback. Alert receipt, expansion capacity and full lifecycle execution remain separate gates.
+
+Post-release read-only D1/R2 reconciliation passed: **32 objects, zero unfinished uploads, zero anomalies**, with unchanged before/after fingerprints. The one added generated original is newer than the last independently verified backup; no claim is made that it was included in that earlier recovery point.
+
 ## Latest web polish - 21 September 2026
 
 Worker `fe4fa894-f45e-4c7d-93a6-4ced1a355774` is at 100%, with the same 1 GiB pilot allocation and schema. Account-library loading now uses neutral Library / Opening labels until verified scope arrives; People & access waits for a confirmed shared library. Publication and cancellation show their actual busy state. Lint, type checking, production build, dry run, deployment readback, live health and live loading-state UI verification passed. Recovery monitoring manual run 35581282633 also passed. Snapshot 2026-09-21T09-04-10-836Z-76478b50-0d2d-4ba9-97a3-73fea8e7536b independently restored all 23 originals (304,899,366 bytes). Original test source/copy hashes match, keys differ, and all 20 baseline original records remain unchanged. The two clearly named synthetic PNGs are retained as verification evidence; no user originals were changed or removed.
