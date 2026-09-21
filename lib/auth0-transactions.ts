@@ -1,12 +1,13 @@
 import { AUTH0_TRANSACTION_LIFETIME_MS, type Auth0LoginTransaction } from "./auth0-client";
 import type { Auth0Settings } from "./auth0-config";
+import { auth0AudienceBinding } from "./auth0-config";
 import { accountSessionLifetime, type AccountSessionMode } from "./account-session-policy";
 
 const loginCookieName = "__Host-relay_login";
 const validRandomValue = (value: string) => /^[A-Za-z0-9_-]{43,128}$/.test(value);
 const hashValue = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest(
   "SHA-256", new TextEncoder().encode(value))), byte => byte.toString(16).padStart(2, "0")).join("");
-const configurationKey = (settings: Auth0Settings) => JSON.stringify([settings.issuer, settings.clientId, settings.callbackUrl]);
+const configurationKey = (settings: Auth0Settings) => JSON.stringify([settings.issuer, settings.clientId, settings.callbackUrl, ...auth0AudienceBinding(settings)]);
 
 type StoredTransaction = { nonce: string; verifier: string; expires_at: number; session_mode: AccountSessionMode };
 

@@ -13,6 +13,7 @@ export async function verifyAuth0Transactions(database) {
   const now = Date.now();
   const first = attempt(now);
   await transactions.storeAuth0Transaction(database, settings, first, now);
+  assert.equal(await transactions.consumeAuth0Transaction(database, { ...settings, allowedSubjects: ['pilot-person'] }, first.state, first.browserBinding, now), null);
   assert.equal(await transactions.consumeAuth0Transaction(database, settings, first.state, randomValue(), now), null);
   assert.equal(await transactions.consumeAuth0Transaction(database, { ...settings, clientId: 'other-client' }, first.state, first.browserBinding, now), null);
   const competing = await Promise.all(Array.from({ length: 5 }, () => transactions.consumeAuth0Transaction(database, settings, first.state, first.browserBinding, now)));

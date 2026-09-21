@@ -8,9 +8,14 @@ const compile = async path => {
 };
 const { readAuth0Settings, auth0ApplicationSetup } = await compile('lib/auth0-config.ts');
 const { discoverAuth0Client, prepareAuth0Login, completeAuth0Login, AUTH0_TRANSACTION_LIFETIME_MS } = await compile('lib/auth0-client.ts');
-const environment = { AUTH0_ENABLED: 'true', AUTH0_DOMAIN: 'relay-test.eu.auth0.com', AUTH0_CLIENT_ID: 'fixture-client',
+const environment = { AUTH0_ENABLED: 'true', AUTH0_ROLLOUT: 'open', AUTH0_DOMAIN: 'relay-test.eu.auth0.com', AUTH0_CLIENT_ID: 'fixture-client',
   AUTH0_CLIENT_SECRET: 'test-only-client-secret', RELAY_APP_ORIGIN: 'https://relay.example' };
 const settings = readAuth0Settings(environment);
+for (const mode of [undefined, '', 'everyone']) assert.throws(() => readAuth0Settings({ ...environment, AUTH0_ROLLOUT: mode }), /rollout/);
+for (const list of [undefined, '', 'null', '{}', '[]', '[1]', '[""]', '["spaces not allowed"]', JSON.stringify(Array(11).fill('auth0|test'))]) {
+  assert.throws(() => readAuth0Settings({ ...environment, AUTH0_ROLLOUT: 'pilot', AUTH0_PILOT_SUBJECTS: list }), /pilot configuration/);
+}
+const pilot = readAuth0Settings({ ...environment, AUTH0_ROLLOUT: 'pilot', AUTH0_PILOT_SUBJECTS: '["auth0|fixture-person"]' });
 assert.equal(readAuth0Settings({}), null);
 assert.equal(readAuth0Settings({ AUTH0_ENABLED: 'false' }), null);
 assert.throws(() => readAuth0Settings({ AUTH0_ENABLED: 'true' }), /incomplete/);
@@ -86,6 +91,10 @@ const verified = await completeAuth0Login(settings, client, callback(), activeTr
 assert.deepEqual(verified, { issuer: settings.issuer, subject: 'auth0|fixture-person', displayName: 'Test Person', verifiedEmail: 'person@example.test', authenticatedAt: verified.authenticatedAt, credentialsChangedAt: 0 });
 assert.ok(verified.authenticatedAt > Date.now() - 5000);
 assert.ok(!JSON.stringify(verified).includes('token'));
+assert.equal((await completeAuth0Login(pilot, client, callback(), activeTransaction, activeTransaction.browserBinding)).subject, 'auth0|fixture-person');
+claimOverrides = { sub: 'auth0|unlisted-person' };
+await assert.rejects(completeAuth0Login(pilot, client, callback(), activeTransaction, activeTransaction.browserBinding), /not included/);
+claimOverrides = {};
 for (const claims of [{ iss: 'https://other.auth0.com/' }, { aud: 'other-client' }, { exp: 1 }, { nonce: 'wrong-nonce' }, { sub: '' }, { auth_time: 1 }, { auth_time: undefined }]) {
   claimOverrides = claims;
   await assert.rejects(completeAuth0Login(settings, client, callback(), activeTransaction, activeTransaction.browserBinding));

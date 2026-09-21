@@ -19,9 +19,9 @@ Updated 21 September 2026. Production remains Phase 1; no remote migration or de
 - [x] Review initial connections: Relay Web retains email/password; Google is disabled for this application because its connection uses Auth0 development keys. Dedicated Google credentials remain a future prerequisite.
 - [x] Review baseline free-plan suitability: database login and the two Actions fit published free capabilities and the tenant's displayed Action allowance. No paid upgrade was selected. Production monitoring and post-trial verification remain separate gates.
 - [x] Create, configure, deploy and pass the hosted test for **Relay password-change claim**. Deployment alone does not connect the login flow.
-- [ ] Connect that Action between Start and Complete in Post Login and Apply. Automated drag did not persist; the user has the open flow tab.
+- [x] User connected the login Action and applied it. Verified the Action in the flow and All changes are live on 21 September.
 - [x] Prepare **Relay recovery notification**, set its public issuer/origin settings, and verify the saved source matches the repository exactly. Generate the independent recovery secret in an ignored local file without printing it.
-- [ ] User enters and saves `RELAY_RECOVERY_SECRET` in the prepared Auth0 dialog. Browser credential-entry rules require this handoff.
+- [x] User entered and saved the recovery secret. Verified its setting name and saved draft without reading the value.
 - [ ] Install and connect the reviewed Post Login and Post Change Password Actions; complete any required secure credential handoff. The latter is tenant-wide for database password changes: verify this tenant remains dedicated to Relay or explicitly constrain the operational scope before installation.
 - [ ] Configure the matching Worker recovery secret, Action failure monitoring and reconciliation path. Verify failures are visible without logging secrets or account details.
 - [ ] With explicit email authority, send the designated recovery email; the user completes the password change personally. Check fresh delivery authentication/inbox placement and observe revocation of an older Relay session plus successful new sign-in.
@@ -37,10 +37,10 @@ Updated 21 September 2026. Production remains Phase 1; no remote migration or de
 
 ## Release sequence and rollback limits
 
-1. Finish the gates above. Set non-secret identity settings deliberately; keep all secrets in Worker/Action secret stores. Do not enable sign-in before the required signed claim is supplied.
+1. General release requires the gates above. A restricted, designated-account pilot may run the live verification steps first, with personal allocation disabled and a verified recovery point. Set non-secret identity settings deliberately; keep all secrets in Worker/Action secret stores. Do not enable sign-in before the required signed claim is supplied.
 2. Capture and independently verify a pre-release recovery point. Review migration 0007-0018 against the current database journal; apply only unapplied migrations. Preserve existing media and device access.
 3. Deploy with identity disabled, verify baseline legacy web/native API behaviour and storage health, then enable the reviewed identity configuration and budget. Exercise designated account/space journeys before declaring release complete.
 4. Record the Worker version, migration journal, verified behaviour and allocation in the roadmap and deployment log. Check parent items only after all their acceptance criteria pass.
 5. If activation fails, disable new identity sign-in/allocation and return to the last compatible Worker while retaining the added schema and data. Do not roll the database back after users have created personal spaces, memberships or publications: an old snapshot can lose files or revive revoked access. Existing account users need a clear service-status/recovery path; a rollback to a legacy-only Worker is not feature-equivalent.
 
-The next critical-path steps are the two prepared Auth0 handoffs (connect the login Action and save the recovery secret), followed by receiver/monitoring configuration and the user-owned password-recovery test. Recovery-email authorisation remains pending; no new email was sent. Later collaboration/privacy phases remain dependent on these identity release gates.
+Both Auth0 handoffs are verified. The user authorised one recovery email to the designated test account on 21 September; it has not yet been sent. Next: prepare the restricted pilot receiver and monitoring, then perform the user-owned sign-in/password-recovery test. Later collaboration/privacy phases remain dependent on these identity release gates.

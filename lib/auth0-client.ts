@@ -1,5 +1,6 @@
 import * as oidc from "openid-client";
 import type { Auth0Settings } from "./auth0-config";
+import { permitsAuth0Subject } from "./auth0-config";
 import type { AccountSessionMode } from "./account-session-policy";
 
 export const AUTH0_TRANSACTION_LIFETIME_MS = 10 * 60 * 1000;
@@ -57,6 +58,7 @@ export async function completeAuth0Login(settings: Auth0Settings, configuration:
   });
   const claims = tokens.claims();
   if (!claims || typeof claims.sub !== "string" || !claims.sub || claims.iss !== settings.issuer) throw new Error("A verified account identity was not returned.");
+  if (!permitsAuth0Subject(settings, claims.sub)) throw new Error("This account is not included in the Relay pilot.");
   const changedAt = claims[PASSWORD_CHANGE_CLAIM];
   if (typeof claims.auth_time !== "number" || !Number.isSafeInteger(claims.auth_time) || claims.auth_time <= 0 ||
       typeof changedAt !== "number" || !Number.isSafeInteger(changedAt) || changedAt < 0 || changedAt > now ||

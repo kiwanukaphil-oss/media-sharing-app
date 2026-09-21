@@ -1,5 +1,6 @@
 import type { VerifiedAuth0Identity } from "./auth0-client";
 import type { Auth0Settings } from "./auth0-config";
+import { auth0AudienceBinding, permitsAuth0Subject } from "./auth0-config";
 
 import { accountSessionLifetime, type AccountSessionMode } from "./account-session-policy";
 export { ACCOUNT_SESSION_LIFETIME_MS } from "./account-session-policy";
@@ -7,7 +8,7 @@ const cookieName = "__Host-relay_account";
 const validToken = (token: string) => /^[a-f0-9]{64}$/.test(token);
 const digest = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest(
   "SHA-256", new TextEncoder().encode(value))), byte => byte.toString(16).padStart(2, "0")).join("");
-const configurationHash = (settings: Auth0Settings) => digest(JSON.stringify([settings.issuer, settings.clientId, settings.appOrigin]));
+const configurationHash = (settings: Auth0Settings) => digest(JSON.stringify([settings.issuer, settings.clientId, settings.appOrigin, ...auth0AudienceBinding(settings)]));
 
 export class AccountError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -36,6 +37,7 @@ export function clearAccountCookie() {
 export async function createAccountSession(database: D1Database, settings: Auth0Settings,
   identity: VerifiedAuth0Identity, previousToken: string | null, now = Date.now(), mode: AccountSessionMode = "temporary") {
   const lifetime = accountSessionLifetime(mode);
+  if (!permitsAuth0Subject(settings, identity.subject)) throw new AccountError(403, "This account is not included in the Relay pilot.");
   if (!Number.isSafeInteger(identity.authenticatedAt) || identity.authenticatedAt <= 0 || identity.authenticatedAt > now + 60_000 ||
       !Number.isSafeInteger(identity.credentialsChangedAt) || identity.credentialsChangedAt < 0 ||
       identity.credentialsChangedAt > now || identity.authenticatedAt < identity.credentialsChangedAt) {

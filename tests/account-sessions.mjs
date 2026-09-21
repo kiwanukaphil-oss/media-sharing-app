@@ -17,6 +17,14 @@ const request = (action, cookie = '', method = 'GET', origin = settings.appOrigi
 // Provider cryptography is separately verified with signed tokens in auth0-client.mjs.
 export async function verifyAccountSessions(database) {
   const now = Date.now();
+  const pilot = { ...settings, allowedSubjects: ['pilot-person'] };
+  await assert.rejects(sessions.createAccountSession(database, pilot, identity('unlisted'), null, now), /not included/);
+  assert.equal((await database.prepare("SELECT COUNT(*) AS n FROM people WHERE subject = 'unlisted'").first()).n, 0);
+  const pilotLogin = await sessions.createAccountSession(database, pilot, identity('pilot-person'), null, now);
+  assert.ok(await sessions.readAccountSession(database, pilot, pilotLogin.token, now));
+  assert.equal(await sessions.readAccountSession(database, settings, pilotLogin.token, now), null, 'Opening rollout requires fresh authentication');
+  assert.equal(await sessions.readAccountSession(database, { ...pilot, allowedSubjects: ['someone-else'] }, pilotLogin.token, now), null);
+  assert.equal(await sessions.readAccountSession(database, { ...pilot, allowedSubjects: [] }, pilotLogin.token, now), null);
   const first = await sessions.createAccountSession(database, settings, identity('alice'), null, now);
   const alice = await sessions.readAccountSession(database, settings, first.token, now);
   assert.ok(alice);
