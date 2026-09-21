@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker f8ba096e-cb97-41b0-bf67-cc7bcecfee4d is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Personal allocation remains zero.
+Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker 75e9e54e-c94b-47e4-91d7-3d3d0608855e is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Personal allocation remains zero.
 
 ## Prepared and verified locally
 
@@ -25,7 +25,11 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Install and connect both reviewed Actions, complete the credential handoff, and verify both applied flows. Post Change Password is tenant-wide; current application inventory is Relay Web and Default App, and future additions must review this scope.
 - [x] Configure matching Worker recovery and pilot bindings. Live signed synthetic event returns 204; unsigned event returns 403. Auth0 hosted notification test succeeds after the CommonJS compatibility correction.
 - [x] Prepare and locally test dedicated provider failure/password-reset reconciliation checks; [activation and response runbook](RECOVERY-MONITORING.md) records exact scopes and limitations.
-- [ ] Authorise dedicated read-only provider access, install the credential, verify hosted checks and alert delivery, then schedule monitoring. No provider grant or credential has been created. Operator repair rehearsal remains outstanding.
+- [x] Authorise dedicated read-only provider access and install the credential. Exactly read:logs/read:users verified; protected main-only GitHub storage.
+- [x] Verify hosted provider and identity checks, signed failure reporting and recovery after real checks pass (35579499914, 35580179355, 35580503181).
+- [x] Configure external aggregate-health monitor 4956708 and verify Up on the Free plan. Missing/failed/stale reports fail closed; tests cover 90-minute expiry.
+- [ ] Verify test-alert receipt and schedule combined monitoring.
+- [ ] Rehearse operator repair with designated synthetic data.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.
 - [x] Verify the real Relay callback and eight-hour temporary session with the designated account. No library access is inferred.

@@ -1,5 +1,9 @@
 # Direct Cloudflare deployment
 
+## Latest operational release - 21 September 2026
+
+Worker `75e9e54e-c94b-47e4-91d7-3d3d0608855e` is verified at 100%. Signed operational health reporting is live at the primary origin; no schema change (through 0018). Web CI 35580098973 passed, as did hosted combined recovery/identity checks 35580179355 and 35580503181. A signed failure produced 503; the real check rerun restored 200. Unsigned reports are rejected. Better Stack monitor 4956708 is Up on Free, with exact-200 checks and email-only alerting. User-authorised test alert sent; receipt and scheduling remain pending. Restricted identity pilot and zero personal allocation remain in place.
+
 ## Current web library release — 18 September 2026
 
 User approved production deployment of the tested library release. Worker version `16ec7bee-77c3-47db-b142-1bde072af82c` is live at 100%, verified by deployment read-back. The immediately preceding live version was `f48b60d3-a077-4d7f-bcac-22fe4bf5553e`.

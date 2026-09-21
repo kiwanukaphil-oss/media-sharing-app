@@ -1,6 +1,6 @@
 # Recovery monitoring and reconciliation
 
-Updated 21 September 2026. Provider-side monitor implemented and locally tested; dedicated Auth0 authorisation and protected credential installation are complete. First hosted execution rejected a provider request; activation remains incomplete. Restricted pilot remains active.
+Updated 21 September 2026. Provider-side monitor implemented and locally tested; dedicated Auth0 authorisation and protected credential installation are complete. Hosted provider/identity checks now pass; signed health reporting and external monitoring are live. Test-alert receipt and scheduling remain outstanding. Restricted pilot remains active.
 
 ## What is already running
 
@@ -34,7 +34,7 @@ For pending deletion requests, follow [the retention runbook](ACCOUNT-DELETION-A
 
 ## Evidence and cost basis
 
-Actual-schema tests cover the local queue and revocation invariants. Provider-boundary tests cover scopes/field minimisation, pinned destinations, reset mismatches, blocked/missing identities, capacity bounds, rate-limit/network failures, response-size limits and redacted output. Hosted provider testing remains pending.
+Actual-schema tests cover the local queue and revocation invariants. Provider-boundary tests cover scopes/field minimisation, pinned destinations, reset mismatches, blocked/missing identities, capacity bounds, rate-limit/network failures, response-size limits and redacted output. Hosted provider testing passed (35579499914); combined checks and reporting passed (35580179355, 35580503181).
 
 Auth0 documents [log retrieval through the Management API](https://auth0.com/docs/deploy-monitor/logs/retrieve-log-events-using-mgmt-api), [user-read scope](https://auth0.com/docs/manage-users/user-accounts/manage-users-using-the-management-api), and [Action failure event filters](https://auth0.com/docs/customize/log-streams/event-filters). Detailed execution traces remain a dashboard investigation; the generic log API is not a replacement for Action Details.
 
@@ -51,7 +51,7 @@ The current [pricing comparison](https://auth0.com/pricing) places log streaming
 ## Free-plan missed-run detection
 
 - Hosted provider run 35579499914 passed after correcting profile field selection. Both scopes are sufficient; no wider grant needed.
-- Better Stack marks an additional heartbeat as billable. No heartbeat or upgrade was created. The existing backup heartbeat stays separate.
+- Better Stack's generic Billable label was initially mistaken for an exhausted allowance. The account is Free and [published pricing](https://betterstack.com/pricing) includes 10 monitors/heartbeats. The fourth monitor was accepted without an upgrade. The existing backup heartbeat stays separate.
 - A small authenticated reporting endpoint, `/api/operations/health`, is implemented for the existing Worker. GitHub reports success only if both provider and identity checks pass. Public GET returns only ok/degraded; a failure, absent/corrupt report, missing key or report older than 90 minutes yields HTTP 503. Reports contain no identities, counts or provider details.
 - A separate HMAC reporting key can update only the one R2 operational status object. Requests are bounded to 1 KiB and five-minute delivery freshness. Conditional writes prevent delayed or concurrent success from masking newer failure; duplicate reports do not refresh the deadline. This grants no account/media/recovery authority. Status is disposable operational state, not part of original-file backup manifests; an isolated restore starts unhealthy until checks run again.
-- Real R2 emulator tests cover signatures, streaming limits, replay, ordering/races, freshness and fail-closed behaviour. Ordinary HTTP monitoring will be configured after hosted receiver verification; no alerting activation is claimed yet.
+- Real R2 emulator tests cover signatures, streaming limits, replay, ordering/races, freshness and fail-closed behaviour. Hosted failure reporting returned HTTP 503; successful real combined checks restored HTTP 200. Better Stack monitor 4956708 is Up and checks exact HTTP 200 every three minutes with three-minute confirmation/recovery, TLS verification, no redirects and email-only alerts. A user-authorised test alert was sent; receipt remains pending. Scheduling remains manual until receipt verification.

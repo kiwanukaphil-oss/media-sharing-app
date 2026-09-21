@@ -37,3 +37,9 @@ The request format was checked against [Better Stack monitor documentation](http
 5. Implement and verify incremental media copies, consistent database exports/manifests and 30-day recovery retention as described in `OPERATIONS-PROPOSAL.md`. The routine copy identity must not be able to purge history. Do not apply a blanket 30-day upload-age deletion rule to unchanged originals.
 6. Complete a first backup and restore into isolated storage, including original-file SHA-256 checks and revoked-session handling. Only then enable the heartbeat and daily runner.
 7. Read back the active configuration and update this status with evidence. Any repository commit/push remains subject to the user's separate confirmation rule.
+
+## Identity and recovery monitoring - 21 September 2026
+
+The existing Free team now has four HTTP monitors and its original daily backup heartbeat. New monitor **4956708**, Relay - identity and recovery checks, reads `https://relayalbums.com/api/operations/health` without credentials. It requires HTTP 200, checks every 180 seconds, confirms/recoveries after 180 seconds, verifies TLS, refuses redirects and sends email only. Saved configuration and Up state verified. Better Stack confirmed the explicitly authorised test alert was sent; receipt is pending. The generic Billable label did not mean a paid upgrade was required; none was selected.
+
+Worker 75e9e54e-c94b-47e4-91d7-3d3d0608855e stores a minimal signed combined status. Provider/D1 checks pass in hosted runs 35580179355 and 35580503181. Live signed failure and subsequent real-check recovery were verified before creating the external monitor, without interrupting app access. Missing/corrupt/failed or over-90-minute-old status returns 503; local real-R2 tests verify expiry and concurrency. This remains detection, not immediate revocation or a guaranteed alert deadline. Independent backup monitoring is unchanged.

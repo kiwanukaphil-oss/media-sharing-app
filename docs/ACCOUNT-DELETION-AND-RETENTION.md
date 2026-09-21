@@ -1,6 +1,6 @@
 # Account deletion and retention
 
-Status: local request workflow implemented and tested on 21 September 2026. Operator execution, alert-delivery verification and an end-to-end erasure rehearsal remain release gates. A read-only scheduled queue check is now implemented; hosted activation evidence is recorded separately. This document records the actual present retention behaviour; it does not promise an unimplemented deletion deadline.
+Status: local request workflow implemented and tested on 21 September 2026. Operator execution, alert-delivery verification and an end-to-end erasure rehearsal remain release gates. A read-only scheduled queue check is live and hosted verification passed (35576462943); the combined provider/queue report is also verified, with external health monitor 4956708 Up. Alert receipt remains pending. This document records the actual present retention behaviour; it does not promise an unimplemented deletion deadline.
 
 ## What users can do
 
