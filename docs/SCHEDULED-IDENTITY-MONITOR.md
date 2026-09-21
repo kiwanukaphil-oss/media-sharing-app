@@ -45,4 +45,6 @@ Provider regressions, independent Node-HMAC signature comparisons, R2 delivery t
 
 - [x] Observe the optimised version's real **15:49 UTC** cron: outcome `ok`, **8 ms CPU**, **2,776 ms wall time**, no exceptions and static success log. Version ID matches the deployed optimisation.
 - [x] Independently read back the delivered R2 report: `eventAt=1790005747336`, `receivedAt=1790005748922`, status success. The actual external-monitor endpoint `/api/operations/health` returns HTTP 200 with `status: ok`.
-- [ ] Collect continued coverage/capacity evidence before broadening the pilot. The observed improvement from 10 ms to 8 ms is a single post-change sample with modest Free-plan headroom, not a capacity guarantee for additional identities. No billing change has been made.
+- [ ] Collect continued coverage/capacity evidence before broadening the pilot. The observed post-change samples remain limited evidence, not a capacity guarantee for additional identities. No billing change has been made.
+
+At **16:19 UTC**, the same optimised version passed a second real cron: **5 ms CPU**, **3,113 ms wall time**, outcome `ok`, no exceptions. Independent R2 readback reports success with `eventAt=1790007547320` and `receivedAt=1790007549049`; the external health endpoint again returns 200. There are now three observed scheduled successes, with optimised samples of 8 ms and 5 ms. This supports continuing the existing restricted pilot on the verified Free plan; broader identity capacity and external alert receipt remain separate gates.
