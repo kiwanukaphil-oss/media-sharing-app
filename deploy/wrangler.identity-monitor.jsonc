@@ -7,8 +7,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
-  "triggers": {"crons": []},
-  "vars": {"MONITOR_ENABLED": "false"},
+  "triggers": {"crons": ["19,49 * * * *"]},
+  "vars": {"MONITOR_ENABLED": "true"},
   "services": [{"binding": "RELAY", "service": "relay-media-exchange"}],
   "secrets": {"required": ["AUTH0_MONITOR_CLIENT_ID", "AUTH0_MONITOR_CLIENT_SECRET", "CLOUDFLARE_D1_READ_TOKEN", "RELAY_MONITOR_SECRET"]},
   "observability": {"enabled": true, "head_sampling_rate": 1}

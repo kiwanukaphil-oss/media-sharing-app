@@ -1,6 +1,6 @@
 # Independent scheduled identity monitor
 
-Status: implemented and locally verified on 21 September 2026. Dedicated Worker `relay-identity-monitor` is deployed **disabled**, without credentials, cron triggers, preview URL or workers.dev endpoint. Disabled version: `879bdb26-99ab-4fd0-a8ef-09395e032983`. Activation awaits approval to store the existing read-only Auth0 monitoring credential in Cloudflare's encrypted secrets.
+Status: activated on 21 September 2026 at 15:03 UTC following explicit user approval. Dedicated Worker `relay-identity-monitor` runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Active version: `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2`, verified at 100%. All four required secret names were read back after encrypted installation. First scheduled execution and hosted resource usage remain to be verified.
 
 ## Reason for the change
 
@@ -26,8 +26,8 @@ The browser requires approval before copying the existing provider secret into a
 - [x] Verify healthy/unhealthy checks, capacity limits, database/provider failures, report rejection, signatures and absence of a public trigger.
 - [x] Exercise disabled, successful and failed scheduled events in actual Workers runtime. Fix the Node/Workers redirect-mode difference: Workers uses manual redirects and rejects non-success responses without following them.
 - [x] Pass TypeScript and lint; deploy disabled without secrets or schedules. The bootstrap deployment omits required-secret declarations only to create the disabled resource; tracked config retains them for activation validation.
-- [ ] Obtain approval for the additional encrypted secret destination and run `scripts/install-identity-monitor-secrets.mjs`.
-- [ ] Set `MONITOR_ENABLED` to `true`, add `19,49 * * * *`, deploy the tracked configuration and read back its version/schedule.
+- [x] Obtain approval for the additional encrypted secret destination and run `scripts/install-identity-monitor-secrets.mjs`. User approved; installation and four secret names verified, with no values logged.
+- [x] Set `MONITOR_ENABLED` to `true`, add `19,49 * * * *`, deploy the tracked configuration and read back its version/schedule.
 - [ ] Observe a real cron execution, verify signed health delivery and review CPU/request use. A manual check alone is insufficient.
 - [ ] Confirm the already-sent Better Stack test alert arrived; do not send another without permission.
 
