@@ -26,7 +26,7 @@ The separate trust input pins the public key, ledger/key IDs, exact revision and
 - [x] Reject ambiguous/unknown schemas, duplicate identity decisions and incomplete fulfilment evidence references.
 - [x] Confirm pending/withdrawn/review-required decisions do not trigger minimisation.
 - [x] Exercise the verified wrapper against the actual schema, preserving shared copies and quarantining access.
-- [ ] Provision separately protected ledger storage, an operator-only signing key and independently recoverable public-key/current-head trust. No production credential is created by the local tests.
+- [x] Provision protected operator signing custody, an encrypted portable cloud vault and immutable archive storage. Pin the public verification root independently in `deploy/erasure-ledger-public-root.json`; a separate read-only CLI verified the initial head without the application database or private key.
 - [ ] Implement atomic append/history and monotonic head updates; prove decisions survive loss of the application database and stale-backup restore.
 - [ ] Connect request/withdrawal/fulfilment transitions, current provider/live-object/backup evidence and write-freeze enforcement. An evidence digest alone is not independent evidence validation.
 - [ ] Reconcile every relevant person and historical snapshot, including missing or older-schema identities, before any production cutover.
@@ -110,3 +110,5 @@ Output remains limited to the named legacy device profiles with `cutoverAllowed:
 ### Verified custody and archive checkpoint
 
 Owner submission completed on 21 September 2026. The local protected key and password-encrypted cloud vault were independently verified. The bootstrap published empty revision 1; the separate read-only CLI authenticated its exact immutable version and current signed head. Both cutover and cloud-erasure flags remain false. Custody evidence is private under `.sites-runtime/operations/erasure-signing-custody/`; archive readback is private under `.sites-runtime/operations/erasure-archive-reads/`. The manifest expires after one hour; this checkpoint is evidence of a successful read, not an indefinitely fresh head.
+
+The independent non-secret verification root is pinned in `deploy/erasure-ledger-public-root.json`. It contains exactly ledger ID, key ID and the Ed25519 public key, never the signing key or recovery password. A separate cloud read using this repository-pinned root verified revision 1 without application SQL or local journal input. Root changes require an explicit reviewed custody rotation; never replace it with a root advertised by a backup under inspection.

@@ -780,3 +780,5 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Correct recovery form refusal: use same-origin referrer policy so native form POSTs preserve the Origin required by the unchanged exact-origin check. Null and foreign origins still fail. Handoff unit tests and an actual Chrome native form submission with synthetic data and a no-op provisioner passed; no real key was created by that test. Owner form reopened; actual custody remains pending.
 
 - [x] Owner custody completed and real empty archive bootstrap/readback passed. Fixed the bootstrap CLI storage transport import during preflight; the CLI and separate read-only command both verified revision 1. Private-key material, encrypted vault and archive evidence remain outside Git.
+
+- [x] Pin the non-secret public verification root independently in the repository and read the real cloud archive using that root, without the application database, local journal or signing key. Revision 1 verified; populated-decision loss/recovery and executor integration remain outstanding.
