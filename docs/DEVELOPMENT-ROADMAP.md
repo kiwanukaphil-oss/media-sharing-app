@@ -782,3 +782,5 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Owner custody completed and real empty archive bootstrap/readback passed. Fixed the bootstrap CLI storage transport import during preflight; the CLI and separate read-only command both verified revision 1. Private-key material, encrypted vault and archive evidence remain outside Git.
 
 - [x] Pin the non-secret public verification root independently in the repository and read the real cloud archive using that root, without the application database, local journal or signing key. Revision 1 verified; populated-decision loss/recovery and executor integration remain outstanding.
+
+- [x] Lifecycle request authority hardening implemented and locally verified: preview, request and withdrawal reject a cached session authenticated before the current credential-change watermark. Withdrawal timestamps advance even within one millisecond, preserving strict decision ordering. Actual D1 account-access integration and production build pass; deployment of this increment remains pending.

@@ -37,6 +37,17 @@ export async function verifyAccountDeletion(database, dispatch) {
   await assert.rejects(deletion.withdrawAccountDeletion(database, other, request.id, now), /changed/);
   const withdrawn = await deletion.withdrawAccountDeletion(database, owner, request.id, now + 1);
   assert.equal(withdrawn.request.status, 'withdrawn');
+  const recoveryRace = await signIn('deletion-recovery-race');
+  const beforeRecovery = await deletion.requestAccountDeletion(database, recoveryRace, now);
+  await database.prepare('UPDATE people SET credentials_changed_at=? WHERE id=?').bind(now + 1, recoveryRace.personId).run();
+  await assert.rejects(deletion.previewAccountDeletion(database, recoveryRace, now + 2), /Sign in again/);
+  await assert.rejects(deletion.withdrawAccountDeletion(database, recoveryRace, beforeRecovery.request.id, now + 2), /changed/);
+  await assert.rejects(deletion.requestAccountDeletion(database, recoveryRace, now + 2), /Sign in again/);
+  assert.equal((await database.prepare('SELECT status FROM account_deletion_requests WHERE id=?').bind(beforeRecovery.request.id).first()).status, 'pending');
+  // A recovered session can withdraw even within the request timestamp's millisecond; history stays ordered.
+  const recovered = await signIn('deletion-recovery-race', now + 1);
+  await deletion.withdrawAccountDeletion(database, recovered, beforeRecovery.request.id, now);
+  assert.equal((await database.prepare('SELECT updated_at FROM account_deletion_requests WHERE id=?').bind(beforeRecovery.request.id).first()).updated_at, now + 1);
   const renewed = await deletion.requestAccountDeletion(database, owner, now + 2);
   assert.notEqual(renewed.request.id, request.id);
   const route = (path, method = 'GET', headers = {}) => dispatch(`${settings.appOrigin}/api/auth/${path}`, { method,

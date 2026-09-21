@@ -1,7 +1,8 @@
 import { AccountError, type AccountSession } from "./account-sessions";
 
 const liveAccount = `EXISTS (SELECT 1 FROM account_sessions a JOIN people p ON p.id = a.person_id
-  WHERE a.id = ? AND a.person_id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL)`;
+  WHERE a.id = ? AND a.person_id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
+  AND a.authenticated_at >= p.credentials_changed_at)`;
 const soleOwnership = `SELECT s.id, s.name FROM space_memberships m JOIN spaces s ON s.id = m.space_id
   WHERE m.person_id = ? AND m.revoked_at IS NULL AND m.role = 'owner'
   AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = m.space_id)
@@ -39,7 +40,7 @@ export async function requestAccountDeletion(database: D1Database, session: Acco
 
 // Withdrawal is account-scoped and preserves the request record for restore reconciliation.
 export async function withdrawAccountDeletion(database: D1Database, session: AccountSession, id: string, now = Date.now()) {
-  const result = await database.prepare(`UPDATE account_deletion_requests SET status = 'withdrawn', updated_at = ?
+  const result = await database.prepare(`UPDATE account_deletion_requests SET status = 'withdrawn', updated_at = MAX(updated_at + 1, ?)
     WHERE id = ? AND person_id = ? AND status IN ('pending','review_required') AND ${liveAccount}`)
     .bind(now, id, session.personId, session.sessionId, session.personId, now).run();
   if (!result.meta.changes) throw new AccountError(409, "This request changed. Refresh its status.");
