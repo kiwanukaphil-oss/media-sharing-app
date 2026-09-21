@@ -39,6 +39,9 @@ export function inspectHistoricalSnapshot(sql) {
     return {schemaDigest, minimisationSchemaReviewed:schemaDigest === reviewedSchemaDigest,
       identityTablesPresent:hasPeople, personalOwnershipTablePresent:hasPersonalSpaces,
       people, personalSpaces, completedOriginalReferences:completed.length,
+      originals:completed,
+      tableCounts:Object.fromEntries(['spaces','devices','invitations','media'].map(table =>
+        [table,database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n])),
       contentReferences:[...content.values()].sort((a,b) => a.sha256.localeCompare(b.sha256)),
       nonReadyMedia:database.prepare("SELECT COUNT(*) AS n FROM media WHERE status<>'ready'").get().n,
       cutoverAllowed:false};
@@ -61,11 +64,60 @@ export async function inventoryHistoricalSnapshots(catalog, readPinnedSql) {
     const sql = await readPinnedSql(record);
     if (typeof sql !== 'string' || Buffer.byteLength(sql) !== record.size ||
         createHash('sha256').update(sql).digest('hex') !== record.sha256) throw new Error('Historical snapshot digest mismatch.');
-    reports.push({fileId:record.fileId,fileName:record.fileName,sha256:record.sha256,...inspectHistoricalSnapshot(sql)});
+    reports.push({fileId:record.fileId,fileName:record.fileName,size:record.size,sha256:record.sha256,...inspectHistoricalSnapshot(sql)});
   }
   return {formatVersion:1,mode:'review-only',executable:false,cutoverAllowed:false,
     catalogFingerprint:catalog.fingerprint,sqlUploadVersionsInspected:reports.length,
     manifestContentsInspected:false,atomicSnapshot:false,snapshots:reports};
+}
+
+// Reconcile every manifest version with its exact SQL and original versions, never latest-name aliases.
+// This proves catalog/reference consistency only: original bytes still require independent restoration.
+export async function reconcileHistoricalManifests(catalog, snapshotReport, readPinnedManifest) {
+  const catalogById = new Map(catalog.versions.map(record => [record.fileId,record]));
+  if (catalogById.size !== catalog.versions.length || catalog.listingComplete !== true ||
+      snapshotReport.catalogFingerprint !== catalog.fingerprint) throw new Error('Historical catalogs do not agree.');
+  const snapshotsById = new Map(snapshotReport.snapshots.map(snapshot => [snapshot.fileId,snapshot]));
+  const manifests = [], referencedSql = new Set(), originalDependencies = new Map();
+  const matchPinned = reference => {
+    const found = catalogById.get(reference?.fileId);
+    if (!found || found.action !== 'upload' || found.fileName !== reference.fileName || found.sha256 !== reference.sha256 ||
+        found.size !== reference.size) throw new Error('Pinned historical reference is missing or changed.');
+    return found;
+  };
+  for (const record of catalog.versions.filter(entry => entry.action === 'upload' && entry.fileName.startsWith('relay/snapshots/') && entry.fileName.endsWith('/manifest.json'))) {
+    if (!snapshotName.test(record.fileName.replace(/manifest\.json$/, 'database.sql')) ||
+        !/^[a-f0-9]{64}$/.test(record.sha256 ?? '') || !Number.isSafeInteger(record.size) || record.size <= 0 || record.size > 16 * 1024 * 1024)
+      throw new Error('Historical manifest requires review.');
+    const text = await readPinnedManifest(record);
+    if (typeof text !== 'string' || Buffer.byteLength(text) !== record.size ||
+        createHash('sha256').update(text).digest('hex') !== record.sha256) throw new Error('Historical manifest digest mismatch.');
+    const manifest = JSON.parse(text);
+    if (manifest.formatVersion !== 1 || record.fileName !== `relay/snapshots/${manifest.snapshotId}/manifest.json` ||
+        !Array.isArray(manifest.objects)) throw new Error('Historical manifest schema requires review.');
+    const sql = matchPinned(manifest.database), snapshot = snapshotsById.get(sql.fileId);
+    if (!snapshot || sql.fileName !== record.fileName.replace(/manifest\.json$/, 'database.sql') ||
+        snapshot.completedOriginalReferences !== manifest.objects.length ||
+        Object.entries(snapshot.tableCounts).some(([table,count]) => manifest.tableCounts?.[table] !== count))
+      throw new Error('Historical manifest and SQL disagree.');
+    const originals = new Map(snapshot.originals.map(original => [original.id,original])), seen = new Set();
+    for (const original of manifest.objects) {
+      const expected = originals.get(original.id);
+      if (!expected || seen.has(original.id) || ['object_key','size','sha256'].some(key => original[key] !== expected[key]))
+        throw new Error('Historical original references disagree.');
+      seen.add(original.id);
+      const backup = matchPinned(original.backup);
+      if (backup.fileName !== `relay/originals/${original.sha256}` || backup.sha256 !== original.sha256 || backup.size !== original.size)
+        throw new Error('Historical original content reference disagrees.');
+      const dependencies = originalDependencies.get(backup.fileId) ?? new Set();
+      dependencies.add(record.fileId); originalDependencies.set(backup.fileId,dependencies);
+    }
+    referencedSql.add(sql.fileId);
+    manifests.push({fileId:record.fileId,fileName:record.fileName,sha256:record.sha256,databaseFileId:sql.fileId});
+  }
+  return {...snapshotReport,manifestContentsInspected:true,originalBytesVerified:false,manifests,
+    sqlVersionsWithoutManifest:snapshotReport.snapshots.filter(snapshot => !referencedSql.has(snapshot.fileId)).map(snapshot => snapshot.fileId),
+    originalVersionDependencies:[...originalDependencies].map(([fileId,dependencies]) => ({fileId,manifestFileIds:[...dependencies]}))};
 }
 
 // Use the existing read-only backup credential and keep all identifying details in ignored local storage.
@@ -77,16 +129,19 @@ async function saveHistoricalSnapshotInventory() {
   const directory = resolve(operationsDirectory,'historical-snapshot-inventories',randomUUID());
   await mkdir(directory,{recursive:true});
   let index = 0;
-  const report = await inventoryHistoricalSnapshots(before,async record => {
-    const destination = resolve(directory,`${index++}.sql`);
+  const readPinned = async record => {
+    const destination = resolve(directory,`${index++}.snapshot`);
     await downloadBackupFile(reader,record,destination);
     return readFile(destination,'utf8');
-  });
+  };
+  const sqlReport = await inventoryHistoricalSnapshots(before,readPinned);
+  const report = await reconcileHistoricalManifests(before,sqlReport,readPinned);
   const after = await list();
   if (before.fingerprint !== after.fingerprint) throw new Error('Backup catalog changed during historical review.');
   await writeFile(resolve(directory,'inventory.json'),JSON.stringify({...report,generatedAt:new Date().toISOString(),
     catalogUnchangedAcrossReads:true},null,2),{flag:'wx',mode:0o600});
   console.log(JSON.stringify({status:'private-historical-inventory-saved',sqlVersions:report.sqlUploadVersionsInspected,
+    manifestVersions:report.manifests.length,sqlVersionsWithoutManifest:report.sqlVersionsWithoutManifest.length,
     olderSchemas:report.snapshots.filter(snapshot => !snapshot.minimisationSchemaReviewed).length,
     executable:false,cutoverAllowed:false}));
 }

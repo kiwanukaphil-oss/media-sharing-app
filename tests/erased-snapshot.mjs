@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { minimiseErasedSnapshot, providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
 import { reconcileErasedSnapshot } from '../scripts/reconcile-erased-snapshot.mjs';
-import { inspectHistoricalSnapshot } from '../scripts/inventory-historical-snapshots.mjs';
+import { inspectHistoricalSnapshot, reconcileHistoricalManifests } from '../scripts/inventory-historical-snapshots.mjs';
 import { importSnapshot } from '../scripts/relay-backup.mjs';
 import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from '../scripts/backup-d1-readonly.mjs';
 
@@ -46,6 +46,21 @@ try {
   assert.equal(historical.people.length,2);
   assert.deepEqual(historical.contentReferences.find(entry=>entry.sha256==='a'.repeat(64)).references.map(entry=>entry.personalOwner),['gone',null]);
   assert.equal(historical.completedOriginalReferences,3);
+  const snapshotName = 'relay/snapshots/2026-09-21T09-04-10-836Z-76478b50-0d2d-4ba9-97a3-73fea8e7536b';
+  const pinnedSql = {fileId:'sql',fileName:`${snapshotName}/database.sql`,sha256:createHash('sha256').update(sql).digest('hex'),size:Buffer.byteLength(sql),action:'upload'};
+  const backupObjects = [...new Set(historical.originals.map(original=>original.sha256))].map(sha256=>({
+    fileId:sha256,fileName:`relay/originals/${sha256}`,sha256,size:10,action:'upload'}));
+  const manifest = {formatVersion:1,snapshotId:snapshotName.split('/')[2],database:pinnedSql,tableCounts:historical.tableCounts,
+    objects:historical.originals.map(original=>({...original,backup:backupObjects.find(backup=>backup.sha256===original.sha256)}))};
+  const verifyManifest = async value => {
+    const text=JSON.stringify(value),manifestRecord={fileId:'manifest',fileName:`${snapshotName}/manifest.json`,
+      sha256:createHash('sha256').update(text).digest('hex'),size:Buffer.byteLength(text),action:'upload'};
+    return reconcileHistoricalManifests({listingComplete:true,fingerprint:'fixture',versions:[pinnedSql,...backupObjects,manifestRecord]},
+      {catalogFingerprint:'fixture',cutoverAllowed:false,snapshots:[{...pinnedSql,...historical}]},async()=>text);
+  };
+  assert.equal((await verifyManifest(manifest)).originalVersionDependencies.length,2,'Private and shared references preserve the same content version.');
+  await assert.rejects(verifyManifest({...manifest,objects:[manifest.objects[0],manifest.objects[0],manifest.objects[2]]}),/disagree/);
+  await assert.rejects(verifyManifest({...manifest,objects:manifest.objects.map((original,index)=>index?original:{...original,object_key:'wrong'})}),/disagree/);
   const output = minimiseErasedSnapshot(sql,receipt,1000);
   // Authenticate the decision independently before transforming this actual-schema historical snapshot.
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
