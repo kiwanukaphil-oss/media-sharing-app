@@ -6,7 +6,7 @@ import { Miniflare,convertV4MiniflareOptions } from 'miniflare';
 const bundle=await build({entryPoints:['lib/account-closure-fence.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const fence=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'closure-protocol-test',modules:true,
-  script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB']}]}));
+  script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB'],r2Buckets:['MEDIA']}]}));
 const now=Date.now(),issuer='https://closure.fixture/';
 try {
   const database=await runtime.getD1Database('DB');
@@ -48,12 +48,38 @@ try {
     return (await database.prepare(`UPDATE spaces SET name='Still shared' WHERE id=? AND ${guard.sql}`).bind(space,...guard.bindings).run()).meta.changes;
   };
   assert.equal(await commit(activeAccount),1);
+  const storage=await runtime.getR2Bucket('MEDIA');
+  let releaseStorage, announceDispatch;
+  const dispatched=new Promise(resolve=>{announceDispatch=resolve;});
+  const paused=new Promise(resolve=>{releaseStorage=resolve;});
+  // Pause after durable admission, then let an actual isolated R2 write arrive after the fence.
+  const lateWrite=fence.runClosureStorageEffect(database,activeAccount.id,{objectKey:'fixture/late-preview',operation:'put'},async()=>{
+    announceDispatch();await paused;
+    await storage.put('fixture/late-preview','generated fixture');return {value:'stored'};
+  },now);
+  await dispatched;
+  await assert.rejects(fence.settleClosureTrackedWrite(database,activeAccount.id,'settled',now),/review/);
   const started=await fence.beginApprovedClosureFence(database,ownerApproval,now);
   assert.equal(started.id,ownerApproval.id);assert.equal(started.generation,1);
   assert.deepEqual(await fence.beginApprovedClosureFence(database,ownerApproval,now+1),started,'Exact fence retry is idempotent');
   for(const active of [activeAccount,activeLegacy,activeBackup])assert.equal(await commit(active),0);
   assert.equal(await commit(activeOther),1);
   assert.equal((await fence.inspectClosureFence(database,started.id)).unresolvedWrites,3);
+  let forbiddenDispatch=false;
+  await assert.rejects(fence.runClosureStorageEffect(database,activeAccount.id,{objectKey:'fixture/denied',operation:'put'},async()=>{
+    forbiddenDispatch=true;return {value:null};
+  },now),/Closure/);
+  assert.equal(forbiddenDispatch,false);
+  releaseStorage();assert.equal(await lateWrite,'stored');
+  assert.equal(await (await storage.get('fixture/late-preview')).text(),'generated fixture');
+  const effect=await database.prepare('SELECT object_key,state FROM closure_storage_effects WHERE admission_id=?').bind(activeAccount.id).first();
+  assert.equal(effect.object_key,'fixture/late-preview');assert.equal(effect.state,'acknowledged');
+  assert.equal(await commit(activeAccount),0,'Late storage acknowledgement never restores metadata authority');
+  await assert.rejects(fence.runClosureStorageEffect(database,activeOther.id,{objectKey:'fixture/ambiguous',operation:'put'},async()=>{
+    await storage.put('fixture/ambiguous','response lost');throw new Error('lost response');
+  },now),/lost response/);
+  await assert.rejects(fence.settleClosureTrackedWrite(database,activeOther.id,'settled',now),/review/);
+  assert.equal((await database.prepare('SELECT state FROM closure_storage_effects WHERE admission_id=?').bind(activeOther.id).first()).state,'uncertain');
   for(const actor of [{kind:'account',session:owner},{kind:'legacy',deviceId:legacy,spaceId:space},{kind:'backup'}])
     await assert.rejects(fence.admitClosureTrackedWrite(database,actor,now),/closure|access/);
   assert.ok(await fence.admitClosureTrackedWrite(database,{kind:'legacy',deviceId:unrelatedLegacy,spaceId:space},now));
@@ -67,6 +93,22 @@ try {
   assert.equal((await fence.inspectClosureFence(database,started.id)).unresolvedWrites,1);
   await assert.rejects(fence.settleClosureTrackedWrite(database,activeLegacy.id,'settled',now+86400000),/review/,'Uncertain effects cannot be cleared by timeout');
   const independentApproval=approval(independent);
+  const multipartAdmission=await fence.admitClosureTrackedWrite(database,{kind:'account',session:independent},now);
+  const upload=await fence.runClosureStorageEffect(database,multipartAdmission.id,{objectKey:'fixture/multipart',operation:'multipart_create'},async()=>{
+    const created=await storage.createMultipartUpload('fixture/multipart');return {value:created,uploadId:created.uploadId};
+  },now);
+  assert.equal((await database.prepare('SELECT upload_id FROM closure_storage_effects WHERE admission_id=?').bind(multipartAdmission.id).first()).upload_id,upload.uploadId);
+  await fence.runClosureStorageEffect(database,multipartAdmission.id,{objectKey:'fixture/multipart',operation:'multipart_abort',uploadId:upload.uploadId},async()=>{
+    await upload.abort();return {value:null};
+  },now);
+  await fence.settleClosureTrackedWrite(database,multipartAdmission.id,'settled',now);
+  const lostAcknowledgement=await fence.admitClosureTrackedWrite(database,{kind:'account',session:other},now);
+  await database.prepare("CREATE TRIGGER lose_storage_ack BEFORE UPDATE ON closure_storage_effects WHEN NEW.state='acknowledged' BEGIN SELECT RAISE(ABORT,'acknowledgement unavailable'); END").run();
+  await assert.rejects(fence.runClosureStorageEffect(database,lostAcknowledgement.id,{objectKey:'fixture/lost-ack',operation:'put'},async()=>{
+    await storage.put('fixture/lost-ack','generated');return {value:null};
+  },now),/acknowledgement unavailable/);
+  await database.prepare('DROP TRIGGER lose_storage_ack').run();
+  await assert.rejects(fence.settleClosureTrackedWrite(database,lostAcknowledgement.id,'settled',now),/review/);
   for(const altered of [{requestRevision:now-99},{subject:'wrong'},{authorisedAt:now-300001}])
     await assert.rejects(fence.beginApprovedClosureFence(database,{...independentApproval,...altered},now));
   await database.prepare("UPDATE account_deletion_requests SET status='withdrawn' WHERE id=?").bind(independent.requestId).run();
@@ -80,5 +122,5 @@ try {
   assert.equal((await fence.beginApprovedClosureFence(database,independentApproval,now)).id,independentApproval.id);
   const drained=await fence.inspectClosureFence(database,independentApproval.id);
   assert.equal(drained.trackedWritesDrained,true);assert.equal(drained.executable,false);
-  console.log('PASS: atomic D1 closure fence, request/identity/handover recheck, rollback, scoped credential revocation, generation commit denial, tracked drain and uncertain-write retention. Prototype only; no production migration or closure.');
+  console.log('PASS: atomic D1 closure fence, scoped revocation, generation commit denial, stalled R2 late-write tracking, multipart allocation custody, lost response/acknowledgement retention and guarded settlement. Prototype only; no production migration or closure.');
 } finally {await runtime.dispose();}

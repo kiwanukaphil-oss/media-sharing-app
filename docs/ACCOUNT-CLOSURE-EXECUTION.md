@@ -50,3 +50,17 @@ The restricted pilot remains the current release boundary. This contract does no
 Write admissions are recorded before effects. A generation predicate denies commits after the fence; current route-specific authority must also be checked. Global backup admissions intersect every closure; positively recorded device claims bind legacy admissions. Active or uncertain work blocks drain indefinitely. Time passage is not settlement, and the primitive provides no automatic clearance of uncertain work. All registered effects must be awaited before a caller records settlement.
 
 This schema is not in the application migration journal and has not been applied to production. Application route integration, tracked storage keys/capabilities, backup writer integration, coverage proof, restore-schema review and closure-status UX remain required. Even zero registered outstanding writes reports `executable: false`; the prototype cannot prove that currently uninstrumented writers have stopped.
+
+The isolated protocol now journals exact storage keys and multipart identifiers before dispatch. An admission cannot settle while any storage effect is active or uncertain. A stalled write tested against local R2 can finish after fencing, but remains recorded and cannot commit visible metadata. Lost storage responses and failed D1 acknowledgements retain uncertainty. Multipart allocation records its returned upload ID; a lost allocation response retains the key for inventory reconciliation. Acknowledgement means an operation finished, not that the resulting object was removed. Direct presigned capabilities and cloud network semantics are not covered by this local test.
+
+### Writer integration inventory
+
+| Writer | Required integration before activation |
+| --- | --- |
+| `lib/server.ts` upload initialization | Record key before multipart allocation; retain failed allocation and abort outcomes even when no media row exists. |
+| `app/api/[...path]/route.ts` part URL, proxy part and completion | Track issued capabilities separately from awaited server writes; bind multipart ID and part number. Never settle a direct capability merely because the URL expired. |
+| `lib/web-api.ts` thumbnail, restart and cancellation | Track original/preview effects and old/new multipart IDs. Keep cleanup available through a separately reviewed operator path after normal writer admission is fenced. |
+| `lib/publications.ts` original/preview copy and cleanup | Track each attempt effect through final acknowledgement; combine closure generation with existing source/destination authority at commit. |
+| `scripts/relay-backup.mjs` snapshot export and uploads | Admit before export, record snapshot and every uploaded version, acknowledge only after all writes finish. Add a narrow authenticated coordinator; the existing D1 read-only credential must remain read-only. |
+
+This inventory covers the observed storage-write entry points, not yet a proof of every metadata mutation. The application migration remains held until route coverage, direct capabilities, backup coordination and restore quarantine are reviewed together.

@@ -27,3 +27,16 @@ CREATE TABLE closure_write_admissions (
 );
 --> statement-breakpoint
 CREATE INDEX idx_closure_admissions_state ON closure_write_admissions(state,kind,person_id,device_id);
+--> statement-breakpoint
+CREATE TABLE closure_storage_effects (
+  id TEXT PRIMARY KEY NOT NULL,
+  admission_id TEXT NOT NULL REFERENCES closure_write_admissions(id),
+  object_key TEXT NOT NULL,
+  operation TEXT NOT NULL CHECK(operation IN ('put','multipart_create','multipart_part','multipart_complete','delete','multipart_abort')),
+  upload_id TEXT,
+  state TEXT NOT NULL CHECK(state IN ('active','acknowledged','uncertain')),
+  started_at INTEGER NOT NULL,
+  acknowledged_at INTEGER
+);
+--> statement-breakpoint
+CREATE INDEX idx_closure_storage_effects_admission ON closure_storage_effects(admission_id,state);
