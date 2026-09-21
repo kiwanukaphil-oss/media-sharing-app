@@ -1,0 +1,15 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "relay-identity-monitor",
+  "main": "identity-monitor-worker.mjs",
+  "account_id": "5afd1facc45c9ddd86114155b09fc2e2",
+  "compatibility_date": "2026-09-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": {"crons": []},
+  "vars": {"MONITOR_ENABLED": "false"},
+  "services": [{"binding": "RELAY", "service": "relay-media-exchange"}],
+  "secrets": {"required": ["AUTH0_MONITOR_CLIENT_ID", "AUTH0_MONITOR_CLIENT_SECRET", "CLOUDFLARE_D1_READ_TOKEN", "RELAY_MONITOR_SECRET"]},
+  "observability": {"enabled": true, "head_sampling_rate": 1}
+}

@@ -43,6 +43,8 @@ next-env.d.ts
 /.wrangler/
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
+# Wrangler resolves dry-run output relative to its deployment config; generated bundle is a cleanup candidate.
+/deploy/.sites-runtime/
 /.agents/
 /.codex/
 /outputs/

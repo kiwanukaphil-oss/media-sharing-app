@@ -303,6 +303,7 @@ Planning dependencies are not incidents. The active external blocker is:
 | B01 | P2-01 and dependent identity/privacy/collaboration phases | Relay Web is registered and exact URLs saved. Client secret received through ignored local storage; relayalbums.com is purchased and live; Resend account created; sender domain verified and scoped sending key created; Auth0 provider saved and verified; test and recovery emails delivered; restricted runtime, recovery and owner claim verified. No secrets in chat or Git. | Codex | 2026-09-20 | Resolved for restricted pilot: provider access, recovery, logout and owner connection verified; general-release operations tracked separately |
 | B02 | Next release / recovery reliability | Scheduled backup run 35486931770 failed with a read-only D1 query HTTP 400. Cause reproduced: SQL expression depth exceeded D1 limit. Balanced concatenation passes local D1/API tests and a live read-only snapshot restore. Hosted backup, Backblaze restore and verification passed in run 35491216252. | Codex | 2026-09-20 | Resolved |
 | B03 | P2-06 cloud erasure rehearsal | Sign-in and revised isolated-bucket access approved. Generated-only cloud version removal/restoration passed; temporary credential revoked. [Evidence](ERASURE-REHEARSAL-ACCESS.md). | Codex | 2026-09-21 | Resolved for this rehearsal; independent ledger, live/provider executor and lifecycle release remain open |
+| B04 | P2 monitoring reliability | Missed GitHub dispatches caused stale monitoring evidence; manual combined run restored healthy status. Independent Cloudflare runner is tested and deployed disabled. [Prepared secret destination and activation](SCHEDULED-IDENTITY-MONITOR.md). | User: additional secret destination approval; Codex: activate/verify | 2026-09-21 | Awaiting browser-required approval to copy the existing read-only monitor credential to Cloudflare |
 
 Phase 2 account/session, membership/claim, scoped library and personal-space code is implemented locally. Auth0 provider sign-in and email verification succeeded; live Relay callback/recovery, allocation settings and production migrations remain outstanding.
 
@@ -681,3 +682,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [ ] Complete authenticated external erasure ledger, provider/live-object execution and full lifecycle acceptance.
 - [x] Detect stale unattended-monitor evidence: the active GitHub schedule had not dispatched a recovery run since 09:05 UTC; public health correctly returned 503. Real manual combined run 35596479265 passed and restored 200.
 - [ ] Resolve unattended scheduling reliability before general release; manual success is not proof of scheduled coverage.
+
+## 21 September 2026 - Independent scheduled monitor prepared
+
+- [x] Share the existing provider, identity and signed-report logic between GitHub and a dedicated Cloudflare scheduled Worker; retain fixed read-only database access and no public trigger.
+- [x] Pass existing provider/identity/R2 regressions and actual Workers scheduled success/failure tests; bound response sizes, read duration and pilot capacity. Correct runtime redirect handling without allowing redirects.
+- [x] Pass lint and TypeScript; deploy the independent Worker disabled, without credentials or cron triggers. [Activation record](SCHEDULED-IDENTITY-MONITOR.md).
+- [ ] Obtain the required approval for the additional encrypted credential destination, activate cron and verify a real scheduled run plus the pending external-alert receipt.
