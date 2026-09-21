@@ -76,7 +76,7 @@ function verifyDecisionProgression(previous,next,requestOwners) {
 // restore authority. A production head reader still needs separately recoverable deployed custody.
 export function readErasureJournal(database,root,now=Date.now()) {
   assertJournalRoot(database,root);
-  const size=database.prepare('SELECT COUNT(*) AS records,COALESCE(SUM(length(envelope)),0) AS bytes FROM ledger_revisions').get();
+  const size=database.prepare('SELECT COUNT(*) AS records,COALESCE(SUM(length(envelope)+length(journal_signature)),0) AS bytes FROM ledger_revisions').get();
   if(size.records>10000 || size.bytes>16*1024*1024) throw new Error('Journal size requires an archival review.');
   const head=database.prepare('SELECT revision,payload_digest AS payloadDigest FROM ledger_head WHERE id=1').get();
   let previous=null,expected={revision:0,payloadDigest:null};
@@ -111,8 +111,8 @@ export function appendErasureJournal(database,root,expectedHead,entry,now=Date.n
     if(current.ledger && next.issuedAt<current.ledger.issuedAt) throw new Error('Journal issuance moved backwards.');
     verifyDecisionProgression(current.ledger,next,current.requestOwners);
     const serialized=JSON.stringify(envelope);
-    const retained=database.prepare('SELECT COALESCE(SUM(length(envelope)),0) AS bytes FROM ledger_revisions').get();
-    if(revision>10000 || retained.bytes+Buffer.byteLength(serialized)>16*1024*1024) throw new Error('Journal size requires an archival review.');
+    const retained=database.prepare('SELECT COALESCE(SUM(length(envelope)+length(journal_signature)),0) AS bytes FROM ledger_revisions').get();
+    if(revision>10000 || retained.bytes+Buffer.byteLength(serialized)+entry.journalSignature.length>16*1024*1024) throw new Error('Journal size requires an archival review.');
     database.prepare('INSERT INTO ledger_revisions VALUES (?,?,?,?,?)').run(revision,payloadDigest,current.head.payloadDigest,serialized,entry.journalSignature);
     const changed=database.prepare('UPDATE ledger_head SET revision=?,payload_digest=? WHERE id=1 AND revision=? AND payload_digest IS ?')
       .run(revision,payloadDigest,current.head.revision,current.head.payloadDigest);
