@@ -14,6 +14,7 @@ const post=(body,headers={})=>fetch(url,{method:'POST',headers:{Origin:origin,'C
 const valid=new URLSearchParams({password,confirmation:password,saved:'yes'}).toString();
 try {
   const form=await fetch(url);
+  assert.equal(form.headers.get('referrer-policy'),'same-origin');
   assert.equal(form.status,200);assert.equal(form.headers.get('cache-control'),'no-store');
   assert.match(form.headers.get('content-security-policy'),/frame-ancestors 'none'/);
   assert.match(await form.text(),/minlength="15"/);
@@ -25,6 +26,7 @@ try {
   assert.equal(wrongHost,404);
   assert.equal((await fetch(url,{headers:{'Sec-Fetch-Site':'cross-site'}})).status,200,'A handoff link may read the empty form without causing changes');
   assert.equal((await post(valid,{Origin:'https://other.example'})).status,403);
+  assert.equal((await post(valid,{Origin:'null'})).status,403);
   assert.equal((await post(valid,{'Content-Type':'application/json'})).status,400);
   for(const body of [valid+'&password=duplicate',valid.replace('saved=yes','saved=no'),new URLSearchParams({password,confirmation:'wrong',saved:'yes'}).toString(),'x'.repeat(4097)]) {
     const rejected=await post(body);assert.equal(rejected.status,400);assert.equal((await rejected.text()).includes(password),false);

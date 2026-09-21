@@ -53,14 +53,15 @@ export function createSigningCustodyServer(provision=provisionErasureSigningCust
     const origin=`http://127.0.0.1:${address.port}`;
     response.setHeader('Content-Type','text/html; charset=utf-8');response.setHeader('Cache-Control','no-store');
     response.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-    response.setHeader('Referrer-Policy','no-referrer');response.setHeader('X-Content-Type-Options','nosniff');
+    // Native form POSTs need their same-origin Origin header; no-referrer can turn it into null.
+    response.setHeader('Referrer-Policy','same-origin');response.setHeader('X-Content-Type-Options','nosniff');
     if(request.headers.host!==`127.0.0.1:${address.port}` || request.url!==pathname) {response.writeHead(404);response.end('Not found');return;}
     if(request.method==='GET') {
       // GET renders only an empty form, so direct handoff links can open from the browser extension.
       // All changes still require the exact same-origin POST; framing and secret reflection stay blocked.
       response.end(used?'Setup closed':form);return;
     }
-    if(request.method!=='POST' || request.headers.origin!==origin || used) {response.writeHead(403);response.end('Refused');return;}
+    if(request.method!=='POST' || request.headers.origin!==origin || used) {response.writeHead(403);response.end('<h1>Submission could not be accepted</h1><p>Return to the setup form and try once. If setup is already running, wait for its result.</p>');return;}
     used=true; let provisioning=false;
     try {
       if(request.headers['content-type']!=='application/x-www-form-urlencoded' || Number(request.headers['content-length'])>4096) throw new Error('Invalid input');
