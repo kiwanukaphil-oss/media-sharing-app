@@ -24,7 +24,8 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] User entered and saved the recovery secret. Verified its setting name and saved draft without reading the value.
 - [x] Install and connect both reviewed Actions, complete the credential handoff, and verify both applied flows. Post Change Password is tenant-wide; current application inventory is Relay Web and Default App, and future additions must review this scope.
 - [x] Configure matching Worker recovery and pilot bindings. Live signed synthetic event returns 204; unsigned event returns 403. Auth0 hosted notification test succeeds after the CommonJS compatibility correction.
-- [ ] Complete Action failure monitoring and reconciliation path. Hosted test results expose redacted failures for the supervised pilot; automated production alerting is not complete.
+- [x] Prepare and locally test dedicated provider failure/password-reset reconciliation checks; [activation and response runbook](RECOVERY-MONITORING.md) records exact scopes and limitations.
+- [ ] Authorise dedicated read-only provider access, install the credential, verify hosted checks and alert delivery, then schedule monitoring. No provider grant or credential has been created. Operator repair rehearsal remains outstanding.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.
 - [x] Verify the real Relay callback and eight-hour temporary session with the designated account. No library access is inferred.
@@ -34,7 +35,8 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 ## Lifecycle and operations
 
 - [x] Implement aggregate-only queue and known recovery/session consistency checks with actual-schema tests; scheduled workflow reuses existing D1 read-only access.
-- [ ] Verify hosted operational checks, operator notifications and missed-run detection; provider delivery cannot be inferred from a consistent local watermark.
+- [x] Verify hosted identity operations and both-origin health checks (runs 35576462943 and 35576467793).
+- [ ] Verify operator notifications and missed-run detection; provider delivery cannot be inferred from a consistent local watermark.
 
 - [ ] Establish a monitored deletion-request queue, authorised executor, backup removal/minimisation policy and independent erasure/restore rehearsal. Follow [the retention runbook](ACCOUNT-DELETION-AND-RETENTION.md); no irreversible cleanup is inferred from project-wide development authority.
 - [x] Verify actual legacy owner claim and current paired-device audience without guessing people from names. User approved and completed primary-origin pairing/promotion/account claim on 21 September. Account-scoped files and roles verified; original desktop owner and phone member retained. No live device retired.

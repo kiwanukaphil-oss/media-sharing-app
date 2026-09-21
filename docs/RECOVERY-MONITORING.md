@@ -1,0 +1,41 @@
+# Recovery monitoring and reconciliation
+
+Updated 21 September 2026. Provider-side monitor implemented and locally tested; dedicated Auth0 authorisation and hosted activation remain outstanding. No new provider credential has been created. Restricted pilot remains active.
+
+## What is already running
+
+The twice-hourly `Identity operations` workflow reads only aggregate D1 signals. Its first [hosted run passed](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35576462943). It flags pending/restored deletion requests, unknown request states, inconsistent recorded recovery watermarks and stale live sessions. The [public health matrix passed for both origins](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35576467793). Neither check proves that Auth0 delivered every reset event.
+
+## Dedicated provider check
+
+`scripts/check-auth0-recovery.mjs` and the manual-only `Auth0 recovery monitor` workflow are ready for a dedicated **Relay Recovery Monitor** machine-to-machine application. Grant only Auth0 Management API **read:logs** and **read:users**. These are tenant-wide read privileges, so activation needs explicit security-access approval. The implementation requests only failure type/date and the known Relay identity's ID, blocked flag and last password-reset time. No write, delete, client-management, secret-reading or password-reset permission is requested. Do not reuse Relay Web's client secret.
+
+Store the new client ID and secret as `AUTH0_MONITOR_CLIENT_ID` and `AUTH0_MONITOR_CLIENT_SECRET` in the existing main-restricted `relay-backup-copy` GitHub environment. The job receives its existing D1 read-only credential and the new provider credential; it receives no R2/B2 credential or recovery-signing key. Never print or commit the secret. The new credential can read tenant user profiles and logs, even though the script selects fewer fields; field selection is data minimisation, not an authorisation boundary.
+
+The check:
+
+1. Reads at most 200 active Relay identities; exceeding that reviewed capacity fails closed.
+2. Obtains a short-lived token for the pinned tenant Management API with the two read scopes.
+3. Checks the retained 20-hour window for Action execution, password-change and reset-request failures. A single matching event is enough to require private review; no full log export is needed.
+4. Retrieves each known provider identity by exact ID and compares its current reset timestamp against both Relay's person state and delivered-event watermark. Provider blocking, missing identities, malformed timestamps, failed requests and incomplete results are failures, not green reports.
+5. Prints static status categories only. No profile, email, subject, IP, token, count or raw provider error enters public CI logs. There are no database/provider writes.
+
+Before scheduling: verify least-privilege grants, securely install the credential, manually dispatch, inspect redacted output, verify operator failure notifications and provision missed-run detection. Then choose a cadence within provider/runners' limits. GitHub schedules are best effort; this is detection, not instantaneous revocation. The 20-hour log window is not permanent audit retention. An outage beyond retained logs can lose event history; comparing current account reset timestamps still detects newer unresolved resets for existing active identities.
+
+The scope includes tenant-wide failure signals because the password-change Action is tenant-wide. A failure from another application is a review signal, not proof that Relay is affected. Investigate it privately. Do not silently suppress a recurring failure. Future tenant applications require a fresh scope review.
+
+## Responding to a failure
+
+The project operator opens the Auth0 tenant log's Action Details privately, verifies the bound Action version/settings and checks provider availability. A red run must not contain copied log payloads. Check the same issuer/subject in the current provider profile and private D1 records; never infer identity from email or device name. Preserve sessions authenticated after the verified reset.
+
+For a confirmed missing notification, replay the verified provider timestamp through the existing signed recovery-event receiver using the operator-held recovery key and a current delivery timestamp. It uses the same monotonic, idempotent revocation path as the Action. Independently verify the watermark and revocation, then rerun both checks. Do not invent timestamps, lower a watermark, log the signed request, edit passwords or reset the database to clear an alert. This operator repair must be rehearsed with designated synthetic data before the general-release gate is checked.
+
+For pending deletion requests, follow [the retention runbook](ACCOUNT-DELETION-AND-RETENTION.md). Monitoring never grants authority to delete. For missing/deleted or blocked provider identities, assess current access and record an explicit remediation decision; the monitor does not silently erase or relink accounts.
+
+## Evidence and cost basis
+
+Actual-schema tests cover the local queue and revocation invariants. Provider-boundary tests cover scopes/field minimisation, pinned destinations, reset mismatches, blocked/missing identities, capacity bounds, rate-limit/network failures, response-size limits and redacted output. Hosted provider testing remains pending.
+
+Auth0 documents [log retrieval through the Management API](https://auth0.com/docs/deploy-monitor/logs/retrieve-log-events-using-mgmt-api), [user-read scope](https://auth0.com/docs/manage-users/user-accounts/manage-users-using-the-management-api), and [Action failure event filters](https://auth0.com/docs/customize/log-streams/event-filters). Detailed execution traces remain a dashboard investigation; the generic log API is not a replacement for Action Details.
+
+The current [pricing comparison](https://auth0.com/pricing) places log streaming on paid tiers. Polling avoids making the trial's stream availability a production dependency. Tokens for Auth0's own Management API [do not count against custom-API M2M token quotas](https://auth0.com/docs/secure/tokens/access-tokens/management-api-access-tokens); rate limits still apply. No paid upgrade is authorised or selected. Recheck actual tenant entitlement after trial expiry.

@@ -180,3 +180,9 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - User explicitly approved primary-origin pairing, device promotion and account ownership. Existing owner browser created a one-use invitation; the new My desktop · relayalbums.com device joined and was promoted through owner controls.
 - Recent-authentication preview named Our shared space, the designated account and the new owner device; confirmed connection succeeded. Account library and People & access show Owner. Explicit account-scoped library shows the same two live files, one Trash item, album and 130.7 MB storage.
 - Reviewed all three paired devices. Original My desktop remains owner and My phone remains member, both unlinked to accounts. Only the newly claimed device is linked to the account. No revocation, data mutation, deployment, schema change or budget change.
+
+## 21 September 2026 - Operational checks activated; provider monitor prepared
+
+- Source dc3e2c3: Identity operations run 35576462943 passed using the existing read-only D1 environment credential. Static status only; no personal records logged. Both primary and legacy health probes passed in run 35576467793. Twice-hourly schedules are configured; cron execution, notification delivery and missed-run detection are separate evidence.
+- Dedicated Auth0 read-only recovery monitor is implemented and locally tested, with a manual-only workflow. No provider application, access grant or secret created. Auth0 create-application form is staged as Relay Recovery Monitor; approval is needed for new tenant-wide read:logs/read:users access and secure GitHub environment storage.
+- No Worker deployment, data deletion, paid upgrade, personal-budget change or sign-in audience expansion. See docs/RECOVERY-MONITORING.md.
