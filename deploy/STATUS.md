@@ -1,6 +1,10 @@
 # Direct Cloudflare deployment
 
-## Latest operational release - 21 September 2026
+## Latest personal pilot configuration - 21 September 2026
+
+Worker `f096dd18-8262-46b8-af0c-fa7e23a87da3` is verified at 100%. The only runtime setting change is a 1 GiB total personal allocation (`1073741824`); the designated-account pilot, provider audience and existing shared quotas are unchanged. Runtime-config tests, deployment dry run and live public/private-boundary health passed. My space creation, personal upload, separate shared counts, grouped switching and deliberate publication of a synthetic PNG are verified through the signed-in UI. Independent restoration and remaining adversarial publication verification are ongoing. No schema change. Combined recovery monitoring is scheduled at minutes 13/43 UTC; test-alert receipt remains pending.
+
+## Operational release - 21 September 2026
 
 Worker `75e9e54e-c94b-47e4-91d7-3d3d0608855e` is verified at 100%. Signed operational health reporting is live at the primary origin; no schema change (through 0018). Web CI 35580098973 passed, as did hosted combined recovery/identity checks 35580179355 and 35580503181. A signed failure produced 503; the real check rerun restored 200. Unsigned reports are rejected. Better Stack monitor 4956708 is Up on Free, with exact-200 checks and email-only alerting. User-authorised test alert sent; receipt and scheduling remain pending. Restricted identity pilot and zero personal allocation remain in place.
 

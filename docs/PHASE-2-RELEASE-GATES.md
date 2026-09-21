@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker 75e9e54e-c94b-47e4-91d7-3d3d0608855e is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Personal allocation remains zero.
+Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker f096dd18-8262-46b8-af0c-fa7e23a87da3 is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Total personal allocation is 1 GiB for the designated-account pilot.
 
 ## Prepared and verified locally
 
@@ -11,7 +11,7 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Password-change notification validation, signed-login reconciliation and Auth0 Action source/tests.
 - [x] Deletion-request review/withdrawal, actual-retention disclosure and restored-request holds. This is not an erasure executor.
 - [x] Populated Phase 1 migration rehearsal through 0018: legacy credentials/invitations, original metadata/object keys, Trash, multipart state, album/section/cover relationships and revisions remain unchanged. Identity tables start empty; no inferred membership or privacy change.
-- [x] Public deployment configuration is checked in at `deploy/identity-runtime.json`: `enabled=true`, rollout `pilot`, personal budget `0`. `prepare-cloudflare.mjs` validates and carries these settings into the direct deployment config. Secrets are rejected from the public configuration.
+- [x] Public deployment configuration is checked in at `deploy/identity-runtime.json`: `enabled=true`, rollout `pilot`, personal budget `1073741824`. `prepare-cloudflare.mjs` validates and carries these settings into the direct deployment config. Secrets are rejected from the public configuration.
 
 ## Provider and user handoffs
 
@@ -28,7 +28,8 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Authorise dedicated read-only provider access and install the credential. Exactly read:logs/read:users verified; protected main-only GitHub storage.
 - [x] Verify hosted provider and identity checks, signed failure reporting and recovery after real checks pass (35579499914, 35580179355, 35580503181).
 - [x] Configure external aggregate-health monitor 4956708 and verify Up on the Free plan. Missing/failed/stale reports fail closed; tests cover 90-minute expiry.
-- [ ] Verify test-alert receipt and schedule combined monitoring.
+- [x] Configure combined monitoring at minutes 13 and 43 UTC each hour; GitHub scheduling is best effort.
+- [ ] Verify test-alert receipt and observe the first scheduled run.
 - [x] Rehearse operator repair with designated synthetic identities in isolated actual-schema D1: monitor detection, signed replay, independent watermark readback, old-session revocation, newer/unrelated-session preservation, library fingerprints and replay ordering passed. Real provider/receiver verification is recorded separately.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.
@@ -44,7 +45,8 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 
 - [ ] Establish a monitored deletion-request queue, authorised executor, backup removal/minimisation policy and independent erasure/restore rehearsal. Follow [the retention runbook](ACCOUNT-DELETION-AND-RETENTION.md); no irreversible cleanup is inferred from project-wide development authority.
 - [x] Verify actual legacy owner claim and current paired-device audience without guessing people from names. User approved and completed primary-origin pairing/promotion/account claim on 21 September. Account-scoped files and roles verified; original desktop owner and phone member retained. No live device retired.
-- [ ] Choose and record a bounded personal allocation budget; personal creation remains disabled until the budget is set. Review aggregate R2/B2 growth before expanding it.
+- [x] Choose and record a bounded personal allocation budget: 1 GiB total for the designated-account pilot; per-person allowance remains 1 GiB. No pilot audience expansion or paid upgrade. Review aggregate R2/B2 growth before expanding it.
+- [x] Deploy the pilot allocation and verify real My space creation, upload, grouped switching, separate shared counts and explicit synthetic publication. Independent restore and adversarial hosted publication checks remain separate gates.
 - [ ] Verify hosted original publication, interruption recovery, retained attempt-key cleanup and destination revocation before visibility with designated test data.
 - [x] Create and independently restore snapshot 2026-09-21T06-26-08-576Z-4ffeea27-bf7e-40a6-8bf4-0678f8de26f5; verify 20 original hashes/sizes and database integrity. Rehearse the private export, apply migrations and verify unchanged legacy rows from a fresh remote export.
 

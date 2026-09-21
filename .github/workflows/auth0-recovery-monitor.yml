@@ -1,7 +1,9 @@
 name: Auth0 recovery monitor
-# Manual activation until the receiver and external HTTP monitor are verified.
+# External monitor 4956708 checks the signed combined report and 90-minute freshness.
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '13,43 * * * *'
 permissions:
   contents: read
 concurrency:
