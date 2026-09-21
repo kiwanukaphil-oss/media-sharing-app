@@ -25,6 +25,7 @@ try {
   initialiseErasureJournal(first,root); initialiseErasureJournal(second,root);
   assert.deepEqual(readErasureJournal(first,root,now).head,emptyHead);
   assert.throws(()=>initialiseErasureJournal(first,{...root,keyId:'replacement'}),/root/);
+  assert.throws(()=>initialiseErasureJournal(first,{...root,privateKey:'must-not-enter-public-trust'}),/root/);
   assert.throws(()=>initialiseErasureJournal(first,{...root,publicKey:privateKey.export({type:'pkcs8',format:'pem'})}),/root/);
   const firstEntry=proposal(emptyHead,[pending]);
   let head=appendErasureJournal(first,root,emptyHead,firstEntry,now).head;

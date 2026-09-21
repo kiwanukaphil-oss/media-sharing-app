@@ -761,3 +761,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Implement and test a password-encrypted portable signing vault plus Windows-protected local custody, using standard crypto primitives and strict format/root checks.
 - [x] Test and open the single-use local recovery form; existing scoped Backblaze writer/reader access passes. The owner must save and enter their own unique recovery password; it must not enter chat or logs.
 - [ ] Complete the owner handoff and verify the actual pinned cloud vault download/decryption before recording recoverable custody. No real signing decision or account erasure is performed by this setup. Production ledger/executor integration remains outstanding.
+
+## 21 September 2026 - Independent ledger archive reader
+
+- [x] Implement immutable signed-revision export and complete all-version archive audit, with replay-resistant head selection and fail-closed conflict/missing-history checks.
+- [x] Add a read-only B2 adapter that repeats the ledger catalog and enforces current manifest expiry before returning a checked head. Test genuine signed conflicts, stale uploads, wrong roots, tampered bytes and changing catalogs.
+- [ ] After signing custody is verified, publish and independently read an initial real archive; then connect actual request/executor transitions. No production archive or fulfilment record exists yet, and no restore cutover is authorised by these helpers.

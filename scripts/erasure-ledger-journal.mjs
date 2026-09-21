@@ -8,7 +8,7 @@ const sameHead=(left,right)=>left?.revision===right?.revision && left?.payloadDi
 // This separate journal is never an application migration. Its root must come from independent custody,
 // not a restored database. Initialisation is atomic and cannot replace an existing root or decision head.
 export function initialiseErasureJournal(database,root) {
-  if (!root || !['ledgerId','keyId'].every(key=>typeof root[key]==='string' && /^[a-zA-Z0-9_-]{1,128}$/.test(root[key])) ||
+  if (!root || Object.keys(root).sort().join(',')!=='keyId,ledgerId,publicKey' || !['ledgerId','keyId'].every(key=>typeof root[key]==='string' && /^[a-zA-Z0-9_-]{1,128}$/.test(root[key])) ||
       typeof root.publicKey!=='string' || !root.publicKey.startsWith('-----BEGIN PUBLIC KEY-----') ||
       createPublicKey(root.publicKey).asymmetricKeyType!=='ed25519' ||
       createPublicKey(root.publicKey).export({type:'spki',format:'pem'})!==root.publicKey) throw new Error('Independent journal root required.');

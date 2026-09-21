@@ -84,4 +84,18 @@ Setup independently downloads the pinned B2 version, verifies its bytes, decrypt
 - [x] Verify existing scoped B2 writer/reader access and stage the empty local form for the owner.
 - [ ] Owner completes password-manager custody and local form submission; then verify the actual encrypted cloud backup and recovery evidence before recording production custody as complete.
 
+## Independent archive reader
+
+`prepareErasureArchiveEntries` exports an audited journal as immutable, individually signed revision objects under `relay/erasure-ledger/journal/<ledger-id>/`. These contain private pseudonymous decisions and must remain in the private backup bucket, not the public source repository. Only the public root belongs in a trust record; extra root fields, including private key material, are rejected.
+
+`auditErasureLedgerArchive` verifies every retained version in that prefix, its exact filename/bytes, predecessor signature, complete sequence and decision progression. Re-uploading an old signed object cannot roll back the selected head. Duplicate identical uploads are harmless; competing revisions, including two validly signed alternatives, stop for review. Missing history, hidden records and unknown formats fail closed. Expired manifests may be audited, but this alone supplies no currentness claim.
+
+`readCurrentErasureArchive` repeats the complete ledger catalog after reading the chain, rejects changes, and requires an unexpired latest manifest before returning a freshly checked head. The CLI adapter (`node scripts/read-erasure-ledger-archive.mjs <independent-public-root.json>`) uses only the existing B2 reader and saves details privately. Unrelated original-file uploads do not invalidate a ledger-only read. The independently pinned root must never be chosen from restored application SQL or the archive being assessed.
+
+- [x] Test pinned bytes, full history, withdrawals, old-upload replay, catalog order, identical duplicates, validly signed conflicts, wrong roots, changing catalogs and expiry.
+- [x] Implement the existing-reader B2 adapter without write or signing credentials; no real ledger archive has yet been published or read.
+- [ ] Publish a verified initial archive after custody is complete and verify the actual independent read path. Connect real transitions, writer coordination and executor evidence separately.
+
+Even a successful current-head read reports `cutoverAllowed: false` and `cloudErasureVerified: false`. It authenticates current decision evidence; it does not perform account erasure, freeze writers or verify retained original bytes.
+
 Output remains limited to the named legacy device profiles with `cutoverAllowed: false` and `cloudErasureVerified: false`. Deliberately shared filenames, organisation and original-file metadata remain governed by the shared-content retention policy; these tests do not claim complete anonymisation.
