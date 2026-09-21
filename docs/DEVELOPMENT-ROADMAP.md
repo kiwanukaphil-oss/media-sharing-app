@@ -185,9 +185,12 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Collaborators can contribute and organise without becoming administrators; occasional contributors can submit without browsing the library.
 **Entry:** Phase 2; approved role matrix and guest intake policy.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** Implementation not started; [role and intake contract](COLLABORATION-IMPLEMENTATION.md) prepared under standing authority. Owner: Codex. Phase 2 remains the implementation/release dependency; preparation does not satisfy the role-delivery acceptance criteria.
 
 - [ ] **P3-01 — Deliver scoped roles.** Owner, Editor, Contributor and Viewer have server-enforced capabilities; prioritise Editor. Distinguish viewing, downloading, contribution, organisation and access administration without exposing a complex matrix on every menu.
+
+  - [x] Prepare a source-reviewed role/intake contract, explicit invitation defaults and compatibility rules. Existing Member must not be silently upgraded to Contributor or Editor; live permissions are unchanged.
+  - [ ] Implement and verify central server capabilities, additive person roles and every affected API/UI path after Phase 2 gates.
 - [ ] **P3-02 — Make access understandable.** Invitations, member management, audience summaries and previews of consequential changes explain who gains access. Removing members preserves space-owned work and ends future authorised access.
 - [ ] **P3-03 — Build private favourites and scoped activity.** Person-owned bookmarks do not act as public approval. Durable action history includes actor/time and distinguishes reversible, conflicting and irreversible events. Start notifications in-app with privacy-safe text.
 - [ ] **P3-04 — Build bounded upload requests.** Explicit destination, expiry, revocation, file/size/storage limits and invited or passcode-protected intake. Show recipient and limits before upload; provide a receipt without library access. Mark unverified contributor names as self-reported.
