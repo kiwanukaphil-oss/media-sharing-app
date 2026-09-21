@@ -717,3 +717,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Test encoded keys, duplicate/missing records, continuation loops, entity rejection, GET-only signing and exact scope. Test actual-schema reconciliation of originals, previews, Trash, shared copies, publication attempts and unfinished transfers.
 - [x] Run against production read-only: **31 objects, zero unfinished uploads, zero review anomalies**. Before/after database and object fingerprints agree; private details remain in ignored storage.
 - [ ] Verify an authorised write freeze, in-flight capability expiry/reconciliation, historical-schema treatment, independently recoverable ledger and full erasure execution. Read consistency is not an atomic inventory, byte-integrity proof or deletion authority.
+
+## 21 September 2026 - Pre-account backup treatment
+
+- [x] Identify the seven older SQL snapshots as actual migration shapes 0002 and 0006, both predating person/private-space tables.
+- [x] Add digest-bound, authenticated legacy-device evidence and isolated transformations for these exact schemas. Synthetic tests preserve shared originals/other profiles, quarantine restored access, reject wrong-space/altered/withdrawn evidence and expose missing bindings.
+- [ ] Produce verified real association evidence through the independent ledger/executor. No real fulfilment decision or production snapshot transformation was made; shared metadata is retained under the explicit content policy.

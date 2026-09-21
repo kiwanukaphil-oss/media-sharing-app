@@ -69,3 +69,26 @@ export function verifiedErasureReceipt(envelope, trust, personId, now = Date.now
   if (!record || record.state !== 'fulfilled') throw new Error('No current fulfilled erasure decision.');
   return Object.freeze({ formatVersion: 1, personId: record.personId, identityDigest: record.identityDigest });
 }
+
+// Historical device associations are separate evidence, authenticated by the fulfilled record's digest.
+// This verifies the operator's statement, not the underlying claim ceremony or cloud erasure outcomes.
+export function verifiedLegacyErasureBindings(envelope, trust, personId, evidenceText, now = Date.now()) {
+  const ledger = verifyErasureLedger(envelope,trust,now);
+  const record = ledger.records.find(entry => entry.personId === personId);
+  if (!record || record.state !== 'fulfilled' || typeof evidenceText !== 'string' || Buffer.byteLength(evidenceText) > 128 * 1024 ||
+      createHash('sha256').update(evidenceText).digest('hex') !== record.evidenceDigest) throw new Error('Authenticated historical binding evidence is required.');
+  let evidence;
+  try { evidence = JSON.parse(evidenceText); } catch { throw new Error('Historical binding evidence JSON is invalid.'); }
+  if (JSON.stringify(evidence) !== evidenceText || !exactKeys(evidence,['formatVersion','personId','identityDigest','sourceSnapshotDigest','legacyDevices']) ||
+      evidence.formatVersion !== 1 || evidence.personId !== personId || evidence.identityDigest !== record.identityDigest ||
+      !isDigest(evidence.sourceSnapshotDigest) || !Array.isArray(evidence.legacyDevices) || evidence.legacyDevices.length > 1000)
+    throw new Error('Historical binding evidence requires review.');
+  const ids = new Set();
+  for (const binding of evidence.legacyDevices) {
+    if (!exactKeys(binding,['deviceId','spaceId']) || !isIdentifier(binding.deviceId) || !isIdentifier(binding.spaceId) || ids.has(binding.deviceId))
+      throw new Error('Historical device bindings are ambiguous.');
+    ids.add(binding.deviceId); Object.freeze(binding);
+  }
+  Object.freeze(evidence.legacyDevices);
+  return Object.freeze(evidence);
+}

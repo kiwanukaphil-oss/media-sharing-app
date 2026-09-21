@@ -33,3 +33,15 @@ The separate trust input pins the public key, ledger/key IDs, exact revision and
 - [ ] Rehearse the complete cloud/provider lifecycle with concrete irreversible-operation authority and independently verify retained copies.
 
 All tests generate disposable signing keys in memory. They do not sign real fulfilment statements, install service credentials or erase production data.
+
+## Pre-account device profiles
+
+The seven older production SQL versions match two actual migration shapes: **0002** and **0006**. Neither has person or personal-space tables. `minimise-legacy-device-snapshot.mjs` now rehearses these exact schemas with synthetic records. It preserves shared original references and organisation, replaces only explicitly bound device names/credentials, and quarantines all restored access. Unknown schema shapes and a device appearing in a different space fail closed; missing device bindings remain explicit unresolved evidence.
+
+The additional evidence artifact is exact JSON with `formatVersion`, `personId`, `identityDigest`, `sourceSnapshotDigest` and `legacyDevices` (`deviceId`/`spaceId` pairs). Its SHA-256 must equal the current fulfilled ledger record's `evidenceDigest`. The evidence must match the same person/provider digest, use unambiguous identifiers and contain no duplicate device bindings. This binds the operator's historical association statement to the signed decision; it does not independently prove the original claim ceremony or execution outcome. The future producer must verify the source snapshot and immutable claim records before signing.
+
+- [x] Rehearse both actual historical schemas with authenticated synthetic evidence; preserve other members' names and shared originals, revoke restored access and verify stable replay.
+- [x] Reject altered evidence, withdrawn intent, cross-person/provider mismatches, duplicate bindings, wrong spaces and future schema additions.
+- [ ] Produce and independently verify real historical association evidence through the deployed ledger/executor workflow. No real account was marked fulfilled and no retained production snapshot was transformed by these tests.
+
+Output remains limited to the named legacy device profiles with `cutoverAllowed: false` and `cloudErasureVerified: false`. Deliberately shared filenames, organisation and original-file metadata remain governed by the shared-content retention policy; these tests do not claim complete anonymisation.
