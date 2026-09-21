@@ -59,7 +59,14 @@ Backup originals are content-addressed. If an independently published shared cop
 
 - [x] Implement the private read-only planner and actual-schema tests for personal/shared isolation, Trash, active uploads, source/copy independence, duplicate-content dependencies, owner handover, disabled owners and withdrawn/restored intent.
 - [ ] Complete live R2/multipart and all-version B2 inventories; identify orphaned objects and historical profile references.
+  - [x] Implement and run the read-only B2 version/unfinished-upload catalog on 21 September: 43 versions and zero unfinished uploads. Private metadata stays in ignored operations storage. Historical identity references and live R2 reconciliation remain outstanding.
 - [ ] Implement/rehearse an authorised write freeze, provider removal, database minimisation, backup snapshot replacement and an independent erasure ledger for restore reconciliation.
 - [ ] Obtain concrete irreversible-operation approval and verify a synthetic end-to-end erasure/restore before marking lifecycle execution complete.
 
 Plans contain private provider/object identifiers and must stay out of chat, Git and public CI artifacts. No production deletion request was submitted to exercise this planner; tests use synthetic in-memory databases.
+
+## Backup version catalog
+
+Run `node scripts/inventory-backup-versions.mjs` with the existing restore reader. It exhausts the [file-version catalog](https://www.backblaze.com/apidocs/b2-list-file-versions) and the separate [unfinished-upload catalog](https://www.backblaze.com/apidocs/b2-list-unfinished-large-files), retaining hidden and superseded versions. Their distinct prefix and cursor parameters are tested. Unknown record types, duplicate IDs, malformed pages and repeated cursors fail without saving a complete report.
+
+The result is private review evidence, never deletion authority. Listing is not atomic: freeze relevant writes and repeat/reconcile before execution. The reader cannot inspect retention/hold settings; unknown settings remain explicitly unknown. Cataloging object versions does not inspect historical SQL for personal references, prove absence of replicas, or erase anything. The first live run found 43 completed versions and no unfinished uploads; no storage object or credential was changed.
