@@ -32,6 +32,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/account-erasure-plan.mjs
       - run: node tests/backup-version-inventory.mjs
       - run: node tests/erasure-ledger.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/erasure-ledger-journal.mjs
       - run: node --disable-warning=ExperimentalWarning tests/legacy-erased-snapshot.mjs
       - run: node --disable-warning=ExperimentalWarning tests/legacy-erasure-evidence.mjs
       - run: node --disable-warning=ExperimentalWarning tests/historical-snapshot-inventory.mjs

@@ -21,10 +21,24 @@ function decodeCanonicalBase64(value, maximumBytes) {
 // A valid signature proves authorship, not completeness/currentness or successful cloud erasure.
 // Pinning the exact current payload prevents a previously signed revision or fork being replayed.
 export function verifyErasureLedger(envelope, trust, now = Date.now()) {
+  if (!trust || !positiveInteger(trust.headCheckedAt) || trust.headCheckedAt > now || now - trust.headCheckedAt > 300000)
+    throw new Error('Current independent ledger trust is required.');
+  return verifySignedLedger(envelope,trust,now,true);
+}
+
+// Audit old signed revisions without pretending that their evidence is current. This distinct wrapper
+// cannot produce an erasure receipt; normal restore verification still requires a fresh independent head
+// and an unexpired manifest. Signing custody and the archived digest must be independently trusted.
+export function verifyArchivedErasureLedger(envelope, trust, now = Date.now()) {
+  return Object.freeze({ledger:verifySignedLedger(envelope,trust,now,false),current:false,cutoverAllowed:false});
+}
+
+// Share signature/schema validation between historical audit and the stricter current restore boundary.
+// Only the latter accepts unexpired evidence as current; both reject future issuance and bad lifetimes.
+function verifySignedLedger(envelope, trust, now, requireCurrent) {
   if (!exactKeys(envelope, ['payload', 'signature']) || !trust || !positiveInteger(now) ||
       !isIdentifier(trust.ledgerId) || !isIdentifier(trust.keyId) ||
-      !positiveInteger(trust.revision) || !isDigest(trust.payloadDigest) ||
-      !positiveInteger(trust.headCheckedAt) || trust.headCheckedAt > now || now - trust.headCheckedAt > 300000)
+      !positiveInteger(trust.revision) || !isDigest(trust.payloadDigest))
     throw new Error('Current independent ledger trust is required.');
   const payload = decodeCanonicalBase64(envelope.payload, 1024 * 1024);
   const signature = decodeCanonicalBase64(envelope.signature, 64);
@@ -42,7 +56,7 @@ export function verifyErasureLedger(envelope, trust, now = Date.now()) {
     ['formatVersion', 'ledgerId', 'keyId', 'revision', 'issuedAt', 'expiresAt', 'records']) ||
       ledger.formatVersion !== 1 || ledger.ledgerId !== trust.ledgerId || ledger.keyId !== trust.keyId ||
       ledger.revision !== trust.revision || !positiveInteger(ledger.issuedAt) || !positiveInteger(ledger.expiresAt) ||
-      ledger.issuedAt > now || ledger.expiresAt <= now || ledger.expiresAt - ledger.issuedAt > 3600000 ||
+      ledger.issuedAt > now || ledger.expiresAt <= ledger.issuedAt || (requireCurrent && ledger.expiresAt <= now) || ledger.expiresAt - ledger.issuedAt > 3600000 ||
       !Array.isArray(ledger.records) || ledger.records.length > 1000)
     throw new Error('Ledger schema or freshness is invalid.');
   const people = new Set(), requests = new Set(), identities = new Set();

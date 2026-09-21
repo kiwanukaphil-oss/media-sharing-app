@@ -749,3 +749,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Hosted failure artifacts identify WebKit fetches from a page being unloaded, from the library's background poll. Pause polling and abort its requests on pagehide, resume once on back/forward-cache return, and skip hidden/offline pages and overlapping refreshes.
 - [x] Test navigation cancellation, queued stale callbacks, bfcache resume, hidden/offline behaviour and genuine failure reporting. Keep strict browser error assertions.
 - [x] Complete full local browser and hosted CI verification, then deploy with the transfer-commit safeguards in Worker `59b996f4-aea4-4ece-a808-3798a2d783b3`. General-release and full account-closure gates remain unchanged.
+
+## 21 September 2026 - Durable decision journal prototype
+
+- [x] Implement an independent local journal with signed predecessor links, immutable public root, atomic history/head advancement and stale-writer rejection. No application migration or production signing key is introduced.
+- [x] Exercise real SQLite writer contention and interrupted-write rollback; preserve withdrawn/replaced requests and terminal fulfilled decisions. Keep expired historical audit separate from current restore authority, then pass existing erasure/legacy regression checks.
+- [ ] Provision independent recoverable custody, production head retrieval and actual transition/executor integration. Synthetic signed fixtures do not establish real erasure or clear P2-06. See [ledger contract](ERASURE-LEDGER.md).

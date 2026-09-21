@@ -1,6 +1,6 @@
 # Authenticated erasure decisions during restore
 
-Status: verification boundary and isolated snapshot integration implemented and locally tested on 21 September 2026. **No production signing key, hosted ledger, decision writer or production erasure executor is provisioned.** P2-06 remains open.
+Status: verification boundary, isolated snapshot integration and local durable-journal transaction prototype implemented and tested on 21 September 2026. **No production signing key, hosted ledger, deployed decision writer or production erasure executor is provisioned.** P2-06 remains open.
 
 ## Why this is separate from the backup
 
@@ -53,5 +53,22 @@ The additional evidence artifact is exact JSON with `formatVersion`, `personId`,
 - [ ] Independently verify the complete historical association set and retain its provenance in the deployed ledger workflow before signing any real decision.
 
 The caller must obtain the source digest from separately verified backup evidence, not from an arbitrary submitted SQL file. The artifact binds the source digest and excludes names, email addresses and credentials. It deliberately reports `historicalCompletenessVerified: false`: a snapshot can establish recorded associations but cannot establish that every earlier relationship was recorded. No production signing key or fulfilment statement is created by this preparation.
+
+## Durable decision journal prototype
+
+`erasure-ledger-journal.mjs` implements an independent SQLite journal for operator-workflow testing. It is **not an application migration** and no production journal has been initialised. The separately supplied Ed25519 public root is immutable within a journal; a private key is rejected as root input. Every manifest is signed, and a separate domain-separated journal signature binds its revision/digest to the accepted predecessor digest. A rejected concurrent proposal therefore cannot be substituted into the historical chain later.
+
+Appending uses an immediate database transaction, an expected-head comparison and a single atomic history/head commit. Stale writers fail for renewed review. Interrupting the head update rolls back the inserted revision. Reads audit a bounded complete sequence and reject missing revisions, changed roots, invalid signatures or head/history disagreement. Size limits require a separate archival design rather than silent history truncation.
+
+The transition policy retains every person and provider binding. New intent begins pending or held for review. Withdrawal requires a distinct new request before a later pending state. Pending cannot jump directly to fulfilled; review must precede it. Fulfilled decisions are terminal. Renewing manifest freshness preserves all decision records and their original update times. Superseded request IDs remain in authenticated history and cannot be reassigned to another person.
+
+`verifyArchivedErasureLedger` audits expired signatures with an explicit `current: false` / `cutoverAllowed: false` result. It does not refresh a trust timestamp or supply an erasure receipt. The existing current verifier still rejects expired manifests and stale independent heads. This separation permits durable audit without treating old evidence as current restore authority.
+
+- [x] Verify actual two-connection SQLite locking, stale-writer rejection, interruption rollback, signed predecessor links, withdrawal/re-request history, terminal fulfilment and freshness-only renewal.
+- [x] Re-run current ledger, current-schema minimisation and both legacy-schema/evidence regressions after the shared signature-validation refactor.
+- [ ] Provision independently recoverable key/storage custody and a production current-head reader; connect the actual request/withdrawal producer and verified executor.
+- [ ] Prove loss of the application database does not lose current decisions, and rehearse complete cloud/provider execution before allowing fulfilment in production.
+
+Local tests use only ephemeral signing keys and synthetic identities. A valid operator signature does not prove physical erasure; the journal does not replace the executor's independent evidence checks. Its return values deliberately lack production restore clearance.
 
 Output remains limited to the named legacy device profiles with `cutoverAllowed: false` and `cloudErasureVerified: false`. Deliberately shared filenames, organisation and original-file metadata remain governed by the shared-content retention policy; these tests do not claim complete anonymisation.
