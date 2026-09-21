@@ -814,3 +814,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Verify actual D1 batch rollback on injected interruption, exact retry, denied post-fence commits, unrelated member/device preservation, registered-work drain and persistent uncertainty. A drained registered set still reports executable false. TypeScript and focused lint pass.
 - [x] Track exact storage effects before dispatch and prevent admission settlement while effects are unresolved. Local R2/D1 tests cover a deliberately stalled late write, denied new dispatch, multipart allocation/abort, lost storage response and failed database acknowledgement. Existing prototype commit `86fe584` passed hosted CI `35660998430`; these additional tests remain isolated, not deployed.
 - [ ] Integrate every application/storage/backup writer and review the schema for migration/restore compatibility before activation. `deploy/closure-fence-prototype.sql` is intentionally outside the migration journal; no production fence or schema change occurred.
+
+## 22 September 2026 - Provider removal rehearsal preparation
+
+- [x] Prepare the [exact generated-account proposal](PROVIDER-ERASURE-REHEARSAL.md) and locally test the provider adapter. It rejects real, pre-existing, linked, activated or changed identities, requires durable intent and independently checks absence; ambiguous responses never retry deletion automatically.
+- [ ] Obtain specific approval for a separate `create:users`/`delete:users` grant and permanent removal of the named generated fixture. The provider grant is tenant-wide, and issued tokens remain valid until expiry; these limits are explicit in the proposal. No live grant or provider mutation has occurred.
+- [ ] Complete the live component rehearsal and remove its temporary grant/connection access. Full lifecycle execution and P2-06 remain open.
