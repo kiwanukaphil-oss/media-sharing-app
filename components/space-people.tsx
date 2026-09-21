@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Copy, UserPlus, Users } from "lucide-react";
 import { createLibraryApi, RequestError } from "@/lib/api-client";
 import { useActionConfirmation } from "./action-confirmation";
+import LegacyAccessReview from "./legacy-access-review";
 
 type Member = { id: string; name: string; email: string | null; role: "owner" | "member"; revision: number };
 type People = { space: { id: string; name: string }; currentMembershipId: string; role: string; members: Member[];
@@ -80,7 +81,7 @@ export default function SpacePeople({ spaceId }: { spaceId: string }) {
         </li>)}</ul>
         {people.role === "owner" && <p className="text-xs leading-5 text-[var(--muted)]">To hand over ownership, make another member an owner first, then leave or change your own role. Relay always keeps at least one account owner.</p>}
       </section>
-      {people.legacyDevices !== null && people.legacyDevices > 0 && <p className="mt-6 rounded-xl bg-[var(--surface)] p-4 text-sm leading-6">{people.legacyDevices} legacy paired device{people.legacyDevices === 1 ? " also has" : "s also have"} access. Device names do not identify people. Review these separately from a connected owner device before treating this roster as the full audience.</p>}
+      {people.role === "owner" && people.legacyDevices !== null && <LegacyAccessReview api={api} count={people.legacyDevices} onChanged={refreshPeople} />}
       {people.role === "owner" && <section className="mt-8 rounded-2xl border border-[var(--line)] p-5"><h2 className="flex items-center gap-2 font-semibold"><UserPlus size={18} /> Invite a person</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">They will join {people.space.name} as a member: view, download and upload shared files. Owners manage shared files. The link works once, for their verified email, for 7 days.</p>
         <form className="library-form mt-4" onSubmit={event => void createInvitation(event)}><label>Email address<input type="email" required maxLength={320} autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} /></label><button disabled={busy} className="account-primary-action mt-3 min-h-11 rounded-xl px-4 text-sm">Create invitation link</button></form>
         {invitation && <div className="mt-5"><p className="break-all text-sm">Share this link with {invitation.email}. No email has been sent.</p><input className="invitation-link mt-2" aria-label="Invitation link" readOnly value={invitation.url} onFocus={event => event.target.select()} /><button className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm" onClick={() => { void navigator.clipboard.writeText(invitation.url).then(() => setNotice("Invitation link copied.")).catch(() => setError("Select and copy the invitation link above.")); }}><Copy size={15} /> Copy link</button></div>}

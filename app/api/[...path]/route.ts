@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
 import { acceptRecoveryEvent } from "@/lib/account-recovery";
+import { listLegacyAccess, revokeLegacyAccess } from "@/lib/legacy-reconciliation";
 import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
@@ -96,6 +97,16 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     throw new ApiError(409, "Use Account for sign-out. Device pairing is available from a connected device.");
   }
   await limitDeviceRequest(request, device.id, resource, id, action);
+  if (resource === "legacy-devices") {
+    if (!accountAccess) throw new ApiError(403, "Sign in as a library owner to review paired devices.");
+    if (!id && method === "GET") return Response.json(await listLegacyAccess(database(), accountAccess, device.space_id));
+    if (method === "DELETE" && id && !action) {
+      if (id !== "all" && !z.string().uuid().safeParse(id).success) throw new ApiError(400, "Choose a paired device.");
+      const input = await readJson(request, z.object({ confirmed: z.literal(true) }));
+      if (input.confirmed) return Response.json(await revokeLegacyAccess(database(), accountAccess, device.space_id, id === "all" ? null : id));
+    }
+    throw new ApiError(404, "Action not found.");
+  }
   if (resource === "publications") {
     if (!accountAccess) throw new ApiError(403, "Sign in with your account to publish a personal file.");
     if (!id && method === "GET") {

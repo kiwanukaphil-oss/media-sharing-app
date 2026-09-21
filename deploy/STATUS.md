@@ -106,3 +106,10 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Auth0 Action source and installation/monitoring checklist are in `deploy/auth0` and `docs/IDENTITY-AND-SPACES-IMPLEMENTATION.md`. Nothing was installed in the live tenant; no recovery email was sent.
 - Passed lint, TypeScript, production build, protocol/Action tests, full API/security and account-access/D1 regressions, and ten backup checks. Hosted CI for the preceding publication commit `22f024e` passed.
 - Live Worker remains `76609db5-810c-4c08-8968-6c8b4dcd97d7`; migrations 0007-0017 remain unapplied remotely. Actual provider recovery/logout/callback, notification failure monitoring, lifecycle/legacy reconciliation and release checks remain gates.
+
+
+## 21 September 2026 - P2 paired-device reconciliation (local only)
+
+- Added owner-only account-scoped paired-device inventory and individual/all retirement in People & access. Explicit confirmation covers native-client access, preserved account memberships/files and non-recallable downloads.
+- Real D1 tests passed for owner/member boundaries, claim labels, foreign space and CSRF denial, last paired-owner retirement and concurrent pairing. Lint, TypeScript, build, account-access regression and phone/desktop browser checks passed; updated phone screenshot inspected.
+- No migration added by this increment, no live devices revoked and no deployment. Phase 2 production gates remain open.

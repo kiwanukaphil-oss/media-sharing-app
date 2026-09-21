@@ -60,6 +60,8 @@ try {
     await verifyAccountSpaceAccess(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyPersonalSpaces } = await import('../tests/personal-spaces.mjs');
     await verifyPersonalSpaces(database, (url, options) => emulator.dispatchFetch(url, options));
+    const { verifyLegacyReconciliation } = await import('../tests/legacy-reconciliation.mjs');
+    await verifyLegacyReconciliation(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifySpacePeople } = await import('../tests/space-people.mjs');
     await verifySpacePeople(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyPublications } = await import('../tests/publications.mjs');
