@@ -1,6 +1,6 @@
 # Identity and personal/shared spaces: implementation proposal
 
-**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Account/session routes, person persistence and account UI are now implemented and locally tested. Memberships, explicit owner claims and account-scoped library access are implemented locally. Recovery verification, personal spaces, lifecycle, identity migration and production activation remain outstanding. No new identity system has been released.
+**Status:** Auth0 selected by the user on 19 September 2026. Provider adapter and configuration tests are implemented. Relay Web was registered on 20 September and redirect URLs saved. Secure client-secret handoff is complete. One-time D1 login transaction storage and its migration are implemented and locally tested. Account/session routes, person persistence and account UI are now implemented and locally tested. Memberships, explicit owner claims and account-scoped library access are implemented locally. Personal spaces and a library switcher are also implemented locally. Recovery verification, lifecycle, identity migration and production activation remain outstanding. No new identity system has been released.
 
 This document makes the next dependency concrete while [Phase 1](ALBUM-SECTIONS-IMPLEMENTATION.md) is released. Progress remains in the [roadmap](DEVELOPMENT-ROADMAP.md).
 
@@ -179,3 +179,14 @@ Migration 0010 adds `account_space_actors`, a unique membership-to-attribution m
 The web library mounts with explicit scope from its URL. Account library links open it; library tools, section covers, previews, streaming saves and upload manifests carry the same scope. Scope is neither global client state nor a browser cookie. Full navigation retains the active-transfer unload warning, clears view state and permits resuming saved manifests at their original destination. A dedicated switcher and cross-space transfer tray remain outstanding. Denied account feed access clears visible library state and stops active transfers; late metadata responses cannot repopulate it. Already issued signed download URLs retain the existing expiry limitation.
 
 Account-scoped device management and pairing return an explicit unavailable response until the person-invitation/device-linking workflow is implemented. Account sign-out remains under Account. No production migrations or login activation have been performed.
+
+
+## Personal spaces, quotas and switching - 21 September 2026
+
+Migration 0011 adds `personal_spaces` (unique person, space and recorded quota). Absence of a personal record means an existing shared library; nothing is relabelled. Both membership listing and file access require the personal owner, even if another person has an erroneous membership. Legacy credentials, owner claims and pairing redemption reject personal spaces.
+
+Creation is an explicit Account action. Each personal library receives 1 GiB (1,073,741,824 bytes); the operator must configure `PERSONAL_STORAGE_BUDGET_BYTES` before any new allocations are possible. Default zero disables creation. A possible controlled pilot is a 10 GiB total allocation pool, supporting at most ten personal spaces; this is an operational proposal, not an applied production setting or purchase. Allocation counts promised quotas, not current usage, and a D1 transaction serializes concurrent attempts. Repeating creation returns the same library; revoked membership cannot be recreated. Existing shared libraries keep their 100 GiB limit. Personal quota applies to originals, previews, Trash and unfinished reservations.
+
+The switcher groups Personal and Shared libraries and performs full navigation, retaining browser warnings for active transfers. It resets view state and restores unfinished manifests only when both stored space and attribution IDs match current account memberships. Sources remain on the user's disk; reselecting the original resumes. Queues display their destination and a return link; cancellation and restart address that captured scope. Personal files remain separate: cross-space publication is still unimplemented.
+
+Configuration and migrations are local only. The production budget remains unset/disabled; real identity checks and the Phase 2 release gates remain outstanding.

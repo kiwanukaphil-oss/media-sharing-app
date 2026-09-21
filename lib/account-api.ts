@@ -3,6 +3,7 @@ import { completeAuth0Login, discoverAuth0Client, prepareAuth0Login, type Auth0L
 import { auth0TransactionCookie, clearAuth0TransactionCookie, consumeAuth0Transaction, readAuth0BrowserBinding, storeAuth0Transaction } from "./auth0-transactions";
 import { AccountError, accountCookie, clearAccountCookie, createAccountSession, readAccountSession, readAccountToken, revokeAccountSession } from "./account-sessions";
 import { confirmOwnerClaim, listPersonSpaces, prepareOwnerClaim, readLegacyClaimCredential } from "./space-memberships";
+import { createPersonalSpace, personalStorageBudget, PERSONAL_SPACE_BYTES } from "./personal-spaces";
 
 type LoginProvider = {
   prepare(settings: Auth0Settings): Promise<{ url: string; transaction: Auth0LoginTransaction }>;
@@ -66,7 +67,11 @@ export async function accountAction(request: Request, database: D1Database, sett
     return Response.json({ enabled: true, account: session }, { headers: privateHeaders });
   }
   if (!session) throw new AccountError(401, "Sign in to your account to continue.");
-  if (action === "spaces" && request.method === "GET") return Response.json({ spaces: await listPersonSpaces(database, session) }, { headers: privateHeaders });
+  if (action === "spaces" && request.method === "GET") return Response.json({ spaces: await listPersonSpaces(database, session),
+    personalSpace: { enabled: personalStorageBudget(process.env) >= PERSONAL_SPACE_BYTES, quotaBytes: PERSONAL_SPACE_BYTES } }, { headers: privateHeaders });
+  if (action === "personal-space" && request.method === "POST") {
+    return Response.json(await createPersonalSpace(database, session, personalStorageBudget(process.env)), { headers: privateHeaders });
+  }
   if (action === "owner-claim" && request.method === "POST") {
     return Response.json(await prepareOwnerClaim(database, session, readLegacyClaimCredential(request)), { headers: privateHeaders });
   }

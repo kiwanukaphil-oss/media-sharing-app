@@ -16,14 +16,20 @@ const errors = [];
 let forbidden = false;
 let activeSpace = space;
 let uploadCompleted = false;
+let cancelledDestination = null;
 page.on('pageerror', error => errors.push(error.message));
 // UI fixtures isolate scope propagation; real membership and byte checks run in account-space-access.
 await page.route('**/api/**', async route => {
   const url = new URL(route.request().url());
   requests.push(url);
-  assert.equal(url.searchParams.get('space'), activeSpace, url.pathname + ' must retain its library');
+  if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: [{ id: space, name: 'Family archive', role: 'owner', kind: 'shared', actorId: actor }, { id: otherSpace, name: 'My space', role: 'owner', kind: 'personal', actorId: 'other-actor' }] } });
+  assert.equal(url.searchParams.get('space'), url.pathname.startsWith('/api/uploads') ? space : activeSpace, url.pathname + ' must retain its library');
+  if (url.pathname.startsWith('/api/uploads/') && route.request().method() === 'DELETE') {
+    cancelledDestination = url.searchParams.get('space');
+    return route.fulfill({ json: { cancelled: true } });
+  }
   if (url.pathname === '/api/session') return route.fulfill({ json: { authentication: 'account', personId: 'fixture',
-    deviceId: actor, role: 'owner', transport: 'local', space: { id: activeSpace, name: activeSpace === space ? 'Family archive' : 'Studio archive' } } });
+    deviceId: actor, role: 'owner', transport: 'local', space: { id: activeSpace, name: activeSpace === space ? 'Family archive' : 'My space', kind: activeSpace === space ? 'shared' : 'personal' } } });
   if (forbidden) return route.fulfill({ status: 403, json: { error: 'This library is not available to your account.' } });
   if (url.pathname === '/api/feed') return route.fulfill({ json: { items: [item], total: 1, nextCursor: null, role: 'owner', counts: { all: 1, original: 1, final: 0, trash: 0 } } });
   if (url.pathname === '/api/albums') return route.fulfill({ json: { albums: [], sections: [] } });
@@ -57,10 +63,39 @@ try {
   await expect(page.getByRole('heading', { name: item.name, exact: true })).toBeVisible();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await page.screenshot({ path: '.sites-runtime/account-library/mobile.png', fullPage: true });
+  // Persist two accounts' manifests in the same browser; only current memberships may restore names.
+  await page.evaluate(async ({ space, actor }) => {
+    await new Promise((resolve, reject) => {
+      const opening = indexedDB.open('relay-transfers', 1);
+      opening.onsuccess = () => {
+        const database = opening.result;
+        const transaction = database.transaction('transfers', 'readwrite');
+        const transfer = { id: crypto.randomUUID(), deviceId: actor, accountSpaceId: space, spaceName: 'Family archive',
+          name: 'Queued family.txt', size: 12, mime: 'text/plain', category: 'original', state: 'paused', parts: [], progress: 0 };
+        transaction.objectStore('transfers').put(transfer);
+        transaction.objectStore('transfers').put({ ...transfer, id: crypto.randomUUID(), deviceId: 'foreign-person-actor', name: 'Other person private.txt' });
+        transaction.oncomplete = () => { database.close(); resolve(); };
+        transaction.onerror = () => { database.close(); reject(transaction.error); };
+      };
+      opening.onerror = () => reject(opening.error);
+    });
+  }, { space, actor });
+  await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Switch library' }).click();
   activeSpace = otherSpace;
-  await page.goto(`${origin}/?space=${otherSpace}`);
+  await page.getByRole('option', { name: 'My space', exact: true }).click();
+  await page.waitForURL(`**/?space=${otherSpace}`);
   await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toHaveValue('');
-  await expect(page.getByTitle('Studio archive', { exact: true })).toBeVisible();
+  await expect(page.getByTitle('My space', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My space.', exact: true })).toBeVisible();
+  await expect(page.getByText('Queued family.txt', { exact: true })).toBeVisible();
+  await expect(page.getByText('Other person private.txt', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open destination' })).toHaveAttribute('href', `/?space=${space}`);
+  await page.screenshot({ path: '.sites-runtime/account-library/personal-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Cancel Queued family.txt', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel upload', exact: true }).click();
+  await expect.poll(() => cancelledDestination).toBe(space);
+  await expect(page.getByText('Queued family.txt', { exact: true })).toHaveCount(0);
   forbidden = true;
   await page.getByRole('searchbox', { name: 'Search filenames' }).fill('revoked');
   await expect(page.getByRole('link', { name: 'Sign in or choose a library' })).toBeVisible();

@@ -32,8 +32,10 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
   }
   const session = await readAccountSession(database, settings, readAccountToken(request), now);
   if (!session) throw new AccountError(401, "Sign in to your account to open this library.");
-  const membership = await database.prepare(`SELECT id FROM space_memberships
-    WHERE person_id = ? AND space_id = ? AND revoked_at IS NULL`)
+  const membership = await database.prepare(`SELECT m.id FROM space_memberships m
+    LEFT JOIN personal_spaces ps ON ps.space_id = m.space_id
+    WHERE m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL
+    AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))`)
     .bind(session.personId, spaceId).first<{ id: string }>();
   if (!membership) throw new AccountError(403, "This library is not available to your account.");
   // Both inserts are idempotent and atomic; no token can authenticate these expired actor rows.
@@ -48,12 +50,15 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
   ]);
   // Recheck current session, identity and membership after actor creation, not cached role data.
   const access = await database.prepare(`SELECT d.id, s.id AS space_id, p.display_name AS name,
-    s.name AS space_name, m.role FROM account_space_actors actor
+    s.name AS space_name, m.role, ps.quota_bytes AS storage_limit_bytes,
+    CASE WHEN ps.space_id IS NULL THEN 'shared' ELSE 'personal' END AS space_kind FROM account_space_actors actor
     JOIN devices d ON d.id = actor.device_id JOIN space_memberships m ON m.id = actor.membership_id
     JOIN spaces s ON s.id = m.space_id JOIN people p ON p.id = m.person_id
+    LEFT JOIN personal_spaces ps ON ps.space_id = s.id
     JOIN account_sessions a ON a.person_id = p.id
     WHERE m.id = ? AND m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL
     AND a.id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
+    AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))
     AND d.space_id = m.space_id AND d.expires_at = 0 AND d.token_hash = ?`)
     .bind(membership.id, session.personId, spaceId, session.sessionId, now,
       `account-attribution:${membership.id}`).first<ActiveDevice>();

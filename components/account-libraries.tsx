@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { requestJson } from "@/lib/api-client";
+import { formatBytes } from "@/lib/contracts";
 
-type AccountSpace = { id: string; name: string; role: string };
+type AccountSpace = { id: string; name: string; role: string; kind?: "personal" | "shared" };
 type ClaimPreview = { token: string; spaceName: string; deviceName: string; accountEmail: string; expiresAt: number };
 
 // An explicit preview binds the named library and signed-in account before any ownership is added.
@@ -15,14 +16,28 @@ export default function AccountLibraries() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [personalSpace, setPersonalSpace] = useState<{ enabled: boolean; quotaBytes: number } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    void requestJson<{ spaces: AccountSpace[] }>("auth/spaces", { signal: controller.signal })
-      .then(result => { setSpaces(result.spaces); setLoaded(true); })
+    void requestJson<{ spaces: AccountSpace[]; personalSpace?: { enabled: boolean; quotaBytes: number } }>("auth/spaces", { signal: controller.signal })
+      .then(result => { setSpaces(result.spaces); setPersonalSpace(result.personalSpace || null); setLoaded(true); })
       .catch(failure => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Libraries could not be loaded."); });
     return () => controller.abort();
   }, []);
+
+  // Creation is explicit; an unavailable allocation leaves existing libraries and access untouched.
+  async function openPersonalSpace() {
+    setBusy(true); setError("");
+    try {
+      const result = await requestJson<{ space: AccountSpace }>("auth/personal-space", { method: "POST" });
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Start a newly allocated library with fresh page state.
+      window.location.assign(`/?space=${encodeURIComponent(result.space.id)}`);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "My space could not be created. Please retry.");
+      setBusy(false);
+    }
+  }
 
   // A failed or expired confirmation is discarded; retry starts with a fresh authority preview.
   async function connectOwnedLibrary(confirm: boolean) {
@@ -53,6 +68,11 @@ export default function AccountLibraries() {
       {spaces.map(space => <li key={space.id} className="flex justify-between gap-4 py-4 text-sm"><Link className="underline underline-offset-4" href={`/?space=${encodeURIComponent(space.id)}`}>{space.name}</Link><span className="text-[var(--muted)]">{space.role === "owner" ? "Owner" : "Member"}</span></li>)}
     </ul>}
     {loaded && spaces.length === 0 && <p className="mt-4 text-sm text-[var(--muted)]">No libraries connected yet.</p>}
+    {personalSpace?.enabled && !spaces.some(space => space.kind === "personal") && <div className="mt-5 rounded-2xl border border-[var(--line)] p-5">
+      <h3 className="font-semibold">A space of your own</h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Only your account can open My space. It stays separate from shared libraries, with {formatBytes(personalSpace.quotaBytes)} for originals and previews.</p>
+      <button className="account-primary-action mt-4 min-h-11 rounded-xl px-4 text-sm" disabled={busy} onClick={() => void openPersonalSpace()}>Create My space</button>
+    </div>}
     {preview ? <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6" aria-label="Review library connection">
       <h3 className="font-semibold">Connect {preview.spaceName}?</h3>
       <p className="mt-3 break-words text-sm leading-6">{preview.accountEmail} will become an owner of this library, using your current owner access from {preview.deviceName}.</p>

@@ -27,7 +27,8 @@ try {
       sessionId: currentId, displayName: 'Morgan Ellis', verifiedEmail: 'morgan@example.test', expiresAt: Date.now() + 604800000,
     } : null } });
     if (url.pathname === '/api/auth/sessions') return route.fulfill({ json: { currentSessionId: currentId, sessions: entries } });
-    if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: libraryConnected ? [{ id: 'library', name: 'Family archive', role: 'owner' }] : [] } });
+    if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: libraryConnected ? [{ id: 'library', name: 'Family archive', role: 'owner' }] : [], personalSpace: { enabled: true, quotaBytes: 1073741824 } } });
+    if (url.pathname === '/api/auth/personal-space') return route.fulfill({ status: 409, json: { error: 'My space is not available right now. Your existing libraries are unchanged.' } });
     if (url.pathname === '/api/auth/owner-claim') return route.fulfill({ json: {
       token: 'c'.repeat(64), spaceName: 'Family archive', deviceName: 'My desktop', accountEmail: 'morgan@example.test', expiresAt: Date.now() + 300000,
     } });
@@ -48,6 +49,9 @@ try {
   await page.reload();
   await expect(page.getByText('morgan@example.test', { exact: true })).toBeVisible();
   await expect(page.getByText('Another browser', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Create My space' }).click();
+  await expect(page.getByRole('alert')).toContainText('existing libraries are unchanged');
+  await expect(page.getByRole('button', { name: 'Create My space' })).toBeEnabled();
   await page.getByRole('button', { name: 'Connect an existing library' }).click();
   await expect(page.getByRole('heading', { name: 'Connect Family archive?' })).toBeVisible();
   await expect(page.getByText(/will become an owner/)).toContainText('morgan@example.test');

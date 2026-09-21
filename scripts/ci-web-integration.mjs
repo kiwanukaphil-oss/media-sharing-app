@@ -24,7 +24,8 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     compatibilityDate: config.compatibility_date, compatibilityFlags: config.compatibility_flags,
     d1Databases: ['DB'], r2Buckets: ['BUCKET'],
     ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_DOMAIN: 'access.auth0.com',
-      AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost' } } : {}),
+      AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
+      PERSONAL_STORAGE_BUDGET_BYTES: '2147483648' } } : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
   }],
@@ -55,6 +56,8 @@ try {
   } else if (accountAccessChecks) {
     const { verifyAccountSpaceAccess } = await import('../tests/account-space-access.mjs');
     await verifyAccountSpaceAccess(database, (url, options) => emulator.dispatchFetch(url, options));
+    const { verifyPersonalSpaces } = await import('../tests/personal-spaces.mjs');
+    await verifyPersonalSpaces(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyReadOnlyBackup } = await import('../tests/backup-d1-readonly.mjs');
     await verifyReadOnlyBackup(database);
   } else if (process.argv.includes('--capacity')) {

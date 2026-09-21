@@ -76,7 +76,7 @@ export async function readStorage(device: ActiveDevice) {
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
     (media.device_id = ? OR ? = 'owner') AS canCancel
     FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.space_id).all();
-  return Response.json({ ...usage, limit: spaceLimitBytes(), uploads: uploads.results });
+  return Response.json({ ...usage, limit: spaceLimitBytes(device), uploads: uploads.results });
 }
 
 // Previews are small, separate JPEG objects. An original is never decoded or replaced here.
@@ -97,7 +97,7 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   if (size < 4 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[size - 2] !== 255 || bytes[size - 1] !== 217) throw new ApiError(415, "Invalid JPEG preview.");
   const reserved = await database().prepare(`UPDATE media SET preview_size = ? WHERE id = ? AND status = 'ready' AND preview_ready = 0 AND preview_size = 0
-    AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE space_id = ?) + ? <= ?`).bind(size, id, device.space_id, size, spaceLimitBytes()).run();
+    AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE space_id = ?) + ? <= ?`).bind(size, id, device.space_id, size, spaceLimitBytes(device)).run();
   if (!reserved.meta.changes) return Response.json({ ready: false });
   try {
     await bucket().put(`${item.object_key}.preview.jpg`, bytes, { httpMetadata: { contentType: "image/jpeg" } });

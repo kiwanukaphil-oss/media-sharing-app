@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { AwsClient } from "aws4fetch";
 import { z } from "zod";
 import { validCaptureDate } from "./library-names";
-import { MAX_FILE_SIZE, PART_SIZE } from "./contracts";
+import { MAX_FILE_SIZE, PART_SIZE, formatBytes } from "./contracts";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -54,7 +54,7 @@ export async function readJson<T extends z.ZodTypeAny>(request: Request, schema:
   catch { throw new ApiError(400, "Some details are missing or invalid. Please try again."); }
 }
 // Legacy name retained for compatibility; account actors derive authority from live membership.
-export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member"; authentication?: "account" };
+export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member"; authentication?: "account"; storage_limit_bytes?: number | null; space_kind?: "personal" | "shared" };
 export function requireOwner(device: ActiveDevice) {
   if (device.role !== "owner") throw new ApiError(403, "Only a space owner can do this.");
 }
@@ -65,13 +65,14 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
   if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new ApiError(401, "Connect this device to continue.");
   const device = await database().prepare(`SELECT devices.id, devices.space_id, devices.name, devices.role, spaces.name AS space_name
     FROM devices JOIN spaces ON spaces.id = devices.space_id
-    WHERE devices.token_hash = ? AND devices.revoked_at IS NULL AND devices.expires_at > ?`)
+    WHERE devices.token_hash = ? AND devices.revoked_at IS NULL AND devices.expires_at > ?
+    AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = devices.space_id)`)
     .bind(await tokenHash(token), Date.now()).first<ActiveDevice>();
   if (!device) throw new ApiError(401, "This device has been disconnected. Pair it again to continue.");
   return device;
 }
 export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number };
-export function spaceLimitBytes() { return 100 * 1024 * 1024 * 1024; }
+export function spaceLimitBytes(device: ActiveDevice) { return device.storage_limit_bytes ?? 100 * 1024 * 1024 * 1024; }
 export async function requireMedia(device: ActiveDevice, id: string, ownerOnly = false) {
   const item = await database().prepare("SELECT * FROM media WHERE id = ? AND space_id = ?").bind(id, device.space_id).first<UploadRow>();
   if (!item || (ownerOnly && item.device_id !== device.id)) throw new ApiError(404, "This file is not available.");
@@ -128,11 +129,11 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
       WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?
       AND (? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL))
       AND (? IS NULL OR EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL))`)
-      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, device.space_id, input.size, spaceLimitBytes(), input.albumId || null, input.albumId || null, device.space_id, input.sectionId || null, input.albumId || null, input.sectionId || null);
+      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, device.space_id, input.size, spaceLimitBytes(device), input.albumId || null, input.albumId || null, device.space_id, input.sectionId || null, input.albumId || null, input.sectionId || null);
     const statements = [reservation];
     if (input.albumId) statements.push(database().prepare("INSERT INTO album_media (album_id, media_id, section_id) SELECT ?, id, ? FROM media WHERE id = ? AND space_id = ?").bind(input.albumId, input.sectionId || null, input.id, device.space_id));
     const [reserved] = await database().batch(statements);
-    if (!reserved.meta.changes) throw new ApiError(507, "This space has reached its 100 GB limit. Empty Trash or cancel unfinished uploads in Storage to make room.");
+    if (!reserved.meta.changes) throw new ApiError(507, `This space has reached its ${formatBytes(spaceLimitBytes(device))} limit. Empty Trash or cancel unfinished uploads in Storage to make room.`);
   } catch (error) {
     await upload.abort();
     // Two retries may initialize the same UUID concurrently; reuse the winning immutable manifest.

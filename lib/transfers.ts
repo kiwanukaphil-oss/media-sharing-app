@@ -34,12 +34,12 @@ export async function persistTransfer(transfer: Transfer) {
     });
   } finally { db.close(); }
 }
-export async function restoreTransfers(deviceId: string): Promise<Transfer[]> {
+export async function restoreTransfers(deviceId: string, accountSpaces?: { id: string; actorId?: string | null }[]): Promise<Transfer[]> {
   const db = await openTransferDatabase();
   try {
     return await new Promise((resolve, reject) => {
       const reading = db.transaction("transfers").objectStore("transfers").getAll();
-      reading.onsuccess = () => resolve((reading.result as Transfer[]).filter(item => item.deviceId === deviceId && item.state !== "complete").map(item => ({ ...item, state: "needs-file", message: "Choose the same file to resume" })));
+      reading.onsuccess = () => resolve((reading.result as Transfer[]).filter(item => (accountSpaces ? accountSpaces.some(space => space.id === item.accountSpaceId && space.actorId === item.deviceId) : item.deviceId === deviceId) && item.state !== "complete").map(item => ({ ...item, state: "needs-file", message: "Choose the same file to resume" })));
       reading.onerror = () => reject(reading.error);
     });
   } finally { db.close(); }

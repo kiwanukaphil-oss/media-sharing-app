@@ -65,6 +65,13 @@ export const accountSpaceActors = sqliteTable("account_space_actors", {
   deviceId: text("device_id").notNull().unique().references(() => devices.id),
 });
 
+// Existing spaces remain shared; only explicitly allocated personal spaces receive this record.
+export const personalSpaces = sqliteTable("personal_spaces", {
+  spaceId: text("space_id").primaryKey().references(() => spaces.id),
+  personId: text("person_id").notNull().unique().references(() => people.id),
+  quotaBytes: integer("quota_bytes").notNull(),
+});
+
 export const ownerClaimAttempts = sqliteTable("owner_claim_attempts", {
   tokenHash: text("token_hash").primaryKey(),
   sessionId: text("session_id").notNull().references(() => accountSessions.id),

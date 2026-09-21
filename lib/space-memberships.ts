@@ -16,8 +16,10 @@ export function readLegacyClaimCredential(request: Request) {
 
 // Listing follows current memberships, so sign-in alone never enumerates existing shared spaces.
 export async function listPersonSpaces(database: D1Database, session: AccountSession) {
-  const spaces = await database.prepare(`SELECT spaces.id, spaces.name, m.role FROM space_memberships m
-    JOIN spaces ON spaces.id = m.space_id WHERE m.person_id = ? AND m.revoked_at IS NULL
+  const spaces = await database.prepare(`SELECT spaces.id, spaces.name, m.role, CASE WHEN ps.space_id IS NULL THEN 'shared' ELSE 'personal' END AS kind, actor.device_id AS actorId FROM space_memberships m
+    JOIN spaces ON spaces.id = m.space_id LEFT JOIN personal_spaces ps ON ps.space_id = spaces.id
+    LEFT JOIN account_space_actors actor ON actor.membership_id = m.id
+    WHERE m.person_id = ? AND m.revoked_at IS NULL AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))
     ORDER BY spaces.name, spaces.id LIMIT 100`).bind(session.personId).all();
   return spaces.results;
 }
@@ -29,6 +31,7 @@ export async function prepareOwnerClaim(database: D1Database, session: AccountSe
   const candidate = await database.prepare(`SELECT d.id AS deviceId, d.space_id AS spaceId, s.name AS spaceName, d.name AS deviceName
     FROM devices d JOIN spaces s ON s.id = d.space_id WHERE d.token_hash = ? AND d.role = 'owner'
     AND d.revoked_at IS NULL AND d.expires_at > ?
+    AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = d.space_id)
     AND NOT EXISTS (SELECT 1 FROM legacy_owner_claims c WHERE c.device_id = d.id)
     AND NOT EXISTS (SELECT 1 FROM space_memberships m WHERE m.person_id = ? AND m.space_id = d.space_id)`)
     .bind(await hashCredential(legacyToken), now, session.personId).first<ClaimCandidate>();
@@ -55,6 +58,7 @@ export async function confirmOwnerClaim(database: D1Database, session: AccountSe
       JOIN account_sessions a ON a.id = c.session_id JOIN people p ON p.id = a.person_id
       WHERE c.token_hash = ? AND c.session_id = ? AND a.person_id = ? AND c.consumed_at IS NULL AND c.expires_at > ?
       AND d.token_hash = ? AND d.role = 'owner' AND d.revoked_at IS NULL AND d.expires_at > ?
+      AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = d.space_id)
       AND a.revoked_at IS NULL AND a.expires_at > ? AND a.created_at >= ? AND p.disabled_at IS NULL
       AND NOT EXISTS (SELECT 1 FROM legacy_owner_claims prior WHERE prior.device_id = d.id)
       AND NOT EXISTS (SELECT 1 FROM space_memberships prior WHERE prior.person_id = a.person_id AND prior.space_id = c.space_id)`)

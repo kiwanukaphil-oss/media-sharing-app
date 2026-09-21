@@ -45,7 +45,8 @@ async function connectDevice(request: Request, nativeClient = false) {
     const invitationHash = await tokenHash(input.invitation);
     const eligibleInvitation = `token_hash = ? AND expires_at > ? AND redeemed_at IS NULL AND EXISTS (
       SELECT 1 FROM devices AS issuer WHERE issuer.id = invitations.created_by AND issuer.space_id = invitations.space_id
-      AND issuer.role = 'owner' AND issuer.revoked_at IS NULL AND issuer.expires_at > ?)`;
+      AND issuer.role = 'owner' AND issuer.revoked_at IS NULL AND issuer.expires_at > ?
+      AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = issuer.space_id))`;
     const invitation = await database().prepare(`SELECT space_id FROM invitations WHERE ${eligibleInvitation}`).bind(invitationHash, now, now).first<{ space_id: string }>();
     if (!invitation) throw new ApiError(410, "This invitation expired or was already used. Get a new link from a connected device.");
     spaceId = invitation.space_id;
@@ -89,7 +90,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   await limitDeviceRequest(request, device.id, resource, id, action);
   const webResponse = await webAction(request, device, resource, id, action);
   if (webResponse) return webResponse;
-  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
+  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
   if (resource === "session" && !id && method === "DELETE") {
     await changeDeviceAccess(device, device.id);
     return Response.json({ disconnected: true }, { headers: { "Set-Cookie": expiredSessionCookie(request) } });
