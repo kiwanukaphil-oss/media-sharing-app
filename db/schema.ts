@@ -60,7 +60,33 @@ export const spaceMemberships = sqliteTable("space_memberships", {
   role: text("role", { enum: ["owner", "member"] }).notNull(),
   createdAt: integer("created_at").notNull(),
   revokedAt: integer("revoked_at"),
+  revision: integer("revision").notNull().default(0),
 }, table => [uniqueIndex("idx_memberships_person_space").on(table.personId, table.spaceId), index("idx_memberships_space").on(table.spaceId)]);
+
+// Membership invitations are explicit, email-bound and separate from legacy device pairing.
+export const personInvitations = sqliteTable("person_invitations", {
+  id: text("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  createdBy: text("created_by").notNull().references(() => spaceMemberships.id),
+  email: text("email").notNull(),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  revokedAt: integer("revoked_at"),
+  acceptedAt: integer("accepted_at"),
+  acceptedBy: text("accepted_by").references(() => people.id),
+  acceptedOperation: text("accepted_operation"),
+}, table => [index("idx_person_invitations_space").on(table.spaceId)]);
+
+// Durable evidence ties each membership mutation to an authenticated actor and expected revision.
+export const membershipEvents = sqliteTable("membership_events", {
+  id: text("id").primaryKey(),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  actorId: text("actor_id").notNull().references(() => people.id),
+  membershipId: text("membership_id").notNull().references(() => spaceMemberships.id),
+  action: text("action").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [index("idx_membership_events_space").on(table.spaceId)]);
 
 // Non-authenticating compatibility actors preserve media attribution across account sessions.
 export const accountSpaceActors = sqliteTable("account_space_actors", {

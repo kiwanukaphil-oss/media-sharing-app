@@ -3,6 +3,7 @@ import { accountAction } from "@/lib/account-api";
 import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
+import { changeSpacePerson, createPersonInvitation, listSpacePeople, revokePersonInvitation } from "@/lib/space-people";
 import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
@@ -88,6 +89,20 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     throw new ApiError(409, "Use Account for sign-out. Device pairing is available from a connected device.");
   }
   await limitDeviceRequest(request, device.id, resource, id, action);
+  if (["people", "person-invitations"].includes(resource)) {
+    if (!accountAccess) throw new ApiError(403, "Sign in with your account to manage people.");
+    if (resource === "people" && !id && method === "GET") return Response.json(await listSpacePeople(database(), accountAccess, device.space_id));
+    if (resource === "people" && id && !action && method === "PUT") {
+      const input = await readJson(request, z.object({ action: z.enum(["owner", "member", "remove", "leave"]), revision: z.number().int().nonnegative() }));
+      return Response.json(await changeSpacePerson(database(), accountAccess, device.space_id, id, input.action, input.revision));
+    }
+    if (resource === "person-invitations" && !id && method === "POST") {
+      const input = await readJson(request, z.object({ email: z.string().trim().email().max(320) }));
+      return Response.json(await createPersonInvitation(database(), accountAccess, device.space_id, input.email));
+    }
+    if (resource === "person-invitations" && id && !action && method === "DELETE") return Response.json(await revokePersonInvitation(database(), accountAccess, device.space_id, id));
+    throw new ApiError(404, "This people action is unavailable.");
+  }
   const webResponse = await webAction(request, device, resource, id, action);
   if (webResponse) return webResponse;
   if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });

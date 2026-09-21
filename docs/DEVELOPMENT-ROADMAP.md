@@ -11,7 +11,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 
 **At a glance:** 2 phases complete; 11/47 parent work items complete; email delivery confirmed by the user; live identity/recovery activation outstanding; backup automation restored and verified. Auth0 adapter commit `85e5775` passed web CI. Live Worker: `76609db5-810c-4c08-8968-6c8b4dcd97d7` at 100%.
 
-**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Person-based file/library authorisation and explicit account-library navigation are implemented locally. Personal spaces, bounded storage allocation, the space switcher and cross-space queue restoration are now implemented locally. Temporary/trusted sessions and provider sign-out routing are locally implemented. Continue person invitations, publication/lifecycle and live provider recovery/activation checks. Auth0 connection sign-in succeeded for the user. Auth0 now confirms the account is VERIFIED. The verification email arrived in Spam: Gmail showed SPF/DKIM PASS but DMARC FAIL. The missing sending-domain DMARC record is now published and resolves through authoritative DNS and Google Public DNS; fresh-message authentication and inbox placement remain to be verified. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
+**Next action:** Account/session foundation is committed as `0218360`; membership storage and explicit owner-claim API/UI are now locally implemented and verified. Person-based file/library authorisation and explicit account-library navigation are implemented locally. Personal spaces, bounded storage allocation, the space switcher and cross-space queue restoration are now implemented locally. Temporary/trusted sessions and provider sign-out routing are locally implemented. Person invitations and membership lifecycle are implemented and locally verified. Continue explicit publication, account recovery/deletion rules and live provider activation checks. Auth0 connection sign-in succeeded for the user. Auth0 now confirms the account is VERIFIED. The verification email arrived in Spam: Gmail showed SPF/DKIM PASS but DMARC FAIL. The missing sending-domain DMARC record is now published and resolves through authoritative DNS and Google Public DNS; fresh-message authentication and inbox placement remain to be verified. The new account migration and login routes are local only. **B02** remains resolved. [Phase 2 setup and design](IDENTITY-AND-SPACES-IMPLEMENTATION.md) records the implementation and outstanding activation checks.
 
 **Execution authority (renewed 20 September 2026):** The user explicitly instructed autonomous work through project completion, stopping only when their input is needed to resolve a blocker. This supersedes the earlier commit and phase confirmation preferences and retains the earlier explicit authority to commit and push completed work. See [persistent project instructions](../AGENTS.md). Required tool/security handoffs still apply. No purchase, irreversible deletion or unrelated external communication is inferred.
 
@@ -144,7 +144,8 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Bind claims to a recent account session, expire previews after five minutes, prevent replay/conflicting claims and record immutable claim evidence. **Real-D1 race and revocation tests passed.**
   - [x] Add the named library/account preview, Cancel and explicit confirmation to the account screen. **Phone/desktop browser checks passed with mock account data.**
   - [x] Complete account-based file/library access with stable upload attribution across account sessions. **Locally tested.**
-  - [ ] Separate Connect my device from Invite a person; account-scoped device administration remains unavailable pending this workflow.
+  - [x] Separate signing in on another device from email-bound person invitations, with preview/explicit acceptance and owner revocation. **Implemented and locally verified; migration 0013 prepared.**
+  - [ ] Finish legacy-device reconciliation and verify the complete migration flow with the real provider.
   - [ ] Verify claims and recovery with the real provider, then apply the reviewed migration and release.
 
 - [ ] **P2-04 — Deliver My space and the space switcher.** Show active identity, destination and role. Clear selection/search on switch; preserve queued transfers at their original destination with a return link. Personal spaces start separately and remain inaccessible to shared-space owners.
@@ -157,7 +158,8 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 - [ ] **P2-06 — Complete account lifecycle and retention rules.** Recovery, ownership transfer, leaving a space, offboarding, account-deletion handling and shared-content ownership have explicit policies and supported flows. Preserve deletion/revocation decisions through restore.
 
   - [x] Invalidate restored account sessions and pending sign-in attempts so old credentials cannot revive. **Restore tests passed.**
-  - [ ] Complete and verify account recovery, ownership transfer, leaving/offboarding and account-deletion rules.
+  - [x] Implement ownership handover, leaving and removing account members with revision checks, atomic last-owner protection, linked-device revocation and preserved files. **Implemented and locally verified; migration 0013 prepared.**
+  - [ ] Complete and verify real account recovery, comprehensive legacy offboarding and account-deletion rules.
   - [ ] Finalise retention and shared-content ownership policies, including restoration of future membership/deletion records.
 
 - [ ] **P2-07 — Verify and release identity/privacy.** Test cross-person and cross-space denial, legacy claims, recovery, sign-out/caches, in-flight transfers and backup restoration of new tables. Record capability handling for older clients and safe rollback limits.
@@ -509,3 +511,14 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Display session type and expiry, explain restored-browser-session limitations and make the trusted choice explicit. Check mobile/desktop layout and signed-out choice interactions.
 - [x] Pass lint, TypeScript, build, signed-token protocol checks, full API/D1 regression, account-space/personal-space checks, eight backup checks and account browser fixtures. Hosted CI also passed earlier commits `55abfd9`, `25ccf71` and `a1c29c1`.
 - [ ] Verify the real provider logout, recovery and callback flow before activation. Migration 0012 is local only; production remains at Phase 1.
+
+
+### People, invitations and membership lifecycle - 21 September 2026
+
+- [x] Add migration 0013 for email-bound person invitations, membership revisions and durable membership events. Invitation links remain distinct from device-pairing links.
+- [x] Require current owner authority to create/revoke links; cap outstanding invitations at 20 per library, limit membership to 100, expire links after 7 days and require the invited verified email. Preview grants no access; acceptance is atomic and one-use.
+- [x] Implement people/role controls and explicit ownership handover: promote another member, then demote or leave. Concurrent departures cannot remove the last active account owner. Personal spaces reject all shared membership administration.
+- [x] Revoke/demote explicitly claimed legacy devices with membership changes and invalidate their unused pairing invitations. Other legacy devices remain a separate audience, shown in the owner UI; do not infer their human owner from names.
+- [x] Suspend restored memberships and expire person invitations, retaining records and earlier revocations. A fresh sign-in alone cannot revive access from an old snapshot; operator reconciliation is required.
+- [x] Pass lint, TypeScript, build, schema-generation consistency, full API/security/D1 regression, account-space/personal-space checks and nine backup checks. The full Chrome/Edge/Firefox/WebKit baseline and dedicated account/people browser fixtures passed; phone/desktop screenshots inspected.
+- [ ] Verify real-provider and legacy migration/offboarding flows before production release. No production migration or Worker deployment in this increment.

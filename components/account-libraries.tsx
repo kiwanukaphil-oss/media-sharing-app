@@ -65,7 +65,7 @@ export default function AccountLibraries() {
     {error && <p role="alert" className="mt-4 text-sm text-red-800">{error}</p>}
     {notice && <p role="status" className="mt-4 text-sm text-[var(--green)]">{notice}</p>}
     {spaces.length > 0 && <ul className="mt-5 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] px-5">
-      {spaces.map(space => <li key={space.id} className="flex justify-between gap-4 py-4 text-sm"><Link className="underline underline-offset-4" href={`/?space=${encodeURIComponent(space.id)}`}>{space.name}</Link><span className="text-[var(--muted)]">{space.role === "owner" ? "Owner" : "Member"}</span></li>)}
+      {spaces.map(space => <li key={space.id} className="flex flex-wrap justify-between gap-4 py-4 text-sm"><Link className="underline underline-offset-4" href={`/?space=${encodeURIComponent(space.id)}`}>{space.name}</Link><div className="flex items-center gap-4">{space.kind !== "personal" && <Link className="text-xs underline" href={`/people?space=${encodeURIComponent(space.id)}`}>People &amp; access</Link>}<span className="text-[var(--muted)]">{space.kind === "personal" ? "Only you" : space.role === "owner" ? "Owner" : "Member"}</span></div></li>)}
     </ul>}
     {loaded && spaces.length === 0 && <p className="mt-4 text-sm text-[var(--muted)]">No libraries connected yet.</p>}
     {personalSpace?.enabled && !spaces.some(space => space.kind === "personal") && <div className="mt-5 rounded-2xl border border-[var(--line)] p-5">

@@ -62,6 +62,14 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='account_sessions'").get()) {
       database.prepare('UPDATE account_sessions SET revoked_at=?, expires_at=0').run(now);
     }
+    // An older snapshot cannot establish which memberships were subsequently removed.
+    // Preserve their records, but require deliberate reconciliation before restoring any access.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='space_memberships'").get()) {
+      database.prepare('UPDATE space_memberships SET revoked_at=COALESCE(revoked_at, ?)').run(now);
+    }
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='person_invitations'").get()) {
+      database.prepare('UPDATE person_invitations SET expires_at=0, revoked_at=COALESCE(revoked_at, ?)').run(now);
+    }
     // Pending authority changes must also expire when restoring an older snapshot.
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='owner_claim_attempts'").get()) {
       database.prepare('UPDATE owner_claim_attempts SET expires_at=0, consumed_at=COALESCE(consumed_at, ?)').run(now);

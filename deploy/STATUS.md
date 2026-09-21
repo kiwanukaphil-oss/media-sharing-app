@@ -88,3 +88,8 @@ Validation completed: lint, TypeScript, production build, full API/security/D1 r
 ## Session choices prepared - 21 September 2026
 
 Migration `0012_gorgeous_stellaris.sql` and temporary/trusted session selection are implemented and locally tested. Provider logout uses the configured tenant's OIDC endpoint with an exact registered root return address; live provider logout/recovery verification remains outstanding. No production migration, runtime setting or Worker deployment was performed. Production remains on Phase 1; migrations 0007-0012 are prepared only.
+
+
+## People and membership lifecycle prepared - 21 September 2026
+
+Migration `0013_concerned_naoko.sql` adds bounded person invitations, membership revisions and durable access events. Shared-library people controls, explicit joins, owner handover, leaving/removal and linked legacy credential revocation are locally verified. Restore sanitization suspends restored memberships pending authority reconciliation. Existing unlinked legacy devices remain a separately disclosed audience; complete live migration and recovery checks are outstanding. No production migration or Worker deployment was performed; migrations 0007-0013 remain prepared only.

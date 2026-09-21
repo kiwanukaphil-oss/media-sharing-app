@@ -58,6 +58,8 @@ try {
     await verifyAccountSpaceAccess(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyPersonalSpaces } = await import('../tests/personal-spaces.mjs');
     await verifyPersonalSpaces(database, (url, options) => emulator.dispatchFetch(url, options));
+    const { verifySpacePeople } = await import('../tests/space-people.mjs');
+    await verifySpacePeople(database, (url, options) => emulator.dispatchFetch(url, options));
     const { verifyReadOnlyBackup } = await import('../tests/backup-d1-readonly.mjs');
     await verifyReadOnlyBackup(database);
   } else if (process.argv.includes('--capacity')) {
@@ -67,7 +69,7 @@ try {
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   } else if (browserChecks) {
-    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser']) await runIntegrationTest(name);
+    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'space-people-browser']) await runIntegrationTest(name);
   } else {
     for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation', 'album-sections']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');

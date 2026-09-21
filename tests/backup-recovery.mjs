@@ -81,6 +81,19 @@ test('incorrect bytes cannot pass file verification', () => {
   assert.throws(() => validateFileDigest({ size: 3, sha256: 'a' }, { size: 4, sha256: 'a' }), /mismatch/);
 });
 
+test('restoration cannot revive removed memberships or person invitations from an older snapshot', () => {
+  const database = recoveryFixture();
+  try {
+    database.exec("CREATE TABLE space_memberships(id TEXT PRIMARY KEY, revoked_at INTEGER); INSERT INTO space_memberships VALUES('formerly-active',NULL),('already-revoked',123)");
+    database.exec("CREATE TABLE person_invitations(id TEXT PRIMARY KEY, revoked_at INTEGER, expires_at INTEGER); INSERT INTO person_invitations VALUES('old-invite',NULL,9999999999999)");
+    sanitizeRestoredAccess(database, 12345);
+    assert.equal(database.prepare("SELECT revoked_at FROM space_memberships WHERE id='formerly-active'").get().revoked_at, 12345);
+    assert.equal(database.prepare("SELECT revoked_at FROM space_memberships WHERE id='already-revoked'").get().revoked_at, 123);
+    assert.equal(database.prepare('SELECT COUNT(*) AS n FROM space_memberships').get().n, 2);
+    assert.equal(database.prepare('SELECT expires_at FROM person_invitations').get().expires_at, 0);
+  } finally { database.close(); }
+});
+
 test('credentials with deletion or broader bucket access are rejected', () => {
   const allowed = { capabilities: ['writeFiles'], buckets: [{ id: backupBucketId }], namePrefix: 'relay/' };
   assert.doesNotThrow(() => validateKeyScope(allowed, 'writer'));

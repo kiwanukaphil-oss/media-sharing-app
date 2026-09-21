@@ -25,7 +25,7 @@ Local commands can use the existing operator login. Hosted execution uses the ap
 
 ## Restore safety
 
-Each check writes to a new isolated local directory. Before the restored SQLite database can be used by an app, the checker revokes all existing devices, expires every invitation, resets regenerable preview references, and marks unfinished media for cancellation. It preserves records and relationships. The downloaded raw SQL remains an unmodified historical artifact and still contains old access records: never activate that raw export directly.
+Each check writes to a new isolated local directory. Before the restored SQLite database can be used by an app, the checker revokes all existing devices, expires every invitation, resets regenerable preview references, and marks unfinished media for cancellation. It also revokes account sessions, invalidates pending sign-in/owner-claim attempts, expires person invitations and suspends all restored person memberships. It preserves records and relationships. The downloaded raw SQL remains an unmodified historical artifact and still contains old access records: never activate that raw export directly.
 
 A real cutover must map every manifest `object_key` to its restored bytes, import into a separate D1 database, apply any required migrations, confirm the account/space owners, and issue new pairing access through an approved recovery process. Local SQLite restoration does not prove a cloud cutover or a full browser-based recovery. Never point the live app at a restore until this review is complete.
 
@@ -49,3 +49,8 @@ Pruning must be a separately authorized process: enumerate retained manifests an
 - [Backblaze uploads and encryption](https://www.backblaze.com/apidocs/b2-upload-file)
 - [Backblaze multipart checksums](https://www.backblaze.com/apidocs/b2-finish-large-file)
 - [Backblaze independent file catalog](https://www.backblaze.com/apidocs/b2-list-file-names)
+
+
+### Membership reconciliation after restore
+
+An older snapshot cannot prove that a previously active membership remains authorised today. Restore sanitization therefore sets a revocation timestamp on every still-active membership, including personal ownership, while preserving earlier revocations, roles, attribution and event records. A fresh provider login alone cannot reopen these libraries. Before cutover, an operator must reconcile current ownership and removal/deletion decisions against the surviving live database and incident evidence, then deliberately restore only verified access. Do not bulk-clear these timestamps or use old invitation/claim links as recovery proof. If current authorisation cannot be established, leave the affected library inaccessible until its ownership is resolved. This prioritises privacy over automatic access restoration; local tests do not constitute a live recovery drill.
