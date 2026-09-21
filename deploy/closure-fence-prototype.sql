@@ -40,3 +40,10 @@ CREATE TABLE closure_storage_effects (
 );
 --> statement-breakpoint
 CREATE INDEX idx_closure_storage_effects_admission ON closure_storage_effects(admission_id,state);
+--> statement-breakpoint
+CREATE TABLE closure_backup_runs (
+  id TEXT PRIMARY KEY NOT NULL REFERENCES closure_write_admissions(id),
+  snapshot_id TEXT NOT NULL UNIQUE,
+  receipt_digest TEXT,
+  created_at INTEGER NOT NULL
+);

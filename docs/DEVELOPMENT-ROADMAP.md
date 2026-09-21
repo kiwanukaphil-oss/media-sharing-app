@@ -820,3 +820,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Prepare the [exact generated-account proposal](PROVIDER-ERASURE-REHEARSAL.md) and locally test the provider adapter. It rejects real, pre-existing, linked, activated or changed identities, requires durable intent and independently checks absence; ambiguous responses never retry deletion automatically.
 - [ ] Obtain specific approval for a separate `create:users`/`delete:users` grant and permanent removal of the named generated fixture. The provider grant is tenant-wide, and issued tokens remain valid until expiry; these limits are explicit in the proposal. No live grant or provider mutation has occurred.
 - [ ] Complete the live component rehearsal and remove its temporary grant/connection access. Full lifecycle execution and P2-06 remain open.
+
+## 22 September 2026 - Backup writer coordination preparation
+
+- [x] Implement the dedicated bounded HMAC admission/settlement adapter and wrap snapshot creation with an inactive-by-default client. Preserve existing D1 read-only access and backup/restore credential separation.
+- [x] Verify isolated D1 transaction rollback, duplicate/snapshot collision handling, fence ordering, storage-effect settlement guards, final receipt binding and irreversible uncertainty. Client tests prove admission precedes export/copy and acknowledgement follows awaited effects. Existing backup recovery and workflow separation tests pass; TypeScript and focused lint pass.
+- [ ] Review new-table restore quarantine, expose/deploy the coordinator with a separate secret, activate hosted writer configuration, and verify an actual coordinated backup before any production fence. Existing scheduled backup remains on its current path until that coordinated release.

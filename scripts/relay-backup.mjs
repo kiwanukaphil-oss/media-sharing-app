@@ -11,6 +11,7 @@ import { authorizeBackupRole, downloadBackupFile, hashFile, operationsDirectory,
   runPrivateCommand, storageRequest, uploadBackupFile, validateFileDigest, backupBucketId } from './backup-storage.mjs';
 import { readEncryptedBackupIndex } from './backup-index.mjs';
 import { exportReadOnlyDatabase } from './backup-d1-readonly.mjs';
+import { runCoordinatedBackup } from './backup-closure-client.mjs';
 
 const backupRoot = resolve(operationsDirectory, 'backups');
 const source = JSON.parse(await readFile('deploy/cloudflare.json', 'utf8'));
@@ -150,6 +151,11 @@ async function createRecoverySnapshot() {
   const snapshotId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}`;
   const directory = join(backupRoot, snapshotId);
   await mkdir(join(directory, 'source'), { recursive: true });
+  return runCoordinatedBackup(snapshotId,directory,()=>copyRecoverySnapshot(snapshotId,directory));
+}
+
+// Every storage promise completes before returning the receipt digest to the closure coordinator.
+async function copyRecoverySnapshot(snapshotId,directory) {
   const databasePath = join(directory, 'database.sql');
   const exportStartedAt = new Date().toISOString();
   console.log(`Starting recovery snapshot ${snapshotId}.`);
@@ -198,6 +204,7 @@ async function createRecoverySnapshot() {
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `snapshot_id=${snapshotId}\n`);
   console.log(JSON.stringify({ snapshotId, status: 'copied-awaiting-restore', originals: objects.length,
     bytes: objects.reduce((sum, object) => sum + object.size, 0), uploadedOriginals, reusedOriginals }));
+  return hashFile(join(directory,'copy-receipt.json'));
 }
 
 // Fetch the cloud manifest, SQL, and every pinned original into a new directory; use no source files as restore input.

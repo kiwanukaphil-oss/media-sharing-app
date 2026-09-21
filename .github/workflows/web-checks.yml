@@ -31,6 +31,8 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/identity-operations.mjs
       - run: node --disable-warning=ExperimentalWarning tests/account-erasure-plan.mjs
       - run: node tests/account-closure-fence.mjs
+      - run: node tests/backup-closure-coordination.mjs
+      - run: node tests/backup-closure-client.mjs
       - run: node tests/provider-erasure-rehearsal.mjs
       - run: node tests/backup-version-inventory.mjs
       - run: node tests/erasure-ledger.mjs

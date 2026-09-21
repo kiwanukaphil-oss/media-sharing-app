@@ -64,3 +64,11 @@ The isolated protocol now journals exact storage keys and multipart identifiers 
 | `scripts/relay-backup.mjs` snapshot export and uploads | Admit before export, record snapshot and every uploaded version, acknowledge only after all writes finish. Add a narrow authenticated coordinator; the existing D1 read-only credential must remain read-only. |
 
 This inventory covers the observed storage-write entry points, not yet a proof of every metadata mutation. The application migration remains held until route coverage, direct capabilities, backup coordination and restore quarantine are reviewed together.
+
+### Backup coordination implementation (inactive)
+
+`lib/backup-closure-coordination.ts` accepts bounded, purpose-separated HMAC commands for backup admission and settlement only. Admission and a stable snapshot/run binding are written in one D1 batch, ordered against closure. Duplicate requests cannot start a second admission; settled or uncertain runs cannot reopen. Existing admitted work can finish after a fence, but new runs are refused. Active storage effects prevent settlement. The writer supplies a receipt digest after awaiting effects; this binds its evidence but does not independently validate all backup contents.
+
+`scripts/backup-closure-client.mjs` is integrated around snapshot creation, before the first database export. Once enabled it refuses partial configuration and unavailable/invalid admission, waits for the copy callback and records completion evidence. Interrupted work remains active or uncertain; timeouts never clear it. Private run IDs survive ambiguous responses for operator review. The current deployed backup path remains unchanged while both activation variables are absent.
+
+No coordinator route, secret, schema migration or GitHub environment activation has been deployed. Activation requires all of these together, a reviewed recovery/quarantine treatment for the new tables, and an observed hosted backup under the protocol. `RELAY_BACKUP_COORDINATION_ENABLED=true` plus a separate `RELAY_BACKUP_COORDINATION_SECRET` will be required; do not reuse the monitoring key or broaden D1 read permissions. The new coordinator is not an erasure execution endpoint.
