@@ -6,7 +6,7 @@ const transactions = await import(`data:text/javascript;base64,${Buffer.from(bun
 const settings = { issuer: 'https://test.auth0.com/', clientId: 'test-client', clientSecret: 'test-secret',
   appOrigin: 'https://relay.example', callbackUrl: 'https://relay.example/api/auth/callback' };
 const randomValue = () => Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
-const attempt = now => ({ state: randomValue(), browserBinding: randomValue(), nonce: randomValue(), verifier: randomValue(), expiresAt: now + 600000 });
+const attempt = now => ({ state: randomValue(), browserBinding: randomValue(), nonce: randomValue(), verifier: randomValue(), expiresAt: now + 600000, sessionMode: 'temporary' });
 
 // Use actual D1 atomic operations to verify callback races, browser/config isolation and expiry.
 export async function verifyAuth0Transactions(database) {

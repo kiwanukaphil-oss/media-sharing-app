@@ -83,3 +83,8 @@ Validation: lint, TypeScript, production build, full API/security/D1 regression,
 Local migration 0011 adds personal-space ownership and recorded quotas. Explicit creation is limited to 1 GiB per account and an operator-configured total allocation budget; default zero prevents public signup from allocating storage. Shared libraries keep their prior quota. Account UI and library switcher preserve destination scope across navigation and queued transfer actions. Isolation and quota tests pass on real D1/R2, and current API/security regression and snapshot restoration pass. Production has not received migrations 0007-0011 or an allocation budget. Worker version and public behaviour remain unchanged.
 
 Validation completed: lint, TypeScript, production build, full API/security/D1 regression, eight recovery checks and the browser regression suite passed. New identity UI uses fixtures; real provider verification is still a separate release gate. The increment is published under the standing project authority.
+
+
+## Session choices prepared - 21 September 2026
+
+Migration `0012_gorgeous_stellaris.sql` and temporary/trusted session selection are implemented and locally tested. Provider logout uses the configured tenant's OIDC endpoint with an exact registered root return address; live provider logout/recovery verification remains outstanding. No production migration, runtime setting or Worker deployment was performed. Production remains on Phase 1; migrations 0007-0012 are prepared only.

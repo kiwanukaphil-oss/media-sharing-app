@@ -14,7 +14,7 @@ let signedIn = true;
 let rejectRevocation = true;
 let libraryConnected = false;
 let claimConfirmations = 0;
-let entries = [currentId, otherId].map(id => ({ id, createdAt: Date.now(), expiresAt: Date.now() + 604800000 }));
+let entries = [currentId, otherId].map(id => ({ id, createdAt: Date.now(), expiresAt: Date.now() + 604800000, sessionMode: id === currentId ? 'temporary' : 'trusted' }));
 
 // First verify the real disabled endpoint, then isolate responsive UI states from the identity provider.
 try {
@@ -76,6 +76,12 @@ try {
   await page.screenshot({ path: '.sites-runtime/account-preview/desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out this browser', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Sign in securely' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in securely' })).toHaveAttribute('href', '/api/auth/login?session=temporary');
+  await expect(page.getByRole('checkbox', { name: /Keep me signed in/ })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: /Keep me signed in/ }).check();
+  await expect(page.getByRole('link', { name: 'Sign in securely' })).toHaveAttribute('href', '/api/auth/login?session=trusted');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: '.sites-runtime/account-preview/sign-in-mobile.png', fullPage: true });
   await page.keyboard.press('Tab');
   assert.deepEqual(errors, []);
   console.log('PASS: disabled production routes, responsive account UI, explicit claim preview/cancel/confirm, failed revocation recovery, remote sign-out and current-browser sign-out. UI account data was mocked.');

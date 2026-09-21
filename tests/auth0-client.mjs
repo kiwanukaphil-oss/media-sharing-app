@@ -56,7 +56,7 @@ async function providerTransport(input, options) {
   if (usedCodes.has(code)) return Response.json({ error: 'invalid_grant' }, { status: 400 });
   usedCodes.add(code);
   const now = Math.floor(Date.now() / 1000);
-  const claims = { iss: settings.issuer, aud: settings.clientId, sub: 'auth0|fixture-person', iat: now, exp: now + 300,
+  const claims = { iss: settings.issuer, aud: settings.clientId, sub: 'auth0|fixture-person', iat: now, exp: now + 300, auth_time: now,
     nonce: activeTransaction.nonce, name: 'Test Person', email: 'person@example.test', email_verified: true, ...claimOverrides };
   const encoded = `${Buffer.from(JSON.stringify({ alg: 'RS256', kid: jwk.kid })).toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`;
   const idToken = `${encoded}.${sign('RSA-SHA256', Buffer.from(encoded), signingKey).toString('base64url')}`;
@@ -74,6 +74,8 @@ const authorization = new URL(first.url);
 assert.equal(authorization.searchParams.get('code_challenge_method'), 'S256');
 assert.equal(authorization.searchParams.get('redirect_uri'), settings.callbackUrl);
 assert.equal(authorization.searchParams.get('scope'), 'openid profile email');
+assert.equal(authorization.searchParams.get('prompt'), 'login');
+assert.equal(authorization.searchParams.get('max_age'), '0');
 assert.ok(!first.url.includes(settings.clientSecret));
 assert.ok(!first.url.includes(first.transaction.verifier));
 assert.ok(!first.url.includes(first.transaction.browserBinding));
@@ -83,7 +85,7 @@ const callback = () => new URL(`${settings.callbackUrl}?code=fixture-${++codeCou
 const verified = await completeAuth0Login(settings, client, callback(), activeTransaction, activeTransaction.browserBinding);
 assert.deepEqual(verified, { issuer: settings.issuer, subject: 'auth0|fixture-person', displayName: 'Test Person', verifiedEmail: 'person@example.test' });
 assert.ok(!JSON.stringify(verified).includes('token'));
-for (const claims of [{ iss: 'https://other.auth0.com/' }, { aud: 'other-client' }, { exp: 1 }, { nonce: 'wrong-nonce' }, { sub: '' }]) {
+for (const claims of [{ iss: 'https://other.auth0.com/' }, { aud: 'other-client' }, { exp: 1 }, { nonce: 'wrong-nonce' }, { sub: '' }, { auth_time: 1 }, { auth_time: undefined }]) {
   claimOverrides = claims;
   await assert.rejects(completeAuth0Login(settings, client, callback(), activeTransaction, activeTransaction.browserBinding));
 }

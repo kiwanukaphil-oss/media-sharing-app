@@ -190,3 +190,12 @@ Creation is an explicit Account action. Each personal library receives 1 GiB (1,
 The switcher groups Personal and Shared libraries and performs full navigation, retaining browser warnings for active transfers. It resets view state and restores unfinished manifests only when both stored space and attribution IDs match current account memberships. Sources remain on the user's disk; reselecting the original resumes. Queues display their destination and a return link; cancellation and restart address that captured scope. Personal files remain separate: cross-space publication is still unimplemented.
 
 Configuration and migrations are local only. The production budget remains unset/disabled; real identity checks and the Phase 2 release gates remain outstanding.
+
+
+## Temporary/trusted sessions and logout - 21 September 2026
+
+Migration 0012 adds session mode and a nullable provider session hint. Existing session rows retain their original seven-day expiry and are labelled trusted; pending older login attempts default to temporary. New sign-ins default to eight-hour temporary access without cookie Max-Age. The optional trusted choice lasts seven days, with no sliding extension. The server stores this choice in the browser-bound, one-use transaction, so callback query manipulation cannot extend access. Browser restoration may preserve a session cookie; the UI therefore asks users to sign out on shared computers instead of promising that closing a window ends access.
+
+Every provider login requests `prompt=login` and `max_age=0`; the maintained OIDC library verifies signed authentication time. A remote Relay session revocation cannot silently recreate access from an existing Auth0 SSO cookie. Current-browser sign-out first revokes Relay access, clears its cookie and then navigates to Auth0's OIDC logout endpoint. Only the configured client and exact registered application root are used. The signed `sid` claim is retained server-side as a logout hint, not exposed by account/session listing. No ID/access/refresh tokens are retained. If no hint exists, Auth0 may ask for consent; consent protections remain enabled. Social-provider sessions and legacy paired-device access are separate, explicitly described boundaries.
+
+Implementation follows [Auth0 OIDC logout](https://auth0.com/docs/authenticate/login/logout/log-users-out-of-auth0). Real tenant logout/redirect and recovery remain release gates; local route tests do not prove them. Password-reset invalidation of existing Relay sessions is still a lifecycle requirement before activation.

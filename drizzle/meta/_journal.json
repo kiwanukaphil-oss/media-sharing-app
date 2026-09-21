@@ -85,6 +85,13 @@
       "when": 1789965014529,
       "tag": "0011_brown_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789966923594,
+      "tag": "0012_gorgeous_stellaris",
+      "breakpoints": true
     }
   ]
 }

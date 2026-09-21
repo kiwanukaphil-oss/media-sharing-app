@@ -1,11 +1,12 @@
 import * as oidc from "openid-client";
 import type { Auth0Settings } from "./auth0-config";
+import type { AccountSessionMode } from "./account-session-policy";
 
 export const AUTH0_TRANSACTION_LIFETIME_MS = 10 * 60 * 1000;
 export type Auth0LoginTransaction = {
-  state: string; nonce: string; verifier: string; browserBinding: string; expiresAt: number;
+  state: string; nonce: string; verifier: string; browserBinding: string; expiresAt: number; sessionMode?: AccountSessionMode;
 };
-export type VerifiedAuth0Identity = { issuer: string; subject: string; displayName: string; verifiedEmail: string | null };
+export type VerifiedAuth0Identity = { issuer: string; subject: string; displayName: string; verifiedEmail: string | null; providerSessionId?: string };
 
 // Use the maintained OIDC implementation and require signed ID tokens as well as TLS, issuer and audience checks.
 export async function discoverAuth0Client(settings: Auth0Settings, transport?: oidc.CustomFetch) {
@@ -31,7 +32,7 @@ export async function prepareAuth0Login(settings: Auth0Settings, configuration: 
     browserBinding: oidc.randomState(), expiresAt: now + AUTH0_TRANSACTION_LIFETIME_MS,
   };
   const url = oidc.buildAuthorizationUrl(configuration, {
-    redirect_uri: settings.callbackUrl, scope: "openid profile email", response_type: "code", response_mode: "query",
+    redirect_uri: settings.callbackUrl, scope: "openid profile email", response_type: "code", response_mode: "query", prompt: "login", max_age: "0",
     state: transaction.state, nonce: transaction.nonce, code_challenge_method: "S256",
     code_challenge: await oidc.calculatePKCECodeChallenge(transaction.verifier),
   });
@@ -50,12 +51,13 @@ export async function completeAuth0Login(settings: Auth0Settings, configuration:
     throw new Error("This sign-in attempt expired or belongs to another browser. Start again.");
   }
   const tokens = await oidc.authorizationCodeGrant(configuration, callbackUrl, {
-    pkceCodeVerifier: transaction.verifier, expectedState: transaction.state, expectedNonce: transaction.nonce, idTokenExpected: true,
+    pkceCodeVerifier: transaction.verifier, expectedState: transaction.state, expectedNonce: transaction.nonce, idTokenExpected: true, maxAge: 0,
   });
   const claims = tokens.claims();
   if (!claims || typeof claims.sub !== "string" || !claims.sub || claims.iss !== settings.issuer) throw new Error("A verified account identity was not returned.");
   // Never return access/refresh/ID tokens to the browser or use email equality to merge accounts.
   return { issuer: claims.iss, subject: claims.sub,
     displayName: typeof claims.name === "string" ? claims.name.slice(0, 100) : "Relay account",
-    verifiedEmail: claims.email_verified === true && typeof claims.email === "string" ? claims.email : null };
+    verifiedEmail: claims.email_verified === true && typeof claims.email === "string" ? claims.email : null,
+    ...(typeof claims.sid === "string" && claims.sid.length > 0 && claims.sid.length <= 512 ? { providerSessionId: claims.sid } : {}) };
 }

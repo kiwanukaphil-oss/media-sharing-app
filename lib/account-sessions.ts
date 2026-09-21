@@ -1,7 +1,8 @@
 import type { VerifiedAuth0Identity } from "./auth0-client";
 import type { Auth0Settings } from "./auth0-config";
 
-export const ACCOUNT_SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+import { accountSessionLifetime, type AccountSessionMode } from "./account-session-policy";
+export { ACCOUNT_SESSION_LIFETIME_MS } from "./account-session-policy";
 const cookieName = "__Host-relay_account";
 const validToken = (token: string) => /^[a-f0-9]{64}$/.test(token);
 const digest = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest(
@@ -12,7 +13,7 @@ export class AccountError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 export type AccountSession = {
-  sessionId: string; personId: string; displayName: string; verifiedEmail: string; createdAt: number; expiresAt: number;
+  sessionId: string; personId: string; displayName: string; verifiedEmail: string; createdAt: number; expiresAt: number; sessionMode: AccountSessionMode;
 };
 
 // Reject duplicate cookies rather than letting cookie order select the authenticated account.
@@ -21,9 +22,10 @@ export function readAccountToken(request: Request) {
     .filter(part => part.startsWith(`${cookieName}=`)).map(part => part.slice(cookieName.length + 1));
   return values.length === 1 && validToken(values[0]) ? values[0] : null;
 }
-export function accountCookie(token: string) {
+export function accountCookie(token: string, mode: AccountSessionMode = "temporary") {
   if (!validToken(token)) throw new Error("Invalid account credential.");
-  return `${cookieName}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${ACCOUNT_SESSION_LIFETIME_MS / 1000}`;
+  const lifetime = accountSessionLifetime(mode);
+  return `${cookieName}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/${mode === "trusted" ? `; Max-Age=${lifetime / 1000}` : ""}`;
 }
 export function clearAccountCookie() {
   return `${cookieName}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
@@ -32,7 +34,8 @@ export function clearAccountCookie() {
 // Atomically resolve the stable provider identity and issue a fresh hashed credential.
 // Email changes update profile data only. Disabled accounts cannot be resurrected by signing in.
 export async function createAccountSession(database: D1Database, settings: Auth0Settings,
-  identity: VerifiedAuth0Identity, previousToken: string | null, now = Date.now()) {
+  identity: VerifiedAuth0Identity, previousToken: string | null, now = Date.now(), mode: AccountSessionMode = "temporary") {
+  const lifetime = accountSessionLifetime(mode);
   if (identity.issuer !== settings.issuer || !identity.subject || identity.subject.length > 255 ||
       !identity.verifiedEmail || identity.verifiedEmail.length > 320) {
     throw new AccountError(403, "Verify your email address before signing in to Relay.");
@@ -46,9 +49,9 @@ export async function createAccountSession(database: D1Database, settings: Auth0
       VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(issuer, subject) DO UPDATE SET
       display_name = excluded.display_name, verified_email = excluded.verified_email WHERE people.disabled_at IS NULL`)
       .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now),
-    database.prepare(`INSERT INTO account_sessions (id, person_id, token_hash, configuration_hash, created_at, expires_at)
-      SELECT ?, id, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL`)
-      .bind(sessionId, await digest(token), binding, now, now + ACCOUNT_SESSION_LIFETIME_MS, identity.issuer, identity.subject),
+    database.prepare(`INSERT INTO account_sessions (id, person_id, token_hash, configuration_hash, created_at, expires_at, session_mode, provider_session_id)
+      SELECT ?, id, ?, ?, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL`)
+      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.issuer, identity.subject),
     database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE token_hash = ? AND configuration_hash = ?
       AND revoked_at IS NULL AND EXISTS (SELECT 1 FROM account_sessions WHERE id = ?)`)
       .bind(now, previousHash, binding, sessionId),
@@ -61,7 +64,7 @@ export async function createAccountSession(database: D1Database, settings: Auth0
 export async function readAccountSession(database: D1Database, settings: Auth0Settings, token: string | null, now = Date.now()) {
   if (!token || !validToken(token)) return null;
   return database.prepare(`SELECT s.id AS sessionId, p.id AS personId, p.display_name AS displayName,
-    p.verified_email AS verifiedEmail, s.created_at AS createdAt, s.expires_at AS expiresAt
+    p.verified_email AS verifiedEmail, s.created_at AS createdAt, s.expires_at AS expiresAt, s.session_mode AS sessionMode
     FROM account_sessions s JOIN people p ON p.id = s.person_id
     WHERE s.token_hash = ? AND s.configuration_hash = ? AND s.revoked_at IS NULL
     AND s.expires_at > ? AND p.disabled_at IS NULL`)

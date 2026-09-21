@@ -226,3 +226,4 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 
 .account-page .account-primary-action { background: var(--accent); color: #fff; }
 .account-page .account-secondary-action { border: 1px solid var(--line); }
+.account-page .account-trust-choice input { width: 16px; height: 16px; min-height: 16px; flex: 0 0 16px; padding: 0; margin: 4px 0 0; accent-color: var(--accent); }

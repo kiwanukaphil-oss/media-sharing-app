@@ -6,7 +6,7 @@ import AccountLibraries from "@/components/account-libraries";
 import { ArrowLeft, ArrowRight, ShieldCheck, Monitor, LogOut } from "lucide-react";
 
 type Session = { sessionId: string; displayName: string; verifiedEmail: string; expiresAt: number };
-type SessionEntry = { id: string; createdAt: number; expiresAt: number };
+type SessionEntry = { id: string; createdAt: number; expiresAt: number; sessionMode: "temporary" | "trusted" };
 type AccountState = { enabled: boolean; account: Session | null };
 
 // This screen keeps identity management separate from the currently paired shared library.
@@ -16,6 +16,7 @@ export default function AccountPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [trustBrowser, setTrustBrowser] = useState(false);
 
   // Abort on navigation and suppress stale responses when account state is refreshed.
   useEffect(() => {
@@ -50,6 +51,8 @@ export default function AccountPage() {
     try {
       const response = await fetch(`/api/auth/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!response.ok) { const data = await response.json() as { error?: string }; throw new Error(data.error || "Sign-out failed. Please retry."); }
+      const result = await response.json() as { providerLogoutUrl?: string };
+      if (result.providerLogoutUrl) { window.location.assign(result.providerLogoutUrl); return; }
       setRevision(value => value + 1);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Please try again.");
@@ -68,16 +71,20 @@ export default function AccountPage() {
     {state && !state.enabled && <section className="rounded-2xl border border-[var(--line)] p-7"><h2 className="font-semibold">Account sign-in is coming soon</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">You can continue using your connected library while we prepare recoverable accounts.</p></section>}
     {state?.enabled && !state.account && <section className="rounded-2xl border border-[var(--line)] p-7">
       <h2 className="text-lg font-semibold">Welcome to Relay</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">Sign in with your verified email. Access to shared spaces is managed separately.</p>
+      <label className="account-trust-choice mt-6 flex cursor-pointer items-start gap-3 rounded-xl bg-[var(--surface)] p-4">
+        <input type="checkbox" checked={trustBrowser} onChange={event => setTrustBrowser(event.target.checked)} />
+        <span><span className="text-sm font-medium">Keep me signed in on this browser</span><span className="mt-1 block text-xs leading-5 text-[var(--muted)]">Up to 7 days. Only choose this on a device you trust.</span></span>
+      </label>
+      <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{trustBrowser ? "You can sign this browser out remotely from Your account." : "Temporary access lasts up to 8 hours. Always sign out on a shared computer; browsers may restore sessions after closing."}</p>
       {/* Full navigation is required for the external OIDC redirect; never prefetch a login transaction. */}
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      <a href="/api/auth/login" className="mt-6 inline-flex items-center gap-3 rounded-xl bg-[var(--accent)] px-5 py-3 font-medium text-white">Sign in securely <ArrowRight size={17} /></a>
+      <a href={`/api/auth/login?session=${trustBrowser ? "trusted" : "temporary"}`} className="account-primary-action mt-6 inline-flex items-center gap-3 rounded-xl px-5 py-3 font-medium">Sign in securely <ArrowRight size={17} /></a>
     </section>}
     {state?.account && <>
       <section className="rounded-2xl border border-[var(--line)] p-7"><h2 className="text-lg font-semibold">{state.account.displayName}</h2><p className="mt-1 break-words text-sm text-[var(--muted)]">{state.account.verifiedEmail}</p><p className="mt-5 text-sm leading-6 text-[var(--muted)]">Your account is signed in. Your currently connected library remains available from the link above.</p></section>
       <AccountLibraries key={state.account.sessionId} />
-      <section className="mt-10" aria-labelledby="sessions-heading"><h2 id="sessions-heading" className="text-lg font-semibold">Signed-in browsers</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Sessions expire after seven days. Signing out here ends account access for that browser. Connected library devices are managed separately in the library.</p>
+      <section className="mt-10" aria-labelledby="sessions-heading"><h2 id="sessions-heading" className="text-lg font-semibold">Signed-in browsers</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Temporary access lasts up to 8 hours; trusted browsers stay signed in for up to 7 days. Signing out this browser also opens secure provider sign-out. Remote sign-out ends its Relay account access. Connected library devices are managed separately in the library.</p>
         <ul className="mt-5 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] px-5">
-          {sessions.map(session => <li key={session.id} className="flex items-center gap-4 py-5"><Monitor size={20} className="shrink-0 text-[var(--muted)]" /><div className="min-w-0 flex-1"><strong className="text-sm font-medium">{session.id === state.account!.sessionId ? "This browser" : "Another browser"}</strong><p className="mt-1 text-xs text-[var(--muted)]">Signed in {new Date(session.createdAt).toLocaleString()}</p></div><button disabled={busy} onClick={() => void signOutSession(session.id)} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm hover:bg-[var(--surface)]" aria-label={session.id === state.account!.sessionId ? "Sign out this browser" : `Sign out browser signed in ${new Date(session.createdAt).toLocaleString()}`}><LogOut size={16} /><span className="hidden sm:inline">Sign out</span></button></li>)}
+          {sessions.map(session => <li key={session.id} className="flex items-center gap-4 py-5"><Monitor size={20} className="shrink-0 text-[var(--muted)]" /><div className="min-w-0 flex-1"><strong className="text-sm font-medium">{session.id === state.account!.sessionId ? "This browser" : "Another browser"}</strong><p className="mt-1 text-xs text-[var(--muted)]">{session.sessionMode === "temporary" ? "Temporary" : "Trusted"} &middot; Signed in {new Date(session.createdAt).toLocaleString()}</p><p className="mt-1 text-xs text-[var(--muted)]">Expires {new Date(session.expiresAt).toLocaleString()}</p></div><button disabled={busy} onClick={() => void signOutSession(session.id)} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm hover:bg-[var(--surface)]" aria-label={session.id === state.account!.sessionId ? "Sign out this browser" : `Sign out browser signed in ${new Date(session.createdAt).toLocaleString()}`}><LogOut size={16} /><span className="hidden sm:inline">Sign out</span></button></li>)}
         </ul>
       </section>
     </>}

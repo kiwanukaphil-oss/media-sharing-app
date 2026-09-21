@@ -27,6 +27,8 @@ export const accountSessions = sqliteTable("account_sessions", {
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
   revokedAt: integer("revoked_at"),
+  sessionMode: text("session_mode", { enum: ["temporary", "trusted"] }).notNull().default("trusted"),
+  providerSessionId: text("provider_session_id"),
 }, table => [index("idx_account_sessions_person").on(table.personId)]);
 
 // Short-lived login attempts are separate from identities and never grant space access.
@@ -36,6 +38,7 @@ export const authTransactions = sqliteTable("auth_transactions", {
   configurationHash: text("configuration_hash").notNull(),
   nonce: text("nonce").notNull(),
   verifier: text("verifier").notNull(),
+  sessionMode: text("session_mode", { enum: ["temporary", "trusted"] }).notNull().default("temporary"),
   expiresAt: integer("expires_at").notNull(),
 }, table => [index("idx_auth_transactions_expiry").on(table.expiresAt)]);
 export const devices = sqliteTable("devices", {

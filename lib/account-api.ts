@@ -30,8 +30,8 @@ async function finishAccountLogin(request: Request, database: D1Database, settin
     const transaction = await consumeAuth0Transaction(database, settings, url.searchParams.get("state")!, binding);
     if (!transaction) throw new AccountError(400, "This sign-in attempt expired or was already used. Start again.");
     const identity = await provider.complete(settings, url, transaction, binding);
-    const session = await createAccountSession(database, settings, identity, readAccountToken(request));
-    headers.append("Set-Cookie", accountCookie(session.token));
+    const session = await createAccountSession(database, settings, identity, readAccountToken(request), Date.now(), transaction.sessionMode);
+    headers.append("Set-Cookie", accountCookie(session.token, transaction.sessionMode));
     headers.set("Location", `${settings.appOrigin}/account`);
     return new Response(null, { status: 303, headers });
   } catch (error) {
@@ -39,6 +39,18 @@ async function finishAccountLogin(request: Request, database: D1Database, settin
     headers.set("Location", `${settings.appOrigin}/account?signin=${reason}`);
     return new Response(null, { status: 303, headers });
   }
+}
+
+// Only the configured tenant and exact registered root can receive this redirect.
+// Keep the provider session hint server-side until sign-out; never retain ID/access tokens.
+async function providerSignOutUrl(database: D1Database, settings: Auth0Settings, sessionId: string) {
+  const stored = await database.prepare("SELECT provider_session_id FROM account_sessions WHERE id = ?")
+    .bind(sessionId).first<{ provider_session_id: string | null }>();
+  const url = new URL("oidc/logout", settings.issuer);
+  url.searchParams.set("client_id", settings.clientId);
+  url.searchParams.set("post_logout_redirect_uri", `${settings.appOrigin}/`);
+  if (stored?.provider_session_id) url.searchParams.set("logout_hint", stored.provider_session_id);
+  return url.href;
 }
 
 // Space membership requires an explicit owner claim; sign-in alone never grants library access.
@@ -57,7 +69,12 @@ export async function accountAction(request: Request, database: D1Database, sett
     if (request.headers.get("Sec-Fetch-Site") === "cross-site" && request.headers.get("Sec-Fetch-Mode") !== "navigate") {
       throw new AccountError(403, "Open Relay to sign in.");
     }
+    const choices = url.searchParams.getAll("session");
+    if (choices.length > 1 || (choices.length === 1 && !["temporary", "trusted"].includes(choices[0]))) {
+      throw new AccountError(400, "Choose a temporary or trusted browser session.");
+    }
     const login = await provider.prepare(settings);
+    login.transaction.sessionMode = choices[0] === "trusted" ? "trusted" : "temporary";
     await storeAuth0Transaction(database, settings, login.transaction);
     return new Response(null, { status: 303, headers: { ...privateHeaders, Location: login.url, "Set-Cookie": auth0TransactionCookie(login.transaction.browserBinding) } });
   }
@@ -80,10 +97,11 @@ export async function accountAction(request: Request, database: D1Database, sett
   }
   if (action === "logout" && request.method === "POST") {
     await revokeAccountSession(database, session, session.sessionId);
-    return Response.json({ signedOut: true }, { headers: { ...privateHeaders, "Set-Cookie": clearAccountCookie() } });
+    return Response.json({ signedOut: true, providerLogoutUrl: await providerSignOutUrl(database, settings, session.sessionId) },
+      { headers: { ...privateHeaders, "Set-Cookie": clearAccountCookie() } });
   }
   if (action === "sessions" && request.method === "GET") {
-    const sessions = await database.prepare(`SELECT id, created_at AS createdAt, expires_at AS expiresAt FROM account_sessions
+    const sessions = await database.prepare(`SELECT id, created_at AS createdAt, expires_at AS expiresAt, session_mode AS sessionMode FROM account_sessions
       WHERE person_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC, id LIMIT 100`)
       .bind(session.personId, Date.now()).all();
     return Response.json({ currentSessionId: session.sessionId, sessions: sessions.results }, { headers: privateHeaders });
@@ -91,7 +109,9 @@ export async function accountAction(request: Request, database: D1Database, sett
   const target = /^sessions\/([a-f0-9-]{36})$/.exec(action)?.[1];
   if (target && request.method === "DELETE") {
     await revokeAccountSession(database, session, target);
-    return Response.json({ revoked: true }, { headers: { ...privateHeaders, ...(target === session.sessionId ? { "Set-Cookie": clearAccountCookie() } : {}) } });
+    return Response.json({ revoked: true, ...(target === session.sessionId
+      ? { providerLogoutUrl: await providerSignOutUrl(database, settings, session.sessionId) } : {}) },
+      { headers: { ...privateHeaders, ...(target === session.sessionId ? { "Set-Cookie": clearAccountCookie() } : {}) } });
   }
   throw new AccountError(404, "This account action is unavailable.");
 }
