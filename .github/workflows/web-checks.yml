@@ -35,6 +35,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/erasure-ledger-journal.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erasure-ledger-archive.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erasure-ledger-bootstrap.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/erasure-intents.mjs
       - run: node tests/erasure-signing-vault.mjs
       - run: node tests/erasure-custody-handoff.mjs
       - run: node --disable-warning=ExperimentalWarning tests/legacy-erased-snapshot.mjs

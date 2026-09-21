@@ -791,3 +791,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Prove synthetic pending/withdrawn history survives loss of the source journal and application database, including expired manifests, replay uploads, missing revisions and signed forks. Recovery never grants currentness or activates a writer.
 - [x] Run the real read-only recovery command against the existing cloud archive: one revision restored, zero person decisions. Existing operational journal, signing key and application database were not opened or changed.
 - [ ] Connect real intent transitions, coordinate writers and rehearse the complete executor. The recovered history remains a quarantined review artifact.
+
+## 22 September 2026 - Recorded-intent producer
+
+- [x] Implement and test a restricted local signer for pending, review-required and withdrawn intent. Reconstruct missed pending/withdrawal pairs from retained timestamps, preserve earlier request IDs and reject missing rows, provider changes, rollback, overlapping requests and fulfilled-state input. Interrupted batches resume from their authenticated prefix.
+- [x] Implement a bounded, complete atomic D1 intent projection and read-only live review adapter. Repeated reads reject observed changes; freshness expires after 30 seconds. Live verification found zero requests and proposed only an empty-head freshness renewal; no signing or mutation was performed.
+- [x] Test exact intent transitions, signer/root mismatch, chronology, complete-source checks, renewal preserving record times, preparation expiry and unchanged journal during review. Add the suite to hosted CI.
+- [ ] Connect coordinated archive publishing and current-head readback before using recorded observations operationally. No fulfilled decision or cloud erasure is enabled.
