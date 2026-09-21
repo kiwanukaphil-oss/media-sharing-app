@@ -755,3 +755,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Implement an independent local journal with signed predecessor links, immutable public root, atomic history/head advancement and stale-writer rejection. No application migration or production signing key is introduced.
 - [x] Exercise real SQLite writer contention and interrupted-write rollback; preserve withdrawn/replaced requests and terminal fulfilled decisions. Keep expired historical audit separate from current restore authority, then pass existing erasure/legacy regression checks.
 - [ ] Provision independent recoverable custody, production head retrieval and actual transition/executor integration. Synthetic signed fixtures do not establish real erasure or clear P2-06. See [ledger contract](ERASURE-LEDGER.md).
+
+## 21 September 2026 - Signing-key recovery handoff prepared
+
+- [x] Implement and test a password-encrypted portable signing vault plus Windows-protected local custody, using standard crypto primitives and strict format/root checks.
+- [x] Test and open the single-use local recovery form; existing scoped Backblaze writer/reader access passes. The owner must save and enter their own unique recovery password; it must not enter chat or logs.
+- [ ] Complete the owner handoff and verify the actual pinned cloud vault download/decryption before recording recoverable custody. No real signing decision or account erasure is performed by this setup. Production ledger/executor integration remains outstanding.
