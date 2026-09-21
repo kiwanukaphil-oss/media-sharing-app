@@ -208,3 +208,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Source dc3e2c3: Identity operations run 35576462943 passed using the existing read-only D1 environment credential. Static status only; no personal records logged. Both primary and legacy health probes passed in run 35576467793. Twice-hourly schedules are configured; cron execution, notification delivery and missed-run detection are separate evidence.
 - Dedicated Auth0 read-only recovery monitor is implemented and locally tested, with a manual-only workflow. No provider application, access grant or secret created. Auth0 create-application form is staged as Relay Recovery Monitor; approval is needed for new tenant-wide read:logs/read:users access and secure GitHub environment storage.
 - No Worker deployment, data deletion, paid upgrade, personal-budget change or sign-in audience expansion. See docs/RECOVERY-MONITORING.md.
+
+## 21 September 2026 - Lifecycle request authority
+
+- Deployed source `828bb9f` as Worker `2241047a-0bd9-441f-b0fd-bf301c4004f5`; remote deployment readback confirms 100%.
+- Account deletion preview/request/withdrawal recheck the credential-change watermark. Withdrawal timestamps advance monotonically. Actual-D1 account-access integration, lint, TypeScript, build and deployment dry run passed.
+- Both primary and legacy origins return 200 for application and operational health. Primary anonymous account-deletion preview returns 401; legacy-origin account routes retain their deliberate 403 boundary.
+- No schema, secret, pilot audience or budget change; no account or media was erased. Owner signing custody and the initial independent empty archive were separately verified; general lifecycle execution remains open.
+- Hosted Web checks `35652294580` passed verification and full browser jobs for deployed source `828bb9f`.
