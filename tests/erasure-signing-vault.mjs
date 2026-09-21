@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes,sign,verify } from 'node:crypto';
 import { createErasureSigningVault,openErasureSigningVault } from '../scripts/erasure-signing-vault.mjs';
 
-const password=randomBytes(32).toString('base64url');
+const password=randomBytes(12).toString('base64url').slice(0,15);
 const {vault,root}=await createErasureSigningVault(password);
 const restored=await openErasureSigningVault(vault,password,root),challenge=randomBytes(32);
 assert.equal(verify(null,challenge,root.publicKey,sign(null,challenge,restored)),true);
@@ -20,5 +20,5 @@ for(const field of ['ledgerId','keyId','publicKey'])
   await assert.rejects(openErasureSigningVault(vault,password,{...root,[field]:'different'}),/root/);
 const another=await createErasureSigningVault(password);
 await assert.rejects(openErasureSigningVault(another.vault,password,root),/root/);
-for(const invalid of ['', 'short', ' '.repeat(30), 'a'.repeat(257)]) await assert.rejects(createErasureSigningVault(invalid),/password/);
+for(const invalid of ['', 'short', 'a'.repeat(14), ' '+ 'a'.repeat(14), ' '.repeat(30), 'a'.repeat(257)]) await assert.rejects(createErasureSigningVault(invalid),/password/);
 console.log('PASS: encrypted signing-key recovery, independent public-root binding, wrong passwords, ciphertext/header tampering, bounded formats and no password/private PEM in vault.');

@@ -14,8 +14,8 @@ function decodeField(value,length) {
 }
 
 async function recoveryKey(password,salt) {
-  if(typeof password!=='string' || password.length<20 || password.length>256 || password.trim().length<20)
-    throw new Error('Use a unique recovery password of at least 20 characters.');
+  if(typeof password!=='string' || password.length<15 || password.length>256 || password.trim().length<15)
+    throw new Error('Use a unique recovery password of at least 15 characters.');
   return derive(password,salt,32,{N:131072,r:8,p:1,maxmem:256*1024*1024});
 }
 

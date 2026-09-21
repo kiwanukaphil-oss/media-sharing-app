@@ -12,10 +12,10 @@ const form=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="vie
 <main><small>RELAY · OPERATOR RECOVERY</small><h1>Keep recovery decisions recoverable</h1>
 <p>Create a unique password in your password manager and save it as <strong>Relay recovery custody</strong>. Enter it below; do not send it in chat.</p>
 <p>This creates a signing key on this PC, protected by Windows encryption, and backs up a password-encrypted copy to your existing Backblaze backup bucket. It does not delete accounts, change access or buy a service.</p>
-<form method="post"><label>Recovery password <input type="password" name="password" autocomplete="new-password" minlength="20" maxlength="256" required></label>
-<label>Confirm recovery password <input type="password" name="confirmation" autocomplete="new-password" minlength="20" maxlength="256" required></label>
+<form method="post"><label>Recovery password <input type="password" name="password" autocomplete="new-password" minlength="15" maxlength="256" required></label>
+<label>Confirm recovery password <input type="password" name="confirmation" autocomplete="new-password" minlength="15" maxlength="256" required></label>
 <label><input type="checkbox" name="saved" value="yes" required> I saved this unique password in my password manager.</label>
-<button>Create and verify encrypted backup</button></form><p><small>Use at least 20 characters. Your password is used locally and is not stored or sent to Backblaze. The encrypted backup will be downloaded and tested before setup is marked complete.</small></p></main></html>`;
+<button>Create and verify encrypted backup</button></form><p><small>Use at least 15 characters. Your password is used locally and is not stored or sent to Backblaze. The encrypted backup will be downloaded and tested before setup is marked complete.</small></p></main></html>`;
 
 // Provision only after the user's same-origin form submission. Existing writer/reader roles are reused;
 // only encrypted key material enters B2, and the recovered key must verify against the new public root.
@@ -67,13 +67,13 @@ export function createSigningCustodyServer(provision=provisionErasureSigningCust
       let body='';for await(const chunk of request) {body+=chunk;if(Buffer.byteLength(body)>4096)throw new Error('Input too large');}
       const fields=new URLSearchParams(body),password=fields.get('password'),confirmation=fields.get('confirmation');
       if([...fields.keys()].sort().join(',')!=='confirmation,password,saved' || fields.get('saved')!=='yes' ||
-          !password || password!==confirmation || password.length>256 || password.trim().length<20) throw new Error('Invalid input');
+          !password || password!==confirmation || password.length>256 || password.trim().length<15) throw new Error('Invalid input');
       provisioning=true;await provision(password);
       response.end('<title>Relay custody verified</title><h1>Encrypted recovery backup verified</h1><p>Keep the saved password in your password manager. No account was deleted and no real erasure decision was signed.</p>');
       reportStatus('Erasure signing custody encrypted, backed up and independently restored; no secrets logged.');
     } catch {
       response.writeHead(provisioning?500:400);
-      response.end(provisioning?'<h1>Setup paused for review</h1><p>Any staged encrypted files have been retained. No real deletion decision was signed.</p>':form.replace('<h1>Keep recovery decisions recoverable</h1>','<h1>Check the password fields</h1><p>Use matching passwords of at least 20 characters and confirm you saved the password.</p>'));
+      response.end(provisioning?'<h1>Setup paused for review</h1><p>Any staged encrypted files have been retained. No real deletion decision was signed.</p>':form.replace('<h1>Keep recovery decisions recoverable</h1>','<h1>Check the password fields</h1><p>Use matching passwords of at least 15 characters and confirm you saved the password.</p>'));
       if(provisioning) reportStatus('Custody setup stopped; inspect encrypted local evidence privately.');
       else used=false;
     } finally {if(provisioning)server.close();}
