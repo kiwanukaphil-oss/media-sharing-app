@@ -1,6 +1,6 @@
 # Independent scheduled identity monitor
 
-Status: activated on 21 September 2026 at 15:03 UTC following explicit user approval. Dedicated Worker `relay-identity-monitor` runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Active version: `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2`, verified at 100%. All four required secret names were read back after encrypted installation. First scheduled execution and hosted resource usage remain to be verified.
+Status: activated on 21 September 2026 at 15:03 UTC following explicit user approval. Dedicated Worker `relay-identity-monitor` runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Active version: `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2`, verified at 100%. All four required secret names were read back after encrypted installation. The first actual cron execution succeeded at 15:19 UTC, including signed health delivery. **Free-plan CPU headroom remains a release concern; external alert receipt is still pending.**
 
 ## Reason for the change
 
@@ -28,7 +28,11 @@ The browser requires approval before copying the existing provider secret into a
 - [x] Pass TypeScript and lint; deploy disabled without secrets or schedules. The bootstrap deployment omits required-secret declarations only to create the disabled resource; tracked config retains them for activation validation.
 - [x] Obtain approval for the additional encrypted secret destination and run `scripts/install-identity-monitor-secrets.mjs`. User approved; installation and four secret names verified, with no values logged.
 - [x] Set `MONITOR_ENABLED` to `true`, add `19,49 * * * *`, deploy the tracked configuration and read back its version/schedule.
-- [ ] Observe a real cron execution, verify signed health delivery and review CPU/request use. A manual check alone is insufficient.
+- [x] Observe a real cron execution and verify signed health delivery. At 15:19 UTC, live tail recorded cron `19,49 * * * *`, outcome `ok`, static success log and no exceptions. R2 readback confirms success with `eventAt=1790003947351` and `receivedAt=1790003949249`; public health returned HTTP 200.
+- [x] Inspect initial hosted timing: wall time 3,225 ms; CPU time 10 ms. Actual account dashboard confirms **Workers Free**. This is one successful execution, not capacity proof.
+- [ ] Establish CPU headroom and continued scheduled coverage before general release. The initial sample is at the documented Free 10 ms CPU limit. Do not treat the 40-identity subrequest guard as a CPU capacity guarantee. Reconcile the earlier note about an existing $5 subscription before any new paid-plan decision; no purchase made.
 - [ ] Confirm the already-sent Better Stack test alert arrived; do not send another without permission.
 
 If credential installation or checks fail, keep the Worker disabled and use the existing manual combined workflow while investigating. Do not claim unattended monitoring is complete until hosted scheduled execution has been observed.
+
+The scheduled-execution observation gate is now met. [Cloudflare's current limits](https://developers.cloudflare.com/workers/platform/limits/#cpu-time) permit limited occasional CPU overruns, but sustained overruns can terminate execution. The observed success at 10 ms therefore does not justify broader pilot capacity or removing the independent missed-run alert. GitHub manual combined run `35616520323` also passed during activation; it remains a separate diagnostic path.
