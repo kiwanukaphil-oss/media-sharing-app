@@ -36,6 +36,7 @@ jobs:
       - run: node tests/account-metadata-authority.mjs
       - run: node tests/backup-closure-coordination.mjs
       - run: node tests/backup-closure-client.mjs
+      - run: node tests/backup-completion-receipt.mjs
       - run: node tests/provider-erasure-rehearsal.mjs
       - run: node tests/backup-version-inventory.mjs
       - run: node tests/erasure-ledger.mjs

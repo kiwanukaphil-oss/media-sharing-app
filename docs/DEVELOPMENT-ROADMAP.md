@@ -933,3 +933,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Prepare an exact-target multipart rehearsal in the existing isolated rehearsal Worker/D1/R2. Local tests and deployment dry run pass; the runner can select only this fixture. The fixed generated key and one-shot D1 state prevent caller-selected cleanup or automatic ambiguous retries.
 - [x] Seed the isolated hosted upload, receive the user's exact abort approval, and verify post-abort part/completion rejection at 07:45:36 UTC. Independent D1 receipt readback passes; endpoint disabled with expiry zero and 403 confirmed. See [multipart rehearsal](MULTIPART-CLOSURE-REHEARSAL.md). Production closure stays disabled.
 - [ ] Independently reconcile issued direct capabilities and requests already in flight; an abort response or absence observation alone is not an authenticated full quiescence receipt.
+
+
+## 22 September 2026 - Durable backup completion evidence
+
+- [x] Archive coordinated backup copy receipts in B2 before acknowledging settlement; retain immutable receipt-version metadata locally. Failed or mismatched archival leaves the run uncertain. Default uncoordinated backups keep their existing upload behaviour.
+- [x] Bind archived evidence to the exact current coordinator run, snapshot, receipt hash and manifest version. Tests reject changed bytes, another run/version and active/uncertain status. Receipt matching never grants erasure or restore cutover.
+- [x] Pass receipt/client tests, all 13 backup/restore tests, workflow access separation, isolated minimisation regression and focused lint. Device-binding/multipart source CI `35701087440` passed verification and browser jobs.
+- [ ] Activate hosted coordination only after schema minimisation review and dedicated-secret handoff; independently retrieve the first archived completion receipt against current coordinator state.

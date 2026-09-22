@@ -134,3 +134,10 @@ The account-disabled predicate is part of the durable fence transaction and rest
 Closure guards and scoped revocation now resolve both `legacy_owner_claims` and `account_space_actors` through membership identity, retaining historical scope even when a membership is revoked. The same union governs admission, post-fence commits and outstanding-write reporting. Actual D1 tests include an account compatibility device, a separately claimed legacy device and an unrelated retained device. This increment is locally verified; production tracking remains disabled.
 
 The separate [multipart rehearsal](MULTIPART-CLOSURE-REHEARSAL.md) is prepared for hosted verification. Its limited post-abort test cannot clear unresolved direct capabilities or establish completion of pre-abort remote requests.
+
+
+### Durable backup completion receipt
+
+Coordinated copies now archive `relay/snapshots/<snapshotId>/copy-receipt.json` before settlement. The exact hash is the coordinator receipt digest; the document binds the run and immutable manifest version. This fixes ephemeral GitHub-runner-only evidence. A receipt upload failure or mismatch preserves uncertainty; it cannot become settled. The uncoordinated production path does not upload this extra receipt until coordination is activated.
+
+`verifyBackupCompletionReceipt` checks downloaded bytes against a separately supplied current coordinator record and exact independently observed manifest version. Active/uncertain runs, changed bytes and mismatched IDs/digests fail. The caller must obtain current coordinator state independently of historical SQL. A matched receipt documents awaited writer completion, not verified physical erasure or restore permission. Hosted activation and independent receipt retrieval remain outstanding.

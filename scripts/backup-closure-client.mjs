@@ -37,7 +37,7 @@ export async function runCoordinatedBackup(snapshotId,directory,copy,transport=b
   let admitted=false;
   try {
     await transport({action:'begin',...command});admitted=true;
-    const receipt=await copy();
+    const receipt=await copy(Object.freeze({...command}));
     if(!/^[a-f0-9]{64}$/.test(receipt?.sha256??''))throw new Error('Backup evidence digest is missing.');
     await transport({action:'settle',...command,outcome:'settled',receiptDigest:receipt.sha256});
     return receipt;

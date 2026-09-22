@@ -12,6 +12,7 @@ import { authorizeBackupRole, downloadBackupFile, hashFile, operationsDirectory,
 import { readEncryptedBackupIndex } from './backup-index.mjs';
 import { exportReadOnlyDatabase } from './backup-d1-readonly.mjs';
 import { runCoordinatedBackup } from './backup-closure-client.mjs';
+import { persistBackupCompletionReceipt } from './backup-completion-receipt.mjs';
 
 const backupRoot = resolve(operationsDirectory, 'backups');
 const source = JSON.parse(await readFile('deploy/cloudflare.json', 'utf8'));
@@ -165,11 +166,11 @@ async function createRecoverySnapshot() {
   const snapshotId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}`;
   const directory = join(backupRoot, snapshotId);
   await mkdir(join(directory, 'source'), { recursive: true });
-  return runCoordinatedBackup(snapshotId,directory,()=>copyRecoverySnapshot(snapshotId,directory));
+  return runCoordinatedBackup(snapshotId,directory,coordination=>copyRecoverySnapshot(snapshotId,directory,coordination));
 }
 
 // Every storage promise completes before returning the receipt digest to the closure coordinator.
-async function copyRecoverySnapshot(snapshotId,directory) {
+async function copyRecoverySnapshot(snapshotId,directory,coordination) {
   const databasePath = join(directory, 'database.sql');
   const exportStartedAt = new Date().toISOString();
   console.log(`Starting recovery snapshot ${snapshotId}.`);
@@ -213,12 +214,12 @@ async function copyRecoverySnapshot(snapshotId,directory) {
   const manifestPath = join(directory, 'manifest.json');
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2), { flag: 'wx', mode: 0o600 });
   const manifestBackup = await uploadBackupFile(writer, manifestPath, `relay/snapshots/${snapshotId}/manifest.json`);
-  await writeFile(join(directory, 'copy-receipt.json'), JSON.stringify({ snapshotId, status: 'copied-awaiting-restore',
-    manifest: manifestBackup, uploadedOriginals, reusedOriginals, copiedAt: new Date().toISOString() }, null, 2), { flag: 'wx', mode: 0o600 });
+  const completionDigest = await persistBackupCompletionReceipt(directory, { snapshotId, status: 'copied-awaiting-restore',
+    manifest: manifestBackup, uploadedOriginals, reusedOriginals, copiedAt: new Date().toISOString() }, coordination, writer);
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `snapshot_id=${snapshotId}\n`);
   console.log(JSON.stringify({ snapshotId, status: 'copied-awaiting-restore', originals: objects.length,
     bytes: objects.reduce((sum, object) => sum + object.size, 0), uploadedOriginals, reusedOriginals }));
-  return hashFile(join(directory,'copy-receipt.json'));
+  return completionDigest;
 }
 
 // Fetch the cloud manifest, SQL, and every pinned original into a new directory; use no source files as restore input.
