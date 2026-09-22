@@ -1019,3 +1019,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Prepare the exact R2 in-flight UploadPart/abort scenario with no private content, credentials, object keys or upload IDs. User explicitly authorised sending the question.
 - [x] Submit Cloudflare support case [#02338622](https://support.cloudflare.com/s/case/500Nv00000jQYdoIAG); dashboard confirms submitted. [Exact message](R2-MULTIPART-SUPPORT-QUESTION.md).
 - [ ] Obtain a documented R2-specific guarantee or reconciliation procedure for already-admitted part requests. Until then, direct capabilities remain unresolved and full account-closure execution/general release stays gated. This is an external technical dependency, not a request for another purchase or routine project approval.
+
+
+## 22 September 2026 - Independent restored-run reconciliation
+
+- [x] Add all-run reconciliation for global backup records captured in a restored database. Independently verify exact current run/receipt/manifest versions and refuse conflicting or changed bindings. Preserve historical active/uncertain rows and all restore restrictions.
+- [x] Exercise actual migration-0019 fixtures and the real coordinated backup: one historical active run matches independently verified completion evidence. Existing read-only credentials suffice; no live or backup data changes.
+- [x] Add hosted regression coverage and document the private review command in the [backup activation record](COORDINATED-BACKUP-ACTIVATION.md). Full closure and restore cutover remain gated.

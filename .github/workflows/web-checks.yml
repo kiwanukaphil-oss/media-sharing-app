@@ -38,6 +38,7 @@ jobs:
       - run: node tests/backup-closure-client.mjs
       - run: node tests/backup-completion-receipt.mjs
       - run: node tests/backup-completion-inspection.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/restored-backup-runs.mjs
       - run: node tests/provider-erasure-rehearsal.mjs
       - run: node tests/backup-version-inventory.mjs
       - run: node tests/erasure-ledger.mjs

@@ -46,5 +46,5 @@ export async function inspectBackupCompletion(snapshotId, readCurrentRun, catalo
   if (JSON.stringify(finalRun) !== JSON.stringify(run) || !Number.isSafeInteger(startedAt) ||
       !Number.isSafeInteger(finishedAt) || finishedAt < startedAt || finishedAt - startedAt > 30000) throw new Error('Current backup completion observation changed or expired.');
   return { ...verified, verifiedReceiptVersions: candidates.length, currentRunUnchanged: true,
-    mode: 'independent-completion-review', observedAt: finishedAt };
+    receiptDigest: run.receiptDigest, mode: 'independent-completion-review', observedAt: finishedAt };
 }

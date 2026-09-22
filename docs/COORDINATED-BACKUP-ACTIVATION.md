@@ -32,3 +32,12 @@ This uses existing D1/B2 readers and compares exact immutable versions against l
 ## Recovery boundaries
 
 The schema is additive and remains present if application code is rolled back. Keep account closure tracking disabled. An interrupted or ambiguous run stays active/uncertain and requires review; disabling coordination is not evidence that earlier writers stopped. Restored historical active runs become uncertain. The current backup-only minimisation review rejects any snapshot containing account closure references. No general account-closure completion is claimed by this activation.
+
+
+## Restored historical-run reconciliation
+
+Use `node scripts/read-live-backup-completion.mjs --restored-snapshot <private-sql-path>` to review every global backup run captured in a restored snapshot against independent current D1 and immutable B2 receipt readers. The tool never writes to the input file or current/restored protocol rows. Historical active/uncertain state remains intact; reconciliation is a separate private report bound to the source SQL digest.
+
+- [x] Actual-schema tests reject missing/orphan bindings, a different current run for the same snapshot, conflicting historical receipt digests, unresolved live runs and source-inventory changes during review.
+- [x] Review the real coordinated snapshot `2026-09-22T08-11-23-130Z-7b55498a-f8f8-4526-bdb3-0e9bde64b2dd`: one historical run reconciles against its independently retrieved completion evidence.
+- [ ] Establish full writer quiescence, account/storage disposition and release acceptance before any restore cutover. Receipt verification alone does not clear those gates.
