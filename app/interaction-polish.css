@@ -55,7 +55,7 @@
 .feed-label .inline-drop-hint { margin-left: 12px; }
 
 /* The compact dock is reserved for actions on the current selection. */
-.selection-toolbar.has-selection { gap: 2px; flex-wrap: nowrap; padding: 7px 9px; border-color: #4b3c57; max-height: none; overflow: visible; border-radius: 14px; }
+.selection-toolbar.has-selection { gap: 2px; flex-wrap: wrap; padding: 7px 9px; border-color: #4b3c57; max-height: none; overflow: visible; border-radius: 14px; }
 .selection-toolbar.has-selection strong { font-size: 12px; padding: 0 11px 0 4px; }
 .selection-toolbar.has-selection .icon-button { width: 40px; height: 40px; min-width: 40px; color: #e6ddef; border-radius: 8px; }
 .selection-toolbar.has-selection .icon-button:hover { background: #493752; color: white; }

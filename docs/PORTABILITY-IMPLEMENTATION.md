@@ -19,7 +19,7 @@ This is metadata-only portability. Original downloads remain separate and unchan
 ## Remaining P5-04 scope
 
 - [x] Preview folder-to-album/section mapping before queueing a directory import; handle names, collisions and browser capability fallback. Locally verified; deployment remains pending.
-- [ ] Include the manifest in bounded selected-original export packages when P5-03 jobs exist; verify byte integrity and complete package contents.
+- [x] Include the manifest in bounded selected-original ZIP packages; local independent extraction verifies original bytes and complete metadata. Hosted and deployed package verification remain separate release gates.
 
 The parent roadmap item remains unchecked. No new database tables or stored export artifacts are needed for the metadata increment.
 
@@ -32,3 +32,5 @@ Layout creation is atomic and uses stable preview IDs. A lost response can be re
 Local evidence: `tests/folder-import.mjs`, `tests/import-layout.mjs`, `tests/folder-import-browser.mjs`. The browser check creates only generated local fixtures, loses the first successful layout response, retries once, verifies one album and three byte-identical originals with the reviewed section mappings, and exercises the unsupported-folder fallback. Hosted and deployed checks remain outstanding for this increment.
 
 Hosted folder-import run `35729466805` passed verification. An older account-library browser test selected the first hidden file input instead of the original-file control; it now uses the explicit accessible label. Corrected hosted browser coverage passes in `35729947615` and `35730541652`. Production release remains pending.
+
+The bounded first package implementation streams in the open tab (2 GiB direct-save limit; 64 MiB fallback), with full-selection revalidation and fresh retries. See [package decision and checked evidence](DELIVERY-CONTRACT.md).

@@ -76,6 +76,14 @@ try{
   await expect(page.getByRole('status')).toContainText('Download requested');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:'outputs/deliveries/recipient-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Download originals',exact:true}).click();
+  const packageDialog=page.getByRole('dialog',{name:'Download originals',exact:true});
+  const packageDownload=page.waitForEvent('download');await packageDialog.getByRole('button',{name:'Create ZIP',exact:true}).click();
+  const archive=await readFile(await (await packageDownload).path());assert.equal(archive.readUInt32LE(0),0x04034b50);
+  assert.ok(archive.includes(Buffer.from('Reviewed original.txt')));assert.ok(archive.includes(Buffer.from('tiny')));
+  await expect(packageDialog.getByRole('status')).toContainText('download requested');
+  await packageDialog.getByRole('button',{name:'Close original package'}).click();
+
   // A generated in-memory file writer exercises the real verified-save UI without opening a system picker.
   await page.addInitScript(()=>{
     window.deliverySaved=false;
@@ -83,6 +91,10 @@ try{
   });
   await page.reload();await page.getByRole('button',{name:'Save verified',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Original file verified');assert.equal(await page.evaluate(()=>window.deliverySaved),true);
+  await page.getByRole('button',{name:'Download originals',exact:true}).click();
+  await packageDialog.getByRole('button',{name:'Create ZIP',exact:true}).click();
+  await expect(packageDialog.getByRole('status')).toContainText('Package saved. Every original verified.');
+  await packageDialog.getByRole('button',{name:'Close original package'}).click();
   await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'outputs/deliveries/recipient-desktop.png',fullPage:true});
   unavailable=true;await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await expect(page.getByRole('alert')).toContainText('unavailable');await expect(page.getByRole('heading',{name:file.name,exact:true})).toHaveCount(0);

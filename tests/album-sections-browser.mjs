@@ -63,6 +63,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(section).toBeVisible();
   await section.click(); await page.keyboard.press('Escape'); await expect(section).toBeFocused();
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)){await page.screenshot({path:'outputs/sections/mobile-overflow.png',fullPage:true});console.log('OVERFLOW',await page.locator('body *').evaluateAll(nodes=>nodes.map(node=>({tag:node.tagName,class:node.className,width:node.getBoundingClientRect().width,right:node.getBoundingClientRect().right})).filter(node=>node.right>innerWidth+1&&node.width>0).slice(-20)));}
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: 'outputs/sections/mobile.png', fullPage: true });
   assert.deepEqual(errors, []);

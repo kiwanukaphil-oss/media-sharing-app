@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
+import { OriginalPackage } from "./original-package";
 import { MetadataExport } from "./metadata-export";
 import { AlbumSections } from "./album-sections";
 import { WorkspaceSelect } from "./workspace-select";
@@ -129,7 +130,7 @@ export function LibraryTools(props: Props) {
     </div>
     {query.dateMode === "captured" && <p className="library-context">Camera date where available; otherwise date uploaded (UTC). Missing dates are labelled on each file.</p>}
     </div>
-    {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Everyone in this space can view and save these files."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{canOrganise && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
+    {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Available to people with access to this audience."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{canOrganise && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
     {activeAlbum && <AlbumSections album={activeAlbum} sections={props.sections.filter(section => section.albumId === activeAlbum.id)} query={query} onQuery={onQuery} selected={selected} canOrganise={canOrganise} canMoveSelection={editableSelection} refresh={refresh} clearSelection={props.onClearSelection} feedback={props.feedback} />}
     {activeFilterCount > 0 && <div className="active-library-filters" aria-label="Active filters">
       {query.favorites && <button className="filter-chip" onClick={() => onQuery({ ...query, favorites: "" })}>My favourites<X size={13} /></button>}
@@ -146,12 +147,12 @@ export function LibraryTools(props: Props) {
         {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
         {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy || !editableSelection} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
         <button className="icon-button bulk-trash" title={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} aria-label={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? <Undo2 size={19} /> : <Trash2 size={19} />}</button>
-        </>}<MetadataExport files={selected} />{props.onCreateDelivery && <button className="button secondary compact" disabled={busy} onClick={() => props.onCreateDelivery?.(selected)}>Create delivery</button>}
+        </>}<MetadataExport files={selected} /><OriginalPackage files={selected} />{props.onCreateDelivery && <button className="button secondary compact" disabled={busy} onClick={() => props.onCreateDelivery?.(selected)}>Create delivery</button>}
         <button className="icon-button clear-selection" title="Clear selection" aria-label="Clear selection" disabled={busy} onClick={props.onClearSelection}><X size={18} /></button>
       </>}
     </div>}
     {message && <div className="library-feedback" role="status"><span>{message}</span>{undo && <button className="text-button" disabled={busy} onClick={() => void performMutation(async () => { await undo(); setUndo(null); setMessage("Change undone."); })}><Undo2 size={16} />Undo</button>}<button className="icon-button" aria-label="Dismiss feedback" title="Dismiss" disabled={busy} onClick={() => { setMessage(""); setUndo(null); }}><X size={15} /></button></div>}
-    {albumPickerOpen && <LibraryDialog title="Add to album" close={() => { if (!busy) setAlbumPickerOpen(false); }}><div className="library-form"><p>{selected.length} {selected.length === 1 ? "file" : "files"}. Originals stay in All files.</p><WorkspaceSelect label="Destination album" value={targetAlbum} onChange={setTargetAlbum} options={[{ value: "", label: "Choose album…" }, ...activeAlbums.map(album => ({ value: album.id, label: album.name }))]} disabled={busy} />{!activeAlbums.length && <p>Create an album first, then add your selection.</p>}{failure && <p role="alert" className="error-banner">{failure}</p>}<button className="button primary" disabled={busy || !targetAlbum || !selected.length} onClick={() => void performMutation(() => organiseSelection("add"))}>Add to album</button></div></LibraryDialog>}
+    {albumPickerOpen && <LibraryDialog title="Add to album" close={() => { if (!busy) setAlbumPickerOpen(false); }}><div className="library-form"><p>{selected.length} {selected.length === 1 ? "file" : "files"}. Originals stay in their current audience.</p><WorkspaceSelect label="Destination album" value={targetAlbum} onChange={setTargetAlbum} options={[{ value: "", label: "Choose album…" }, ...activeAlbums.map(album => ({ value: album.id, label: album.name }))]} disabled={busy} />{!activeAlbums.length && <p>Create an album first, then add your selection.</p>}{failure && <p role="alert" className="error-banner">{failure}</p>}<button className="button primary" disabled={busy || !targetAlbum || !selected.length} onClick={() => void performMutation(() => organiseSelection("add"))}>Add to album</button></div></LibraryDialog>}
     {failure && !albumEditor && !renameItems.length && !dateItem && <p className="error-banner" role="alert">{failure}</p>}
     {albumEditor && <LibraryDialog title={albumEditor === "new" ? "New album" : "Manage album"} close={() => { if (!busy) setAlbumEditor(null); }}>
       <AlbumForm album={albumEditor === "new" ? null : albumEditor} busy={busy} failure={failure} save={(name, description) => void performMutation(() => saveAlbum(name, description))} />
@@ -170,7 +171,7 @@ function AlbumForm({ album, busy, failure, save }: { album: Album | null; busy: 
   return <form className="library-form" onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); save(String(data.get("name")), String(data.get("description"))); }}>
     <label>Album name<input name="name" required maxLength={100} defaultValue={album?.name || ""} autoFocus placeholder="e.g. September product shoot" /></label>
     <label>Description<textarea name="description" maxLength={1000} defaultValue={album?.description || ""} placeholder="What belongs here?" /></label>
-    <p>Albums organise files within this shared space. Everyone paired to the space can see them.</p>
+    <p>Albums organise originals without changing who can access them.</p>
     {failure && <p role="alert" className="error-banner">{failure}</p>}<button className="button primary" disabled={busy}>{busy ? "Saving…" : album ? "Save album" : "Create album"}</button>
   </form>;
 }
