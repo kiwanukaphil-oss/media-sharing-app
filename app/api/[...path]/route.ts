@@ -2,6 +2,7 @@ import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
 import { acceptRecoveryEvent } from "@/lib/account-recovery";
 import { acceptOperationsReport, readOperationsHealth } from "@/lib/operations-health";
+import { acceptBackupCoordination } from "@/lib/backup-closure-coordination";
 import { listLegacyAccess, revokeLegacyAccess } from "@/lib/legacy-reconciliation";
 import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
@@ -25,6 +26,14 @@ async function serveRequest(request: Request) {
     const segments = new URL(request.url).pathname.slice(5).split("/");
     if (segments.length > 4 || new URL(request.url).search.length > 2048) throw new ApiError(400, "Invalid request address.");
     await limitPublicRequest(request, segments[0]);
+    // Dormant until the reviewed schema and dedicated writer secret are activated together. Browser
+    // sessions and monitoring credentials cannot authorize this server-to-server capability.
+    if (segments.length === 2 && segments[0] === "operations" && segments[1] === "backup-coordination") {
+      if (process.env.RELAY_BACKUP_COORDINATION_ENABLED !== "true") throw new ApiError(404, "Action not found.");
+      const response = await acceptBackupCoordination(request, database(), process.env.RELAY_BACKUP_COORDINATION_SECRET);
+      for (const [name, value] of Object.entries(privateResponseHeaders(requestId))) response.headers.set(name, value);
+      return response;
+    }
     if (segments.length === 2 && segments[0] === "operations" && segments[1] === "health") {
       if (!["GET", "POST"].includes(request.method)) throw new ApiError(405, "Method not allowed.");
       const response = request.method === "GET" ? await readOperationsHealth(bucket(), process.env.RELAY_MONITOR_SECRET) :

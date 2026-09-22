@@ -852,3 +852,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Add isolated reservation of exact object/upload/part/deadline before URL issuance; retain unresolved capability state without storing URLs or tokens.
 - [x] Test fence ordering, invalid targets, expiry without false settlement, and restore preservation of unresolved capability evidence. TypeScript and focused lint pass.
 - [ ] Integrate production part-URL issuance and establish independently verified multipart quiescence before any capability clearance. Prototype schema remains outside the migration journal.
+
+## 22 September 2026 - Dormant backup coordinator route
+
+- [x] Wire the dedicated HMAC endpoint behind explicit activation; default configuration returns private 404 before database coordination. Browser sessions and monitor credentials grant no authority.
+- [x] Bound request reads to 10 seconds and verify stalled-body cancellation without a database mutation.
+- [x] Pass actual built-Worker enabled-route checks, disabled-route/account regressions, TypeScript, focused lint and production build. Add enabled-route coverage to hosted CI.
+- [ ] Deploy/activate only with the reviewed complete protocol schema, separate secret, writer configuration and hosted coordinated-backup verification. Existing live release and scheduled backup are unchanged.

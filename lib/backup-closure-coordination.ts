@@ -6,22 +6,25 @@ const deny = () => new AccountError(403, "Backup coordination could not be verif
 const encoder = new TextEncoder();
 
 // This dedicated capability only records global backup admission and acknowledged completion. It
-// cannot query application content, alter people or clear closure fences. No public route is wired yet.
+// cannot query application content, alter people or clear closure fences. Route activation is separate.
 async function verifyBackupCommand(request: Request, secret: string | undefined, now: number): Promise<BackupCommand> {
   if (request.method !== "POST" || request.headers.has("Origin") || !/^[a-f0-9]{64}$/.test(secret ?? "") || !request.body) throw deny();
   const timestamp = request.headers.get("X-Relay-Backup-Time") ?? "", signature = request.headers.get("X-Relay-Backup-Signature") ?? "";
   if (!/^\d{13}$/.test(timestamp) || Math.abs(now - Number(timestamp)) > 300000 || !/^[a-f0-9]{64}$/.test(signature)) throw deny();
   const reader = request.body.getReader(), decoder = new TextDecoder("utf-8", { fatal: true });
   let length = 0, body = "";
+  let timeout: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(deny()), 10000); });
   try {
     for (;;) {
-      const chunk = await reader.read(); if (chunk.done) break;
+      const chunk = await Promise.race([reader.read(), deadline]); if (chunk.done) break;
       length += chunk.value.byteLength;
       if (length > 2048) { await reader.cancel(); throw deny(); }
       body += decoder.decode(chunk.value, { stream: true });
     }
     body += decoder.decode();
-  } catch { throw deny(); } finally { reader.releaseLock(); }
+  } catch { void reader.cancel().catch(() => {}); throw deny(); }
+  finally { clearTimeout(timeout!); reader.releaseLock(); }
   const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
   const proof = Uint8Array.from(signature.match(/../g)!, byte => parseInt(byte, 16));
   if (!await crypto.subtle.verify("HMAC", key, proof, encoder.encode(`relay-backup-coordination-v1.${timestamp}.${body}`))) throw deny();

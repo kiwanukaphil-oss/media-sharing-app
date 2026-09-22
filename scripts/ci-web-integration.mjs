@@ -9,6 +9,7 @@ const origin = `http://127.0.0.1:${port}`;
 const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
 const accountAccessChecks = process.argv.includes('--account-access');
+const backupCoordinationChecks = process.argv.includes('--backup-coordination');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
 const modules = (await readdir('dist/server', { recursive: true }))
   .filter(path => path.endsWith('.js'))
@@ -26,6 +27,7 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_ROLLOUT: 'open', AUTH0_DOMAIN: 'access.auth0.com',
       AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
       AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648' } } : {}),
+    ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
   }],
@@ -50,7 +52,12 @@ try {
       if (statement.trim()) await database.prepare(statement.trim()).run();
     }
   }
-  if (servePreview) {
+  if (backupCoordinationChecks) {
+    for (const sql of (await readFile('deploy/closure-fence-prototype.sql','utf8')).split('--> statement-breakpoint'))
+      if (sql.trim()) await database.prepare(sql).run();
+    const {verifyBackupCoordinationRoute}=await import('../tests/backup-coordination-route.mjs');
+    await verifyBackupCoordinationRoute(database,(url,options)=>emulator.dispatchFetch(url,options));
+  } else if (servePreview) {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
   } else if (accountAccessChecks) {

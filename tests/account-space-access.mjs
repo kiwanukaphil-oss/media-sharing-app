@@ -7,6 +7,12 @@ const settings = { issuer: 'https://access.auth0.com/', clientId: 'access-test',
 
 // Exercise production route modules against actual D1/R2, using isolated provider-identity fixtures.
 export async function verifyAccountSpaceAccess(database, dispatch) {
+  // Prototype coordination must stay unavailable on the ordinary production configuration.
+  for (const method of ['GET','POST']) {
+    const dormant=await dispatch('https://localhost/api/operations/backup-coordination',{method});
+    assert.equal(dormant.status,404);
+    assert.equal(dormant.headers.get('Cache-Control'),'no-store');
+  }
   const now = Date.now();
   const createLogin = async subject => {
     const login = await accounts.createAccountSession(database, settings,

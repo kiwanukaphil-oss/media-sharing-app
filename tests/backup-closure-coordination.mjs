@@ -21,6 +21,12 @@ try {
   for(const path of [...migrations.map(row=>`drizzle/${row.tag}.sql`),'deploy/closure-fence-prototype.sql'])
     for(const sql of (await readFile(path,'utf8')).split('--> statement-breakpoint'))if(sql.trim())await database.prepare(sql).run();
   const begin={action:'begin',id,snapshotId};
+  let stalledCancelled=false;
+  const stalled=new Request('https://fixture.invalid/coordination',{method:'POST',duplex:'half',
+    headers:signed(begin).headers,body:new ReadableStream({cancel(){stalledCancelled=true;}})});
+  await assert.rejects(acceptBackupCoordination(stalled,database,secret,now),/verified/);
+  assert.equal(stalledCancelled,true,'Stalled bodies are cancelled after a bounded read deadline');
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM closure_write_admissions').first()).n,0);
   for(const altered of [{secret:'b'.repeat(64)},{timestamp:now-300001},{body:'{}'},{headers:{Origin:'https://fixture.invalid'}},{body:'x'.repeat(2049)}])
     await assert.rejects(acceptBackupCoordination(signed(begin,altered),database,secret,now),/verified/);
   await assert.rejects(acceptBackupCoordination(signed({...begin,personId:'unexpected'}),database,secret,now),/verified/);
