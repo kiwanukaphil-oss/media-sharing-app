@@ -11,7 +11,7 @@ const {resourceAudienceAuthority,eventAudienceAuthority}=await import(`data:text
 const db=new DatabaseSync(':memory:');
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
-  db.exec(await readFile('docs/prototypes/restricted-scope-schema.sql','utf8'));
+  if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='asset_scopes'").get()) db.exec(await readFile('docs/prototypes/restricted-scope-schema.sql','utf8'));
   const now=Date.now();
   db.exec("INSERT INTO spaces VALUES('shared','Shared',1),('personal','Personal',1),('foreign','Foreign',1)");
   for(const member of ['owner','viewer']){

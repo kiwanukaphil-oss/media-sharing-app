@@ -1,3 +1,4 @@
+import { resourceAudienceAuthority, browseAudienceAuthority, requestedBrowseAudience } from "./asset-scope-authority";
 import { activityBatch, fileActivityResources } from "./library-activity";
 import { activityStatement } from "./library-activity-statements";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
@@ -12,7 +13,8 @@ const albumFields = { name: z.string().trim().min(1).max(100), description: z.st
 const selectionSchema = z.array(z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative(), sectionId: z.string().uuid().nullable().optional() })).min(1).max(100).refine(items => new Set(items.map(item => item.id)).size === items.length);
 
 export async function requireAlbum(device: ActiveDevice, id: string, active = false) {
-  const album = await database().prepare("SELECT * FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL").bind(id, device.space_id).first<{ id: string; archived_at: number | null }>();
+  const audience = resourceAudienceAuthority(device, "albums");
+  const album = await database().prepare(`SELECT * FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND ${audience.sql}`).bind(id, device.space_id, ...audience.bindings).first<{ id: string; archived_at: number | null; access_scope_id: string | null }>();
   if (!album) throw new ApiError(404, "This album is not available.");
   if (active && album.archived_at) throw new ApiError(409, "Unarchive this album before adding files.");
   return album;
@@ -27,11 +29,14 @@ function selectionGuard(state: "any" | "active" | "trashed" = "any", editable = 
 // Album deletion hides its grouping only; retained memberships make explicit restoration lossless.
 async function manageAlbums(request: Request, device: ActiveDevice, id?: string) {
   if (request.method === "GET" && !id) {
+    const scope = requestedBrowseAudience(request, device);
+    if (scope === false) throw new ApiError(400, "Choose a valid library audience.");
+    const audience = browseAudienceAuthority(device, scope, "a");
     const albums = await database().prepare(`SELECT a.id, a.name, a.description, a.created_at AS createdAt, a.archived_at AS archivedAt,
       a.deleted_at AS deletedAt, a.revision, COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count,
       MAX(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN MAX(m.created_at,a.created_at) ELSE a.created_at END) AS latestUploadAt
       FROM albums a LEFT JOIN album_media am ON am.album_id = a.id LEFT JOIN media m ON m.id = am.media_id
-      WHERE a.space_id = ? AND a.deleted_at IS NULL GROUP BY a.id ORDER BY a.archived_at IS NOT NULL, a.name COLLATE NOCASE, a.id`).bind(device.space_id).all<Album>();
+      WHERE a.space_id = ? AND ${audience.sql} AND a.deleted_at IS NULL GROUP BY a.id ORDER BY a.archived_at IS NOT NULL, a.name COLLATE NOCASE, a.id`).bind(device.space_id, ...audience.bindings).all<Album>();
     const sections = await database().prepare(`SELECT s.id, s.album_id AS albumId, s.name, s.position,
       CASE WHEN EXISTS (SELECT 1 FROM album_media cover_membership JOIN media cover ON cover.id = cover_membership.media_id
         WHERE cover_membership.album_id = s.album_id AND cover_membership.section_id = s.id AND cover.id = s.cover_media_id
@@ -39,7 +44,7 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
       COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count
       FROM album_sections s JOIN albums a ON a.id = s.album_id
       LEFT JOIN album_media am ON am.album_id = s.album_id AND am.section_id = s.id LEFT JOIN media m ON m.id = am.media_id
-      WHERE a.space_id = ? AND a.deleted_at IS NULL AND s.deleted_at IS NULL GROUP BY s.album_id, s.id ORDER BY s.position, s.id`).bind(device.space_id).all();
+      WHERE a.space_id = ? AND ${audience.sql} AND a.deleted_at IS NULL AND s.deleted_at IS NULL GROUP BY s.album_id, s.id ORDER BY s.position, s.id`).bind(device.space_id, ...audience.bindings).all();
     return Response.json({ albums: albums.results, sections: sections.results });
   }
   requireOrganiser(device);
@@ -55,8 +60,9 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
   if (request.method === "PUT" && id) {
     const input = await readJson(request, z.object({ ...albumFields, expectedRevision: z.number().int().nonnegative(), archived: z.boolean(), deleted: z.boolean() }));
     const authority = transferAuthority(device, Date.now(), "organiser");
+    const audience = resourceAudienceAuthority(device, "albums");
     const [result] = await activityBatch(device, input.deleted ? "album.remove" : input.archived ? "album.archive" : "album.update", [{ kind: "album", id, revision: input.expectedRevision + 1 }], [database().prepare(`UPDATE albums SET name = ?, description = ?, archived_at = ?, deleted_at = ?, revision = revision + 1
-      WHERE id = ? AND space_id = ? AND revision = ? AND ${authority.sql}`).bind(input.name, input.description, input.archived ? Date.now() : null, input.deleted ? Date.now() : null, id, device.space_id, input.expectedRevision, ...authority.bindings)]);
+      WHERE id = ? AND space_id = ? AND revision = ? AND ${authority.sql} AND ${audience.sql}`).bind(input.name, input.description, input.archived ? Date.now() : null, input.deleted ? Date.now() : null, id, device.space_id, input.expectedRevision, ...authority.bindings, ...audience.bindings)]);
     if (!result.meta.changes) throw new ApiError(409, "This album changed. Refresh before trying again.");
     return Response.json({ changed: true, revision: input.expectedRevision + 1 });
   }
@@ -69,8 +75,9 @@ async function renameFiles(request: Request, device: ActiveDevice) {
   const input = await readJson(request, z.object({ files: z.array(z.object({ id: z.string().uuid(), name: z.string().refine(validFilename), expectedRevision: z.number().int().nonnegative() })).min(1).max(100) }));
   if (new Set(input.files.map(file => file.id)).size !== input.files.length) throw new ApiError(400, "Select each file once.");
   const json = JSON.stringify(input.files);
+  const audience = resourceAudienceAuthority(device);
   const existing = await database().prepare(`SELECT id, name FROM media WHERE space_id = ? AND status = 'ready' AND archived_at IS NULL
-    AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?))`).bind(device.space_id, json).all<{ id: string; name: string }>();
+    AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${audience.sql}`).bind(device.space_id, json, ...audience.bindings).all<{ id: string; name: string }>();
   if (existing.results.length !== input.files.length) throw new ApiError(409, "Some selected files are no longer available. Refresh the library.");
   for (const file of input.files) {
     if (splitFilename(file.name).extension !== splitFilename(existing.results.find(row => row.id === file.id)!.name).extension) throw new ApiError(400, "Keep the original file extension.");
@@ -104,8 +111,9 @@ async function organiseFiles(request: Request, device: ActiveDevice) {
   if (input.action === "add" || input.action === "remove") {
     if (!input.albumId) throw new ApiError(400, "Choose an album.");
     await requireAlbum(device, input.albumId, input.action === "add");
-    selected += ` AND EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL ${input.action === "add" ? "AND archived_at IS NULL" : ""})`;
-    selectionValues.push(input.albumId, device.space_id);
+    const albumAudience = resourceAudienceAuthority(device, "albums");
+    selected += ` AND EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND ${albumAudience.sql} AND albums.access_scope_id IS media.access_scope_id AND deleted_at IS NULL ${input.action === "add" ? "AND archived_at IS NULL" : ""})`;
+    selectionValues.push(input.albumId, device.space_id, ...albumAudience.bindings);
     if (input.action === "add") {
       selected += ` AND NOT EXISTS (SELECT 1 FROM json_each(?) chosen WHERE json_extract(chosen.value, '$.sectionId') IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM album_sections s WHERE s.album_id = ? AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))`;

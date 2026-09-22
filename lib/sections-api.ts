@@ -1,3 +1,4 @@
+import { resourceAudienceAuthority } from "./asset-scope-authority";
 import { activityBatch, fileActivityResources } from "./library-activity";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
@@ -9,13 +10,21 @@ const revision = z.number().int().nonnegative();
 const sectionName = z.string().trim().min(1).max(100).refine(value => !/[\u0000-\u001f]/.test(value));
 const albumGuard = "EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND revision = ? AND deleted_at IS NULL AND archived_at IS NULL)";
 
+// Bind the target album audience into each committing statement, including empty templates.
+function sectionOrganiserAuthority(device: ActiveDevice, albumId: string) {
+  const role = transferAuthority(device, Date.now(), "organiser"), audience = resourceAudienceAuthority(device, "a");
+  return { sql: `(${role.sql} AND EXISTS (SELECT 1 FROM albums a WHERE a.id=? AND ${audience.sql}))`,
+    bindings: [...role.bindings, albumId, ...audience.bindings] };
+}
+
 // Reads and mutations share the album audience; section names never confer privacy.
 export async function sectionAction(request: Request, device: ActiveDevice, id?: string) {
   if (id === "template" && request.method === "POST") return applySectionTemplate(request, device);
   if (id === "order" && request.method === "POST") return reorderSections(request, device);
   if (request.method === "GET") {
     const albumId = new URL(request.url).searchParams.get("album");
-    const album = await database().prepare("SELECT revision FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL").bind(albumId, device.space_id).first();
+    const audience = resourceAudienceAuthority(device, "a");
+    const album = await database().prepare(`SELECT revision FROM albums a WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND ${audience.sql}`).bind(albumId, device.space_id, ...audience.bindings).first();
     if (!album) throw new ApiError(404, "This album is not available.");
     const sections = await database().prepare(`SELECT s.id, s.album_id AS albumId, s.name, s.position,
       CASE WHEN EXISTS (SELECT 1 FROM album_media cover_membership JOIN media cover ON cover.id = cover_membership.media_id
@@ -23,8 +32,8 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
         AND cover.status = 'ready' AND cover.archived_at IS NULL AND cover.preview_ready = 1) THEN s.cover_media_id ELSE NULL END AS coverMediaId,
       COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count
       FROM album_sections s LEFT JOIN album_media am ON am.album_id = s.album_id AND am.section_id = s.id
-      LEFT JOIN media m ON m.id = am.media_id WHERE s.album_id = ? AND s.deleted_at IS NULL
-      GROUP BY s.id ORDER BY s.position, s.id`).bind(albumId).all<AlbumSection>();
+      LEFT JOIN media m ON m.id = am.media_id WHERE s.album_id = ? AND EXISTS (SELECT 1 FROM albums a WHERE a.id=s.album_id AND ${audience.sql}) AND s.deleted_at IS NULL
+      GROUP BY s.id ORDER BY s.position, s.id`).bind(albumId, ...audience.bindings).all<AlbumSection>();
     return Response.json({ sections: sections.results, revision: album.revision });
   }
   requireOrganiser(device);
@@ -36,7 +45,7 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
       AND m.archived_at IS NULL AND m.preview_ready = 1`).bind(input.albumId, id || null, input.coverMediaId, device.space_id).first();
     if (!cover) throw new ApiError(409, "Choose a file with a preview in this section for its cover.");
   }
-  const authority = transferAuthority(device, Date.now(), "organiser");
+  const authority = sectionOrganiserAuthority(device, input.albumId);
   const liveAlbumGuard = `${albumGuard} AND ${authority.sql}`;
   const guardValues = [input.albumId, device.space_id, input.expectedRevision, ...authority.bindings];
   const sectionId = id || crypto.randomUUID();
@@ -65,7 +74,7 @@ async function reorderSections(request: Request, device: ActiveDevice) {
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), expectedRevision: revision,
     ids: z.array(z.string().uuid()).min(1).max(500).refine(ids => new Set(ids).size === ids.length) }));
   const json = JSON.stringify(input.ids);
-  const authority = transferAuthority(device, Date.now(), "organiser");
+  const authority = sectionOrganiserAuthority(device, input.albumId);
   const guard = `${albumGuard} AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL) = ?
     AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL AND id IN (SELECT value FROM json_each(?))) = ? AND ${authority.sql}`;
   const values = [input.albumId, device.space_id, input.expectedRevision, input.albumId, input.ids.length, input.albumId, json, input.ids.length, ...authority.bindings];
@@ -92,7 +101,7 @@ async function applySectionTemplate(request: Request, device: ActiveDevice) {
   const selectionValues = [json, input.albumId, device.space_id, input.files.length];
   const created = "EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ?)";
   const createdValues = [input.albumId, originalId];
-  const authority = transferAuthority(device, Date.now(), "organiser");
+  const authority = sectionOrganiserAuthority(device, input.albumId);
   const results = await activityBatch(device, "section.template", [...fileActivityResources(input.files), { kind: "album", id: input.albumId, revision: input.expectedRevision + 1 }], [
     database().prepare(`INSERT INTO album_sections (album_id, id, name, position) SELECT ?, ?, 'Originals', 10
       WHERE ${albumGuard} AND NOT EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND deleted_at IS NULL)

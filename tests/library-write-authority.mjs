@@ -56,7 +56,7 @@ try {
       ["UPDATE account_sessions SET revoked_at=1","UPDATE account_sessions SET revoked_at=NULL"],
     ]){
       await database.prepare(deny).run();const before=await snapshot();
-      await assert.rejects(invoke(),error=>error.status===409,`${resource}/${id??'create'} must reject stale authority`);
+      await assert.rejects(invoke(),error=>[404,409].includes(error.status),`${resource}/${id??'create'} must reject stale authority`);
       assert.equal(await snapshot(),before,'Denied route must leave all metadata unchanged');
       await database.prepare(restore).run();
     }
@@ -127,7 +127,7 @@ try {
       await (deny.includes('?')?database.prepare(deny).bind(now+1):database.prepare(deny)).run();
       const before=await snapshot();let dispatched=false;
       const storage={delete:async()=>{dispatched=true;},resumeMultipartUpload:()=>{dispatched=true;return {abort:async()=>{}};}};
-      await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,resource,media,undefined,storage),error=>error.status===409);
+      await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,resource,media,undefined,storage),error=>[404,409].includes(error.status));
       assert.equal(dispatched,false);assert.equal(await snapshot(),before);
       await database.prepare(restore).run();
     }

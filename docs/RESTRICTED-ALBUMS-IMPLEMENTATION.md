@@ -50,3 +50,18 @@ The pure policy fixture records expected semantics and is not a substitute for d
 `docs/prototypes/restricted-scope-schema.sql` is outside the active migration journal. `lib/asset-scope-authority.ts` is not imported by application routes. The prototype adds immutable asset/album scope references, exact-membership grants, minimal grant events and retained history scopes. Database triggers reject incompatible references and revoke restricted grants on departure.
 
 `tests/asset-scope-authority.mjs` passes with SQLite and Cloudflare's local D1 engine. It verifies owner/legacy denial, explicit Viewer grants, whole-event filtering after the original is removed, leave/rejoin revocation and restore preservation of triggers/quarantine. Existing snapshot tooling preserves triggers after data import. This does not establish runtime coverage: the full inventory above remains the activation gate.
+
+## Isolated runtime integration ? 22 September 2026
+
+Branch `work/restricted-scopes` is an unfinished development branch, separate from the release candidate. It must not be deployed or merged for release yet. Migration 0023 exists only on this branch; live schema remains 0020 and the main candidate remains 0021/0022.
+
+- [x] Additive scope/grant/audit migration and immutable references tested with local SQLite and D1.
+- [x] Current audience predicates integrated into file reads, feed/counts, album/section reads and edits, favourites, selected metadata export and retained activity.
+- [x] Activity scopes are captured atomically, validated and immutable. Missing resource attribution aborts the transaction. Permanent deletion retains the server-read scope without returning it in activity resources.
+- [x] Explicit upload scope is retained across reservation and retry; a general request cannot enter a restricted album. Preview commits, cancellation, deletion and upload-ready commits include current audience checks.
+- [x] Local D1 activity tests cover hidden album discovery, ungranted metadata/bookmarks, owner denial after revocation, scoped upload retry and destination mismatch, and activity privacy after deletion/revocation. Existing library write-authority tests pass, including denied storage dispatch and recovery after interrupted cleanup. TypeScript and focused lint pass.
+- [ ] Complete capability-issuance race review, publication/import integration, minimisation schema review and actual-export migration/restore rehearsal.
+- [ ] Add scope management and navigation, audience previews, queue context and verified cross-scope copy.
+- [ ] Complete adversarial route/browser coverage, release verification and deployed checks before enabling restricted content.
+
+Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. UI wording for this exception remains outstanding. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.

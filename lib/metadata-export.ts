@@ -1,3 +1,4 @@
+import { resourceAudienceAuthority } from "./asset-scope-authority";
 import { z } from "zod";
 import { ApiError, database, readJson, type ActiveDevice } from "./server";
 import { transferAuthority } from "./transfer-authority";
@@ -15,9 +16,10 @@ export async function exportSelectedMetadata(request: Request, device: ActiveDev
   const { files } = await readJson(request, z.object({ files: z.array(z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative() }))
     .min(1).max(100).refine(items => new Set(items.map(item => item.id)).size === items.length) }));
   const selection = JSON.stringify(files), authority = transferAuthority(device, Date.now(), "read");
+  const audience = resourceAudienceAuthority(device, "m");
   const guard = `(SELECT COUNT(*) FROM media m JOIN json_each(?) chosen ON m.id=json_extract(chosen.value,'$.id')
-    WHERE m.space_id=? AND m.status='ready' AND m.revision=json_extract(chosen.value,'$.expectedRevision'))=? AND ${authority.sql}`;
-  const values = [selection, device.space_id, files.length, ...authority.bindings];
+    WHERE m.space_id=? AND m.status='ready' AND m.revision=json_extract(chosen.value,'$.expectedRevision') AND ${audience.sql})=? AND ${authority.sql}`;
+  const values = [selection, device.space_id, ...audience.bindings, files.length, ...authority.bindings];
   const selected = "SELECT json_extract(value,'$.id') FROM json_each(?)";
   const results = await database().batch<Record<string, string | number | null>>([
     database().prepare(`SELECT id,name,COALESCE(original_name,name) AS originalName,mime,size,sha256,captured_at AS capturedAt,

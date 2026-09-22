@@ -5,6 +5,10 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Restricted-scope development branch
+
+**22 September:** `work/restricted-scopes` contains locally tested partial runtime integration and additive migration 0023. It is isolated from the main release candidate and is not approved for deployment. File/album/section reads and mutations, favourites, exports, retained activity and scoped upload retries now have local D1 coverage. Scope creation remains unavailable; capability races, publication/import, minimisation/recovery rehearsal, management UI and full browser/release checks are still outstanding. [Checked implementation milestones](RESTRICTED-ALBUMS-IMPLEMENTATION.md#isolated-runtime-integration--22-september-2026). Parent counts remain unchanged.
+
 ## Current position
 
 Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Memberships, explicit legacy owner claims and account-scoped library access are live for the designated-account pilot; live sign-in/recovery/claim checks passed. General release and remaining operational gates are outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.

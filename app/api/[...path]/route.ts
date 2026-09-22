@@ -1,3 +1,4 @@
+import { mediaOperationAuthority } from "@/lib/asset-scope-authority";
 import { arrivalActivityStatement } from "@/lib/library-activity-statements";
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
@@ -263,7 +264,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
         await storage.delete(item.object_key);
         throw new ApiError(409, "File size did not match. Restart this transfer to send the original again.");
       }
-      const authority = transferAuthority(device);
+      const authority = mediaOperationAuthority(device, item.id);
       const [published] = await database().batch([database().prepare(`UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ? AND ${authority.sql}`)
         .bind(item.id, device.id, item.upload_id,...authority.bindings), arrivalActivityStatement(database(), item.id)]);
       if (!published.meta.changes) {
