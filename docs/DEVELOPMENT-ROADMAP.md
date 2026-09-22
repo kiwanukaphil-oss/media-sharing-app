@@ -941,3 +941,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Bind archived evidence to the exact current coordinator run, snapshot, receipt hash and manifest version. Tests reject changed bytes, another run/version and active/uncertain status. Receipt matching never grants erasure or restore cutover.
 - [x] Pass receipt/client tests, all 13 backup/restore tests, workflow access separation, isolated minimisation regression and focused lint. Device-binding/multipart source CI `35701087440` passed verification and browser jobs.
 - [ ] Activate hosted coordination only after schema minimisation review and dedicated-secret handoff; independently retrieve the first archived completion receipt against current coordinator state.
+
+
+## 22 September 2026 - Independent backup completion inspection
+
+- [x] Add read-only completion inspection using an independently supplied live coordinator reader and complete B2 version catalog. Verify every retained copy-receipt version against the current digest and its exact manifest version, then reread current run state within 30 seconds.
+- [x] Reject incomplete/wrong-bucket catalogs, conflicting or hidden receipt versions, unfinished snapshot uploads, missing manifest versions, altered bytes and changed/stale coordinator observations. Matching repeated versions is allowed only when each verifies. Tests and focused lint pass.
+- [ ] Wire the authenticated live read/download adapters and collect a hosted coordinated receipt after schema/secret activation. The checker is locally verified; no production activation or quiescence claim.
