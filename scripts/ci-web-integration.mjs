@@ -88,6 +88,8 @@ try {
     if (closureTrackingChecks) {
       const {verifyClosureRequestCoverage}=await import('../tests/closure-request-coverage.mjs');
       await verifyClosureRequestCoverage(database);
+      const {verifyClosureEntryPoints}=await import('../tests/closure-entrypoints.mjs');
+      await verifyClosureEntryPoints(database,(url,options)=>emulator.dispatchFetch(url,options),origin);
     }
   } else if (process.argv.includes('--capacity')) {
     const { verifyLibraryCapacity } = await import('../tests/library-capacity.mjs');

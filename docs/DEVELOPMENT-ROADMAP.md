@@ -917,3 +917,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Trace the hosted WebKit error to polling during navigation. Pause at beforeunload/visibility loss, retain pagehide/bfcache handling and resume cancelled navigation on focus or interaction. Lifecycle tests retain genuine error reporting.
 - [x] Pass the complete local browser suite, including Chrome/Edge/Firefox/WebKit upload, exact-byte download, reload and offline checks; enabled account/tracking and default API suites, TypeScript, lint and production build also pass.
 - [ ] Verify hosted CI and deploy this source. Closure/backup tracking remain disabled; full executor and general release are not complete.
+
+## 22 September 2026 - Identity entry-point closure review
+
+- [x] Rehearse an actual closure fence before a delayed provider identity callback; profile fields and session count remain unchanged.
+- [x] Fence between account-access lookup and compatibility attribution creation; neither actor nor device is recreated.
+- [x] Test pre-issued browser/native pairing invitations after fencing a positively linked issuer; no credential is created and the retained shared owner stays active.
+- [x] Record the bounded identity-entry-point proof and anonymous sign-in transaction boundary in [closure execution](ACCOUNT-CLOSURE-EXECUTION.md). Actual-D1 and built-Worker enabled-tracking suites pass.
+- [ ] Complete remote multipart quiescence, new-schema minimisation, coordinated hosted backup and full generated-identity execution before activation. The local entry-point review does not complete P2-06.

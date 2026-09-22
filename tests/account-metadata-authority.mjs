@@ -4,12 +4,13 @@ import { build } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
 
-const bundle = await build({entryPoints:['lib/account-sessions.ts','lib/account-space-access.ts','lib/space-memberships.ts','lib/space-people.ts','lib/legacy-reconciliation.ts','lib/personal-spaces.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+const bundle = await build({entryPoints:['lib/account-sessions.ts','lib/account-space-access.ts','lib/space-memberships.ts','lib/space-people.ts','lib/legacy-reconciliation.ts','lib/personal-spaces.ts','lib/account-closure-fence.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
 const modules = await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
 const accounts=modules.find(value=>value.createAccountSession), access=modules.find(value=>value.requireAccountSpaceAccess);
 const claims=modules.find(value=>value.prepareOwnerClaim), people=modules.find(value=>value.createPersonInvitation);
 const legacy=modules.find(value=>value.revokeLegacyAccess);
 const personal=modules.find(value=>value.createPersonalSpace);
+const closure=modules.find(value=>value.beginApprovedClosureFence);
 const settings={issuer:'https://metadata.fixture/',clientId:'fixture',clientSecret:'fixture',appOrigin:'https://relay.example'};
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'metadata-authority',modules:true,
   script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB']}]}));
@@ -133,5 +134,15 @@ try {
   assert.equal((await legacy.revokeLegacyAccess(database,tracked,scoped.space,scoped.device,now)).revoked,1);
   assert.ok((await personal.createPersonalSpace(database,tracked,1073741824,now)).space.id);
   assert.equal((await claims.confirmOwnerClaim(database,tracked,foreign.credential,trackedClaim.token,now)).connected,true);
+  const resolving=await fixture(),closureRequest=crypto.randomUUID();
+  await database.prepare("UPDATE space_memberships SET role='member' WHERE id=?").bind(resolving.membership).run();
+  await database.prepare("INSERT INTO account_deletion_requests VALUES(?,?,?,'pending',?)").bind(closureRequest,resolving.personId,now-1,now-1).run();
+  const providerSubject=(await database.prepare('SELECT subject FROM people WHERE id=?').bind(resolving.personId).first()).subject;
+  await assert.rejects(access.requireAccountSpaceAccess(resolving.request,beforeBatch(()=>closure.beginApprovedClosureFence(database,{
+    id:crypto.randomUUID(),personId:resolving.personId,requestId:closureRequest,requestRevision:now-1,
+    issuer:settings.issuer,subject:providerSubject,planDigest:'a'.repeat(64),decisionDigest:'b'.repeat(64),approvalDigest:'c'.repeat(64),authorisedAt:now,
+  },now)),settings,now),/not available/);
+  assert.equal(await database.prepare('SELECT id FROM devices WHERE id=?').bind(resolving.membership).first(),null);
+  assert.equal(await database.prepare('SELECT device_id FROM account_space_actors WHERE membership_id=?').bind(resolving.membership).first(),null);
   console.log('PASS: actual D1 attribution/claim races, current profile attribution, recovery-bound people writes and unchanged rejected effects.');
 } finally {await runtime.dispose();}

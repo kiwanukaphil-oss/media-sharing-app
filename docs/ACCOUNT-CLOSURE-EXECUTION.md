@@ -114,3 +114,16 @@ Permanent media removal and unfinished-upload cancellation recheck current autho
 Authenticated account mutations now share admission and settlement with library requests without requiring a bucket binding. Personal-space allocation, owner-claim preview/confirmation, invitation acceptance, deletion intent/withdrawal and account-session revocation carry the admission through their atomic SQL. Tests prove settled/uncertain/foreign admissions cannot allocate a personal space, claim a library or revoke sessions, and valid requests still succeed. Session revocation also rechecks live session, disabled state and recovery watermark.
 
 Provider login/callback, compatibility attribution creation and anonymous/native invitation redemption still require their final writer-coverage review. Their existing live-authority checks remain in place. This extension is tested locally but not yet deployed or activated; it does not complete the full freeze proof.
+
+### Identity entry-point review
+
+The following entry points use atomic existing-authority checks before an authenticated request admission is available. They do not dispatch personal storage writes:
+
+| Entry point | Closure boundary | Verified evidence |
+| --- | --- | --- |
+| Verified provider callback | Existing disabled people cannot be updated or receive a session; an erased provider digest cannot recreate a profile | Actual closure fence followed by a delayed verified identity leaves the full profile and session count unchanged; separate tombstone tests cover minimisation |
+| Compatibility attribution | Both inserts repeat current person/session/membership authority inside D1 | Fence inserted between the initial access read and attribution batch leaves both actor/device rows absent |
+| Browser/native pairing redemption | Personal spaces are excluded; the invitation issuer must still be a current, unrevoked owner in the insertion statement | Built-Worker tests fence a positively claimed legacy owner, then reject its pre-issued invitation on both pairing routes; no device is added and the other shared owner remains enabled |
+| Anonymous sign-in transaction | Short-lived nonce/verifier state has no person/provider-subject binding; consumption grants no session by itself | Existing transaction replay/config/browser-binding tests plus the separately guarded callback |
+
+The account-disabled predicate is part of the durable fence transaction and restored fences preserve disablement. No automatic reopening exists. These tests prove the stated local database boundaries; they do not establish remote multipart quiescence, historical-version disposition or full executor completion. Unrelated shared members and separately issued credentials remain within the explicit shared-content retention policy.

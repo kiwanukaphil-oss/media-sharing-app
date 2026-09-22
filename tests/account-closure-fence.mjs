@@ -9,6 +9,8 @@ const storageBundle=await build({entryPoints:['lib/closure-tracked-bucket.ts'],b
 const {createClosureTrackedBucket}=await import(`data:text/javascript;base64,${Buffer.from(storageBundle.outputFiles[0].text).toString('base64')}`);
 const requestBundle=await build({entryPoints:['lib/closure-tracked-request.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const {runClosureTrackedRequest}=await import(`data:text/javascript;base64,${Buffer.from(requestBundle.outputFiles[0].text).toString('base64')}`);
+const identityBundle=await build({entryPoints:['lib/account-sessions.ts'],bundle:true,write:false,platform:'node',format:'esm'});
+const {createAccountSession}=await import(`data:text/javascript;base64,${Buffer.from(identityBundle.outputFiles[0].text).toString('base64')}`);
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'closure-protocol-test',modules:true,
   script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB'],r2Buckets:['MEDIA']}]}));
 const now=Date.now(),issuer='https://closure.fixture/';
@@ -116,6 +118,12 @@ try {
   await assert.rejects(fence.settleClosureTrackedWrite(database,activeAccount.id,'settled',now),/review/);
   const started=await fence.beginApprovedClosureFence(database,ownerApproval,now);
   assert.equal(started.id,ownerApproval.id);assert.equal(started.generation,1);
+  const frozenProfile=await database.prepare('SELECT * FROM people WHERE id=?').bind(owner.personId).first();
+  const frozenSessionCount=(await database.prepare('SELECT COUNT(*) AS n FROM account_sessions WHERE person_id=?').bind(owner.personId).first()).n;
+  await assert.rejects(createAccountSession(database,{issuer,clientId:'fixture',clientSecret:'fixture',appOrigin:'https://closure.fixture'},
+    {issuer,subject:owner.subject,displayName:'Late provider profile',verifiedEmail:'late@example.invalid',authenticatedAt:now,credentialsChangedAt:0},null,now),/unavailable/);
+  assert.deepEqual(await database.prepare('SELECT * FROM people WHERE id=?').bind(owner.personId).first(),frozenProfile);
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM account_sessions WHERE person_id=?').bind(owner.personId).first()).n,frozenSessionCount);
   assert.deepEqual(await fence.beginApprovedClosureFence(database,ownerApproval,now+1),started,'Exact fence retry is idempotent');
   for(const active of [activeAccount,activeLegacy,activeBackup])assert.equal(await commit(active),0);
   assert.equal(await commit(activeOther),1);
