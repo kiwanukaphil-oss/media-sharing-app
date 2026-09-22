@@ -10,7 +10,8 @@
 - [x] Bounded named-account intake contract and isolated SQLite/D1 acceptance/authority tests. A recipient gains no membership or file-viewing grant; drafts, expired requests, revoked sessions and rebinding attempts are denied.
 - [x] Atomic shared-quota activation and exact submission reservation pass D1 concurrency, retry, file/byte limit and non-visibility checks.
 - [x] Isolated exact owner draft/retry/close and quota-exchange rollback tests pass; closing preserves staged originals.
-- [ ] Transfer custody, routes/UI, lifecycle review and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
+- [x] Isolated multipart receipt, streamed checksum acceptance, corruption/authority-race denial and maximum 250 MiB local workerd verification pass. Files remain outside the feed until verified acceptance.
+- [ ] Part-capability custody, routes/UI, lifecycle review and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
 
 ## Restricted-audience development acceptance
 

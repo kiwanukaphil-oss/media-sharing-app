@@ -6,11 +6,13 @@ import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
 import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
 
-const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts','lib/upload-request-management.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts','lib/upload-request-management.ts','lib/intake-transfers.ts','lib/intake-review.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
 const modules=await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
 const {acceptUploadRequest,intakeRecipientAuthority}=modules.find(module=>module.acceptUploadRequest);
 const {activateUploadRequest,reserveIntakeSubmission}=modules.find(module=>module.activateUploadRequest);
 const {createUploadRequestDraft,closeUploadRequest}=modules.find(module=>module.createUploadRequestDraft);
+const {beginIntakeUpload,completeIntakeUpload}=modules.find(module=>module.beginIntakeUpload);
+const {acceptIntakeOriginal}=modules.find(module=>module.acceptIntakeOriginal);
 const db=new DatabaseSync(':memory:'),now=Date.now();
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
@@ -31,7 +33,7 @@ try {
   assert.throws(()=>db.exec("UPDATE upload_requests SET access_scope_id=NULL WHERE id='request'"),/immutable/);
   const session=person=>({sessionId:person,personId:person,displayName:person,verifiedEmail:person+'@example.invalid',createdAt:now,expiresAt:now+3600000,sessionMode:'temporary'});
   const plan=planReadOnlySnapshot(db.prepare(schemaQuery).all()),snapshot=JSON.parse(db.prepare(plan.sql).get().snapshot);
-  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'intake-prototype',modules:true,script:'export default {fetch(){return new Response("fixture");}}',d1Databases:['DB']}]}));
+  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'intake-prototype',modules:true,script:'export default {fetch(){return new Response("fixture");}}',d1Databases:['DB'],r2Buckets:['BUCKET']}]}));
   try {
     const d1=await runtime.getD1Database('DB');
     for(const statement of plan.schema.filter(row=>row.type==='table'))await d1.prepare(statement.sql).run();
@@ -103,6 +105,42 @@ try {
     await d1.prepare("UPDATE account_sessions SET revoked_at=? WHERE id='recipient'").bind(now).run();
     await assert.rejects(acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now),/unavailable/);
     await d1.prepare("UPDATE account_sessions SET revoked_at=NULL WHERE id='recipient'").run();
+    await d1.prepare("UPDATE people SET verified_email='recipient@example.invalid' WHERE id='recipient'").run();
+    // Real R2 multipart transport stays outside the feed until streamed independent verification.
+    const bucket=await runtime.getR2Bucket('BUCKET'),originalBytes=new Uint8Array([1,2,3,4]);
+    const digest=Buffer.from(await crypto.subtle.digest('SHA-256',originalBytes)).toString('hex');
+    const transferDraft={...draft,id:crypto.randomUUID(),tokenHash:'f'.repeat(64),maxFiles:4};
+    await createUploadRequestDraft(d1,owner,transferDraft,now);await activateUploadRequest(d1,owner,transferDraft.id,10000,now);
+    await acceptUploadRequest(d1,session('recipient'),transferDraft.tokenHash,now);
+    const original={...file,id:crypto.randomUUID(),requestId:transferDraft.id,size:4,sha256:digest};
+    await reserveIntakeSubmission(d1,session('recipient'),original,now);
+    assert.equal((await beginIntakeUpload(d1,bucket,session('recipient'),original.id)).status,'uploading');
+    const transport=await d1.prepare('SELECT object_key,upload_id FROM media WHERE id=?').bind(original.id).first();
+    const part=await bucket.resumeMultipartUpload(transport.object_key,transport.upload_id).uploadPart(1,originalBytes);
+    assert.deepEqual(await completeIntakeUpload(d1,bucket,session('recipient'),original.id,[part]),{received:true,verified:false});
+    assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(original.id).first()).status,'pending-review');
+    await acceptIntakeOriginal(d1,bucket,owner,original.id);
+    assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(original.id).first()).status,'ready');
+    assert.equal((await d1.prepare('SELECT album_id FROM album_media WHERE media_id=?').bind(original.id).first()).album_id,generalAlbum);
+    await acceptIntakeOriginal(d1,bucket,owner,original.id);
+    assert.equal((await d1.prepare("SELECT COUNT(*) AS n FROM library_events WHERE action='file.arrive' AND resources LIKE ?").bind('%'+original.id+'%').first()).n,1);
+    assert.deepEqual(new Uint8Array(await (await bucket.get(transport.object_key)).arrayBuffer()),originalBytes);
+    const corrupt={...original,id:crypto.randomUUID(),sha256:'0'.repeat(64)};
+    await reserveIntakeSubmission(d1,session('recipient'),corrupt,now);await beginIntakeUpload(d1,bucket,session('recipient'),corrupt.id);
+    const corruptRow=await d1.prepare('SELECT object_key,upload_id FROM media WHERE id=?').bind(corrupt.id).first();
+    const corruptPart=await bucket.resumeMultipartUpload(corruptRow.object_key,corruptRow.upload_id).uploadPart(1,originalBytes);
+    await completeIntakeUpload(d1,bucket,session('recipient'),corrupt.id,[corruptPart]);
+    await assert.rejects(acceptIntakeOriginal(d1,bucket,owner,corrupt.id),/checksum/);
+    assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(corrupt.id).first()).status,'pending-review');
+    // An owner losing authority while reading bytes must not commit visibility or an album reference.
+    const racing={...original,id:crypto.randomUUID()};await reserveIntakeSubmission(d1,session('recipient'),racing,now);await beginIntakeUpload(d1,bucket,session('recipient'),racing.id);
+    const raceRow=await d1.prepare('SELECT object_key,upload_id FROM media WHERE id=?').bind(racing.id).first();
+    const racePart=await bucket.resumeMultipartUpload(raceRow.object_key,raceRow.upload_id).uploadPart(1,originalBytes);await completeIntakeUpload(d1,bucket,session('recipient'),racing.id,[racePart]);
+    const racingBucket={get:async key=>{const object=await bucket.get(key);await d1.prepare("UPDATE space_memberships SET role='viewer' WHERE id='owner'").run();return object;}};
+    await assert.rejects(acceptIntakeOriginal(d1,racingBucket,owner,racing.id),/access changed/);
+    assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(racing.id).first()).status,'pending-review');
+    assert.equal(await d1.prepare('SELECT media_id FROM album_media WHERE media_id=?').bind(racing.id).first(),null);
+    await d1.prepare("UPDATE space_memberships SET role='owner' WHERE id='owner'").run();
     await d1.prepare("UPDATE scope_grants SET revoked_at=? WHERE scope_id='private'").bind(now).run();
     await d1.prepare("UPDATE scope_grants SET revoked_at=NULL WHERE scope_id='private'").run();
     await assert.rejects(acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now),/unavailable/,'Restoring issuer access cannot revive a revoked request.');

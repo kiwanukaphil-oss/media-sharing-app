@@ -37,8 +37,8 @@ export async function activateUploadRequest(database:D1Database,owner:AccountSpa
   return result;
 }
 
-const submissionSchema=z.object({id:z.string().uuid(),requestId:z.string().uuid(),name:z.string().trim().min(1).max(255),
-  mime:z.string().min(1).max(120),size:z.number().int().positive().max(262144000),sha256:z.string().regex(/^[a-f0-9]{64}$/)});
+const submissionSchema=z.object({id:z.string().uuid(),requestId:z.string().uuid(),name:z.string().trim().min(1).max(255).regex(/^[^\u0000-\u001f\u007f]+$/),
+  mime:z.string().min(1).max(120).regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i),size:z.number().int().positive().max(262144000),sha256:z.string().regex(/^[a-f0-9]{64}$/)});
 
 // Atomically exchange promised allowance for one staged original. Total charged media bytes remain
 // unchanged, and request byte/file ceilings include every historical attempt to prevent quota churn.

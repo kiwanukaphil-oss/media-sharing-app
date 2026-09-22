@@ -38,7 +38,9 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 - [ ] Add tracked transfer custody and reconcile the new staging states before routing this preparation.
 - [x] Isolated owner draft creation/close: exact intent retries, bounded request count, current audience/role and revision checks. Closing releases only unused allowance; staged originals remain charged. D1 rollback test preserves allowance when custody insertion fails.
 - [ ] Route owner creation/revocation/review and recipient-only upload/receipt flows behind a disabled feature flag.
-- [ ] Integrate bounded byte transfer, checksum-verified acceptance, capability custody and shared quota reservations.
+- [x] Isolated R2 multipart start/receipt and owner-reviewed streaming checksum acceptance pass. A corrupt hash or owner demotion before commit leaves the file outside the feed; accepted arrivals are idempotent.
+- [x] Generated 250 MiB maximum-size stream verifies in the actual local workerd runtime (2759 ms local wall time); a mismatched hash is rejected without publication. This is not production CPU/latency evidence.
+- [ ] Route bounded multipart capabilities with custody, test expiry/revocation races and integrate shared quota/staging lifecycle inventory before activation.
 - [ ] Build mobile/desktop owner and recipient workflows, interrupted retry/recovery and clear abuse/error states.
 - [ ] Extend lifecycle/minimisation/restore contracts and test cross-account, revoked, expired, concurrent and malformed requests.
 - [ ] Hosted verification, independent recovery point, migration, pilot verification and operational limits before activation. General onboarding remains subject to Phase 2 gates.
@@ -49,3 +51,10 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 `upload-request-reservations.ts` exchanges one media-based allowance for staged originals in a D1 transaction, keeping total charged bytes constant. The same `SUM(size + preview_size)` is already used by ordinary uploads and publications. Draft activation establishes an expired, non-authenticating attribution record, a `collecting` allowance and then the open request. Submission rows retain immutable person/request/size/hash intent, while staged media remains `receiving`, never `ready`. These are prototype states only; the active migration journal is unchanged.
 
 Current acceptance and submission SQL also carries account-closure admission authority when supplied. R2 work, multipart capability custody, lifecycle inventory/minimisation, reserved-state storage UI and restore compatibility must be integrated before activation. In particular, the current production object inventory deliberately does not accept the new staging states yet; do not deploy this preparation by itself.
+
+
+## Transport and acceptance preparation
+
+Unique, at-most-five multipart attempt keys are recorded before provider creation; late attempts cannot install themselves over a newer lease. Unknown creation/abort outcomes retain custody and reserved capacity. Completion records only received-for-review and rechecks current recipient, issuer, destination, expiry and closure authority. Independent verification incrementally hashes the completed immutable object stream without buffering the original. An authorised owner then commits one ready file, same-scope album placement and destination-only arrival event atomically.
+
+Closing collection stops new contributor writes. Already received shared work remains reviewable by a currently authorised owner, who may deliberately accept it after collection closes; this does not reopen the contributor's grant. Unverified/corrupt/unfinished bytes remain outside the feed and continue consuming reserved capacity. Rejection/cleanup, part-capability issuance, route/UI integration and lifecycle disposition remain outstanding. No prototype table or intake state is active in production.

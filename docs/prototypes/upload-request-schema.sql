@@ -67,10 +67,22 @@ CREATE TABLE intake_submissions (
   size INTEGER NOT NULL CHECK(size>0),
   sha256 TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  phase TEXT NOT NULL DEFAULT 'reserved' CHECK(phase IN ('reserved','uploading','received','accepted','cancelled'))
+  phase TEXT NOT NULL DEFAULT 'reserved' CHECK(phase IN ('reserved','starting','uploading','received','accepted','cancelled')),
+  attempt_key TEXT,
+  lease_expires_at INTEGER NOT NULL DEFAULT 0,
+  verified_at INTEGER
 );
 CREATE INDEX idx_intake_submissions_request ON intake_submissions(request_id,person_id);
 CREATE TRIGGER intake_submission_immutable BEFORE UPDATE OF request_id,person_id,size,sha256,created_at ON intake_submissions
 WHEN NEW.request_id IS NOT OLD.request_id OR NEW.person_id IS NOT OLD.person_id OR NEW.size IS NOT OLD.size
   OR NEW.sha256 IS NOT OLD.sha256 OR NEW.created_at IS NOT OLD.created_at
 BEGIN SELECT RAISE(ABORT,'Intake submission intent is immutable'); END;
+
+CREATE TABLE intake_upload_attempts (
+  object_key TEXT PRIMARY KEY NOT NULL,
+  submission_id TEXT NOT NULL REFERENCES intake_submissions(id),
+  upload_id TEXT,
+  state TEXT NOT NULL DEFAULT 'creating' CHECK(state IN ('creating','active','abort-acknowledged','uncertain')),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_intake_attempt_submission ON intake_upload_attempts(submission_id);
