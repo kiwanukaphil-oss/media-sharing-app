@@ -13,8 +13,10 @@
 - [x] Daily incremental verification restores/checks SQL and manifest, independently verifies new versions, and checks exact old-version presence. Checksums carried forward come from AES-GCM authenticated, bucket/run-bound evidence encrypted using a verifier-only secret. Public GitHub artifacts contain ciphertext only. New versions never inherit old checksums.
 - [x] Monthly rollover, missing history or explicit full dispatch requires a full reread. Evidence older than 35 days cannot be reused. Full reports retain `verified`; incremental reports use `incremental-verified`, preserving the distinction for release/recovery gates.
 - [x] Backup heartbeat accepts only complete fresh reports with bounded full-verification age. Workflow tests preserve read/write credential separation and main-only entry; artifact history requires read-only Actions permission only in the verifier.
-- [ ] Finish compiled Worker/API and browser regression; hosted source checks.
-- [ ] Inspect Backblaze billing/caps after owner sign-in, then verify a real full baseline and subsequent incremental run. Do not bypass the existing download-cap failure or describe copied snapshots as verified.
+- [x] Compiled Worker pool tests pass on both current main and the schema-0020 release patch: concurrent cross-space reservation, common limit and aggregate privacy after ownership loss. Account/closure/publication and intake regression pass; browser storage display checks pass.
+- [ ] Complete hosted source checks.
+- [x] Inspect Backblaze caps: current account has no payment method; 10 GB storage and 1 GB/day download caps explain the verification failure.
+- [ ] Owner adds a card in the prepared Billing tab; configure bounded caps within the approved plan, then verify a real full baseline and subsequent incremental run. Do not bypass the existing download-cap failure or describe copied snapshots as verified.
 - [ ] Activate the private pool only on a schema-0020 compatible runtime; verify live both-library totals and enforcement. No new migration required.
 
 ## Limits and operations

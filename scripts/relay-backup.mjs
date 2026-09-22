@@ -301,7 +301,7 @@ export async function verifyRecoverySnapshot(snapshotId,requestedMode="full") {
       tableCounts: tableCounts(database), databaseIntegrity: 'ok', foreignKeyViolations: 0,
       oldDeviceSessionsRevoked: true, oldInvitationsInvalidated: true, previewReferencesReset: true,
       durationSeconds: Math.round((Date.now() - started) / 1000), manifestDigest: await hashFile(manifestPath),
-      restoreDirectory, localCleanupCandidates: ['source files and restore copies; retain until operator approves cleanup'] };
+      restoreDirectory, localCleanupCandidates: ['downloaded metadata and restored database; retain until operator approves cleanup'] };
     await writeFile(join(directory, 'restore-verification.json'), JSON.stringify(report, null, 2), { mode: 0o600 });
     if (process.env.GITHUB_ACTIONS === 'true') console.log(`Independent ${mode} verification and restored access quarantine passed; ${downloadedBytes} bytes reread, ${carriedBytes} bytes carried from authenticated evidence.`);
     else console.log(JSON.stringify(report));

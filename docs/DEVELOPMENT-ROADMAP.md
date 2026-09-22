@@ -1256,10 +1256,15 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 ### 22 September - requested 100 GB personal capacity
 
 - [x] Prepare [capacity, backup cost and activation proposal](STORAGE-100GB-PROPOSAL.md) for the existing personal library.
-- [ ] Approve recurring budget/verification policy, validate scalable backup operation, resolve cap/recovery gates and activate the exact allowance. Live quota remains 1 GiB.
+- [x] Owner approved the recurring planning budget and verification policy; the later combined allowance supersedes personal-only capacity.
+- [ ] Validate provider operation, resolve cap/recovery gates and activate the combined allowance. Live personal quota remains 1 GiB.
 
 ### 22 September - combined 100 GB implementation
 
 - [x] Owner approved the additional $5/month planning budget, daily incremental/monthly full backup verification and combined personal/shared allowance.
 - [x] Implement pooled atomic reservations, private aggregate display, bounded streaming backups and verifier-only authenticated evidence; targeted D1/security/streaming tests pass. [Implementation](COMBINED-STORAGE-IMPLEMENTATION.md).
 - [ ] Complete compiled/hosted checks, provider cap inspection, real full/incremental backup acceptance and live activation. The 100 GB pool is not live yet.
+
+- [x] Built Worker pool tests pass against both main and a schema-0020 compatible release patch; account/publication/intake and browser storage regressions pass.
+- [x] Backblaze caps inspected: 10 GB storage, 1 GB/day download, no payment method.
+- [ ] Owner payment setup, bounded cap configuration, hosted verification, real backup acceptance and production activation remain outstanding. Billing tab is prepared for the owner.

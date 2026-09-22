@@ -10,11 +10,12 @@ const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
 const closureEntryChecks = process.argv.includes('--closure-entrypoints');
 const closureTrackingChecks = process.argv.includes('--closure-tracking') || closureEntryChecks;
+const storagePoolChecks=process.argv.includes('--storage-pool');
 const deliveryChecks=process.argv.includes('--deliveries');
 const intakePausedChecks=process.argv.includes('--intake-paused');
 const intakeChecks=process.argv.includes('--intake')||intakePausedChecks;
 const restrictedChecks = process.argv.includes('--restricted-scopes');
-const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks || restrictedChecks || intakeChecks || deliveryChecks;
+const accountAccessChecks = storagePoolChecks || process.argv.includes('--account-access') || closureTrackingChecks || restrictedChecks || intakeChecks || deliveryChecks;
 const backupCoordinationChecks = process.argv.includes('--backup-coordination');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
 const modules = (await readdir('dist/server', { recursive: true }))
@@ -33,6 +34,7 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_ROLLOUT: 'open', AUTH0_DOMAIN: 'access.auth0.com',
       AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
       AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648',
+      ...(storagePoolChecks ? {RELAY_STORAGE_POOL:JSON.stringify({spaceIds:['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222'],limitBytes:10})} : {}),
       ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}),
       ...(restrictedChecks || intakeChecks || deliveryChecks ? {RELAY_RESTRICTED_SCOPES_ENABLED:'true'} : {}),
       ...(intakeChecks ? {RELAY_INTAKE_ENABLED:'true'} : {}),
@@ -66,7 +68,8 @@ try {
   if(deliveryChecks){const {installDeliveryTestSchema}=await import('./delivery-test-schema.mjs');await installDeliveryTestSchema(database);}
   if(intakeChecks){const {installIntakeTestSchema}=await import('./intake-test-schema.mjs');await installIntakeTestSchema(database);}
   // The additive coordination schema is migration 0019; flags still select isolated activation.
-  if (backupCoordinationChecks) {
+  if(storagePoolChecks){const {verifyStoragePoolRoutes}=await import('../tests/storage-pool-routes.mjs');await verifyStoragePoolRoutes(database,(url,options)=>emulator.dispatchFetch(url,options));}
+  else if (backupCoordinationChecks) {
     const {verifyBackupCoordinationRoute}=await import('../tests/backup-coordination-route.mjs');
     await verifyBackupCoordinationRoute(database,(url,options)=>emulator.dispatchFetch(url,options));
   } else if (servePreview) {
