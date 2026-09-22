@@ -38,15 +38,25 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
     AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))`)
     .bind(session.personId, spaceId).first<{ id: string }>();
   if (!membership) throw new AccountError(403, "This library is not available to your account.");
-  // Both inserts are idempotent and atomic; no token can authenticate these expired actor rows.
+  // Check authority inside each insert: an earlier session read cannot recreate attribution after
+  // recovery or closure. Read the current name here rather than copying the cached session profile.
+  const actorAuthority = `FROM space_memberships m JOIN people p ON p.id=m.person_id
+    JOIN account_sessions a ON a.person_id=p.id LEFT JOIN personal_spaces ps ON ps.space_id=m.space_id
+    WHERE m.id=? AND m.person_id=? AND m.space_id=? AND m.revoked_at IS NULL
+    AND a.id=? AND a.revoked_at IS NULL AND a.expires_at>? AND p.disabled_at IS NULL
+    AND a.authenticated_at>=p.credentials_changed_at
+    AND (ps.space_id IS NULL OR (ps.person_id=p.id AND m.role='owner'))`;
+  const actorBindings = [membership.id, session.personId, spaceId, session.sessionId, now];
   const existingActor = await database.prepare("SELECT device_id FROM account_space_actors WHERE membership_id = ?")
     .bind(membership.id).first();
   if (!existingActor) await database.batch([
     database.prepare(`INSERT INTO devices (id, space_id, name, token_hash, role, created_at, expires_at)
-      VALUES (?, ?, ?, ?, 'member', ?, 0) ON CONFLICT(id) DO NOTHING`)
-      .bind(membership.id, spaceId, session.displayName, `account-attribution:${membership.id}`, now),
+      SELECT m.id, m.space_id, p.display_name, 'account-attribution:' || m.id, 'member', ?, 0
+      ${actorAuthority} ON CONFLICT(id) DO NOTHING`).bind(now, ...actorBindings),
     database.prepare(`INSERT INTO account_space_actors (membership_id, device_id)
-      VALUES (?, ?) ON CONFLICT(membership_id) DO NOTHING`).bind(membership.id, membership.id),
+      SELECT m.id, m.id ${actorAuthority} AND EXISTS (SELECT 1 FROM devices d
+        WHERE d.id=m.id AND d.space_id=m.space_id AND d.expires_at=0 AND d.token_hash='account-attribution:' || m.id)
+      ON CONFLICT(membership_id) DO NOTHING`).bind(...actorBindings),
   ]);
   // Recheck current session, identity and membership after actor creation, not cached role data.
   const access = await database.prepare(`SELECT d.id, s.id AS space_id, p.display_name AS name,
@@ -58,6 +68,7 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
     JOIN account_sessions a ON a.person_id = p.id
     WHERE m.id = ? AND m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL
     AND a.id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
+    AND a.authenticated_at >= p.credentials_changed_at
     AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))
     AND d.space_id = m.space_id AND d.expires_at = 0 AND d.token_hash = ?`)
     .bind(membership.id, session.personId, spaceId, session.sessionId, now,

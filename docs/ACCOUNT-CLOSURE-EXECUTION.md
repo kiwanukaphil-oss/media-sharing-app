@@ -77,4 +77,8 @@ Restore sanitisation now recognises the complete protocol table family: fences r
 
 ### Remaining metadata review targets
 
-The 22 September live correction covers library management and personal allocation. It does not complete the writer audit. In particular, `requireAccountSpaceAccess` creates compatibility actor rows before its final authority read; those inserts must be included in the fence protocol. `prepareOwnerClaim` records an attempt before confirmation's authority transaction; that pending evidence also needs tracked or guarded creation. Confirm-claim and people-management session predicates need consistent credential-watermark checks. These are explicit remaining coverage items, not evidence that a production freeze is ready.
+The next 22 September correction is locally implemented and tested: compatibility attribution inserts recheck live membership/session/person/recovery authority inside the atomic D1 batch and use the current profile name. Claim preview insertion repeats live device/account checks; claim confirmation and people-management writes enforce the credential watermark. Actual-schema tests force recovery/revocation between the initial read and mutation and confirm that rejected effects are absent. Production deployment is recorded separately. This closes these stale-authority gaps, but does not complete closure-generation admission or the full writer audit.
+
+### Provider component rehearsal
+
+The explicitly approved provider fixture was created, checked, removed and independently confirmed absent on 22 September at 06:08 UTC. The rotated temporary client grant and connection access were revoked afterwards. See [provider evidence](PROVIDER-ERASURE-REHEARSAL.md#rotated-continuation--passed). The acceptance item above remains open because the complete generated-person storage/backup/ledger sequence is not yet executed.

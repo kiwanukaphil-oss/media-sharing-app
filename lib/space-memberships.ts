@@ -28,20 +28,29 @@ export async function listPersonSpaces(database: D1Database, session: AccountSes
 export async function prepareOwnerClaim(database: D1Database, session: AccountSession, legacyToken: string | null, now = Date.now()) {
   if (!legacyToken || !validCredential(legacyToken)) throw new AccountError(403, "Open this account from a connected owner browser.");
   if (session.createdAt < now - recentSignInLifetime) throw new AccountError(403, "Sign in again before connecting this library to your account.");
-  const candidate = await database.prepare(`SELECT d.id AS deviceId, d.space_id AS spaceId, s.name AS spaceName, d.name AS deviceName
+  const candidateQuery = `SELECT d.id AS deviceId, d.space_id AS spaceId, s.name AS spaceName, d.name AS deviceName
     FROM devices d JOIN spaces s ON s.id = d.space_id WHERE d.token_hash = ? AND d.role = 'owner'
     AND d.revoked_at IS NULL AND d.expires_at > ?
     AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = d.space_id)
     AND NOT EXISTS (SELECT 1 FROM legacy_owner_claims c WHERE c.device_id = d.id)
-    AND NOT EXISTS (SELECT 1 FROM space_memberships m WHERE m.person_id = ? AND m.space_id = d.space_id)`)
-    .bind(await hashCredential(legacyToken), now, session.personId).first<ClaimCandidate>();
+    AND NOT EXISTS (SELECT 1 FROM space_memberships m WHERE m.person_id = ? AND m.space_id = d.space_id)
+    AND EXISTS (SELECT 1 FROM account_sessions a JOIN people p ON p.id=a.person_id
+      WHERE a.id=? AND a.person_id=? AND a.revoked_at IS NULL AND a.expires_at>?
+      AND a.created_at>=? AND p.disabled_at IS NULL AND a.authenticated_at>=p.credentials_changed_at)`;
+  const candidateBindings = [await hashCredential(legacyToken), now, session.personId,
+    session.sessionId, session.personId, now, now - recentSignInLifetime];
+  const candidate = await database.prepare(candidateQuery).bind(...candidateBindings).first<ClaimCandidate>();
   if (!candidate) throw new AccountError(409, "This browser cannot connect this library, or it has already been connected. Refresh your account.");
   const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
-  await database.batch([
+  // Re-evaluate both authorities in the insert after asynchronous token hashing and the preview read.
+  const results = await database.batch([
     database.prepare("DELETE FROM owner_claim_attempts WHERE expires_at <= ?").bind(now),
     database.prepare(`INSERT INTO owner_claim_attempts (token_hash, session_id, device_id, space_id, expires_at)
-      VALUES (?, ?, ?, ?, ?)`).bind(await hashCredential(token), session.sessionId, candidate.deviceId, candidate.spaceId, now + claimLifetime),
+      SELECT ?, ?, candidate.deviceId, candidate.spaceId, ? FROM (${candidateQuery}) candidate
+      WHERE candidate.deviceId=? AND candidate.spaceId=?`)
+      .bind(await hashCredential(token), session.sessionId, now + claimLifetime, ...candidateBindings, candidate.deviceId, candidate.spaceId),
   ]);
+  if (!results[1].meta.changes) throw new AccountError(409, "Access changed. Review the library connection again.");
   return { ...candidate, token, expiresAt: now + claimLifetime, accountEmail: session.verifiedEmail, role: "owner" as const };
 }
 
@@ -60,6 +69,7 @@ export async function confirmOwnerClaim(database: D1Database, session: AccountSe
       AND d.token_hash = ? AND d.role = 'owner' AND d.revoked_at IS NULL AND d.expires_at > ?
       AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = d.space_id)
       AND a.revoked_at IS NULL AND a.expires_at > ? AND a.created_at >= ? AND p.disabled_at IS NULL
+      AND a.authenticated_at >= p.credentials_changed_at
       AND NOT EXISTS (SELECT 1 FROM legacy_owner_claims prior WHERE prior.device_id = d.id)
       AND NOT EXISTS (SELECT 1 FROM space_memberships prior WHERE prior.person_id = a.person_id AND prior.space_id = c.space_id)`)
       .bind(membershipId, now, tokenHash, session.sessionId, session.personId, now, await hashCredential(legacyToken), now, now, now - recentSignInLifetime),

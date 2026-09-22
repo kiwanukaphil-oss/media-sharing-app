@@ -838,3 +838,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Complete account-access and hosted checks (`35662558689`), deploy source `df7f4b3` as Worker `2b08bccf-a9ce-4962-8942-7c698d99c613`, and confirm 100% deployment. Both origins pass health/operational-health and deny anonymous feeds. Primary-origin hosted sections passed create/upload/move/Undo/remove/restore/deep-link/exact-byte download in the isolated verification library; the tiny generated original remains for review. No new schema or closure executor activation.
 - [x] Refresh independent backup and restore: `35663011013` passed inventory/copy/independent verification for snapshot `2026-09-21T22-31-05-943Z-8d72d96c-46cb-402f-a6f5-57c8e8bad75b`, protecting 25 originals and 321,680,743 bytes. One original uploaded, 24 reused, all independently restored with access revocation verified.
 - [ ] Finish remaining compatibility-actor, claim and people-management writer coverage recorded in the closure contract. Provider removal approval remains pending.
+
+## 22 September 2026 - Account metadata authority
+
+- [x] Guard compatibility attribution inserts with current session, person, membership, personal ownership and credential watermark; read the current profile name.
+- [x] Guard claim preview insertion and confirmation against changed device/account authority; enforce recovery watermark on people-management writes.
+- [x] Verify deterministic actual-D1 races and unchanged rejected effects; add the regression to CI. TypeScript, focused lint and production build pass.
+- [ ] Complete broader compatibility validation, deploy and record hosted verification. This does not activate closure/backup fencing or complete P2-06.

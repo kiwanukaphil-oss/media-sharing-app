@@ -5,7 +5,8 @@ type SpacePersonSession = Pick<AccountSession, "personId" | "sessionId">;
 const inviteLifetime = 7 * 24 * 60 * 60 * 1000;
 const credentialPattern = /^[a-f0-9]{64}$/;
 const liveSession = `EXISTS (SELECT 1 FROM account_sessions a JOIN people p ON p.id = a.person_id
-  WHERE a.id = ? AND a.person_id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL)`;
+  WHERE a.id = ? AND a.person_id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
+  AND a.authenticated_at >= p.credentials_changed_at)`;
 const sharedSpace = `NOT EXISTS (SELECT 1 FROM personal_spaces ps WHERE ps.space_id = m.space_id)`;
 
 // A shared-space roster is visible only through current person membership, never legacy credentials.

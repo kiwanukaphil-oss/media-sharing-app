@@ -32,6 +32,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/account-erasure-plan.mjs
       - run: node tests/account-closure-fence.mjs
       - run: node tests/library-write-authority.mjs
+      - run: node tests/account-metadata-authority.mjs
       - run: node tests/backup-closure-coordination.mjs
       - run: node tests/backup-closure-client.mjs
       - run: node tests/provider-erasure-rehearsal.mjs
