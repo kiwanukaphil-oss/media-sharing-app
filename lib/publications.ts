@@ -1,6 +1,7 @@
 import { AccountError } from "./account-sessions";
 import type { AccountSpaceAccess } from "./account-space-access";
 import type { ActiveDevice } from "./server";
+import { transferAuthority } from "./transfer-authority";
 
 export const MAX_PUBLICATION_BYTES = 1024 * 1024 * 1024;
 type PublicationInput = { id: string; sourceId: string; sourceRevision: number; destinationSpaceId: string; albumId?: string; sectionId?: string };
@@ -13,6 +14,7 @@ const publicationAuthority = `EXISTS (SELECT 1 FROM account_sessions a JOIN peop
   JOIN space_memberships own ON own.person_id = p.id JOIN personal_spaces ps ON ps.space_id = own.space_id AND ps.person_id = p.id
   JOIN space_memberships destination ON destination.person_id = p.id
   WHERE a.id = ? AND p.id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
+  AND a.authenticated_at >= p.credentials_changed_at
   AND own.space_id = ? AND own.role = 'owner' AND own.revoked_at IS NULL
   AND destination.space_id = ? AND destination.revoked_at IS NULL
   AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = destination.space_id))`;
@@ -145,8 +147,16 @@ export async function cancelPublication(database: D1Database, bucket: R2Bucket, 
     throw new AccountError(404, "This publication is not available.");
   }
   if (job.phase === "ready") throw new AccountError(409, "This copy is already published. Manage it in the shared library.");
-  const cancelled = await database.prepare("UPDATE publications SET phase = 'cancelling' WHERE id = ? AND phase IN ('pending','copying','cancelling')").bind(id).run();
-  if (!cancelled.meta.changes && job.phase !== "cancelled") throw new AccountError(409, "The publication changed. Refresh its status.");
+  const authority = transferAuthority(access, Date.now(), access.personId !== job.person_id);
+  if (job.phase === "cancelled") {
+    const allowed = await database.prepare(`SELECT 1 WHERE ${authority.sql}`).bind(...authority.bindings).first();
+    if (!allowed) throw new AccountError(409, "Access changed. Refresh the publication status.");
+  }
+  // Authorise the irreversible storage cleanup inside the transition, before dispatching any delete.
+  const cancelled = await database.prepare(`UPDATE publications SET phase = 'cancelling'
+    WHERE id = ? AND phase IN ('pending','copying','cancelling') AND ${authority.sql}`)
+    .bind(id, ...authority.bindings).run();
+  if (!cancelled.meta.changes && job.phase !== "cancelled") throw new AccountError(409, "The publication or access changed. Refresh its status.");
   const attempts = await database.prepare("SELECT object_key FROM publication_attempts WHERE publication_id = ?").bind(id).all<{ object_key: string }>();
   for (const attempt of attempts.results) await bucket.delete([attempt.object_key, `${attempt.object_key}.preview.jpg`]);
   await database.batch([

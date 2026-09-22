@@ -94,7 +94,7 @@ export async function verifyPublications(database, bucket, dispatch) {
   assert.equal((await request(personal, 'publications', 'POST', corruptInput)).status, 409, 'Cancelled operation identifiers cannot restart');
 
   // Membership changes, source changes and explicit cancellation must win before a copied object becomes visible.
-  for (const scenario of ['revoke-destination', 'change-source', 'cancel']) {
+  for (const scenario of ['revoke-destination', 'change-source', 'cancel', 'password-recovery']) {
     const source = await createOriginal();
     const intent = { id: crypto.randomUUID(), sourceId: source.id, sourceRevision: 0, destinationSpaceId: shared };
     const job = await publications.reservePublication(database, sourceAccess, destinationAccess, intent, 100 * 1024 ** 3);
@@ -109,6 +109,8 @@ export async function verifyPublications(database, bucket, dispatch) {
           if (scenario === 'revoke-destination') await database.prepare('UPDATE space_memberships SET revoked_at=? WHERE id=?').bind(Date.now(), destinationMembership).run();
           if (scenario === 'change-source') await database.prepare('UPDATE media SET revision=revision+1 WHERE id=?').bind(source.id).run();
           if (scenario === 'cancel') await publications.cancelPublication(database, bucket, sourceAccess, intent.id);
+          if (scenario === 'password-recovery') await database.prepare('UPDATE people SET credentials_changed_at=? WHERE id=?')
+            .bind(identity.authenticatedAt + 1000, account.personId).run();
         }
         return result;
       };
@@ -118,9 +120,34 @@ export async function verifyPublications(database, bucket, dispatch) {
     assert.equal(await database.prepare("SELECT id FROM media WHERE id=? AND status='ready'").bind(intent.id).first(), null);
     const attempts = (await database.prepare('SELECT object_key FROM publication_attempts WHERE publication_id=?').bind(intent.id).all()).results;
     for (const attempt of attempts) assert.equal(await bucket.head(attempt.object_key), null);
+    if (scenario === 'password-recovery') await database.prepare('UPDATE people SET credentials_changed_at=0 WHERE id=?').bind(account.personId).run();
     await publications.cancelPublication(database, bucket, sourceAccess, intent.id);
     await database.prepare('UPDATE space_memberships SET revoked_at=NULL WHERE id=?').bind(destinationMembership).run();
   }
+  // A cached principal cannot reserve new storage or initiate destructive cancellation after recovery.
+  const recoverySource = await createOriginal();
+  const recoveryIntent = { id: crypto.randomUUID(), sourceId: recoverySource.id, sourceRevision: 0, destinationSpaceId: shared };
+  const recoveryJob = await publications.reservePublication(database, sourceAccess, destinationAccess, recoveryIntent, 100 * 1024 ** 3);
+  await database.prepare('UPDATE people SET credentials_changed_at=? WHERE id=?').bind(identity.authenticatedAt + 1000, account.personId).run();
+  const deniedIntent = { ...recoveryIntent, id: crypto.randomUUID() };
+  await assert.rejects(publications.reservePublication(database, sourceAccess, destinationAccess, deniedIntent, 100 * 1024 ** 3));
+  assert.equal(await database.prepare('SELECT id FROM publications WHERE id=?').bind(deniedIntent.id).first(), null);
+  let storageDispatched = false;
+  const deniedStorage = new Proxy(bucket, { get(target, property) {
+    if (['put', 'delete'].includes(property)) return async () => { storageDispatched = true; throw new Error('Unexpected storage dispatch'); };
+    return typeof target[property] === 'function' ? target[property].bind(target) : target[property];
+  } });
+  await assert.rejects(publications.finishPublication(database, deniedStorage, sourceAccess, recoveryJob), /access changed/);
+  await assert.rejects(publications.cancelPublication(database, deniedStorage, sourceAccess, recoveryIntent.id), /access changed/);
+  assert.equal(storageDispatched, false);
+  assert.equal((await database.prepare('SELECT phase FROM publications WHERE id=?').bind(recoveryIntent.id).first()).phase, 'pending');
+  await database.prepare('UPDATE people SET credentials_changed_at=0 WHERE id=?').bind(account.personId).run();
+  await database.prepare('UPDATE account_sessions SET revoked_at=? WHERE id=?').bind(Date.now(), account.sessionId).run();
+  await assert.rejects(publications.cancelPublication(database, deniedStorage, sourceAccess, recoveryIntent.id), /access changed/);
+  assert.equal(storageDispatched, false);
+  await database.prepare('UPDATE account_sessions SET revoked_at=NULL WHERE id=?').bind(account.sessionId).run();
+  await publications.cancelPublication(database, bucket, sourceAccess, recoveryIntent.id);
+  assert.equal((await publications.cancelPublication(database, bucket, sourceAccess, recoveryIntent.id)).cancelled, true);
   // Original and preview reservations share the same quota as uploads; concurrent copies cannot overbook it.
   const quotaSource = await createOriginal();
   const usage = (await database.prepare('SELECT SUM(size+preview_size) AS n FROM media WHERE space_id=?').bind(shared).first()).n;

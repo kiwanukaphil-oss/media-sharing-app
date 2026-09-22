@@ -875,3 +875,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Extend private historical snapshot inventory with account/legacy attribution, global backup scope, unresolved effects and incomplete-schema reporting. Expiry and historical settlement do not grant erasure authority.
 - [x] Verify actual migration-plus-prototype fixtures, unchanged source rows, historical inventory and existing minimisation tests; focused lint passes. Add the new suite to hosted CI.
 - [ ] Authenticate external disposition evidence and implement the reviewed new-schema minimisation treatment before migration. The existing migration-0018 allowlist is unchanged; complete P2-06 remains open.
+- [x] Run the read-only private cloud inventory: 10 pinned SQL upload versions, 10 matching manifest versions, zero unpaired SQL versions; seven older schemas remain explicitly unreviewed. Catalog fingerprints stayed unchanged across reads. No cloud version was modified.
+
+## 22 September 2026 - Publication recovery authority
+
+- [x] Recheck the credential-change watermark during publication reservation, copy admission and final visibility commit. A reset during copying prevents the shared copy from becoming visible.
+- [x] Recheck current account/device access before cancellation dispatches storage cleanup; retain authorised repeated cleanup for already-cancelled attempts.
+- [x] Verify password recovery during copy, stale reservation/copy/cancel denial without storage dispatch, revoked-session cancellation and valid retry against actual isolated D1/R2. The complete account-access suite, TypeScript and focused lint pass.
+- [ ] Deploy the reviewed change and record hosted verification; current production remains on the preceding source until deployment is recorded.
