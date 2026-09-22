@@ -1,6 +1,6 @@
 # Closure protocol privacy review
 
-Reviewed 22 September 2026. This covers the isolated schema in `deploy/closure-fence-prototype.sql`; it does not authorise production migration, object removal or fulfilled erasure. The snapshot minimiser accepts migration 0018 plus the narrowly reviewed global-backup-only stage below. Account/device/storage closure references remain blocked.
+Reviewed 22 September 2026. This covers journal migration `0019_wild_nighthawk.sql` (formerly the isolated prototype); backup-only migration activation is tracked separately and this review does not authorise object removal or fulfilled erasure. The snapshot minimiser accepts migration 0018 plus the narrowly reviewed global-backup-only stage below. Account/device/storage closure references remain blocked.
 
 ## References and required treatment
 
@@ -23,7 +23,7 @@ Restored databases retain the existing quarantine: active admissions/effects bec
 - [x] Include a read-only protocol reference inventory in every inspected historical snapshot. Reports remain in the existing ignored private inventory directory; identifying rows are not printed by the CLI.
 - [x] Distinguish positively linked account/legacy admissions, unbound legacy devices and global backup scope. Include completed effects because their storage references still matter.
 - [x] Preserve unresolved capability evidence after expiry; flag incomplete table families. Reports always state `quiescenceProven: false`, `minimisationReviewed: false` and `cutoverAllowed: false`.
-- [x] Verify actual migration-plus-prototype snapshots, unchanged source rows, historical inventory integration and existing minimisation regressions.
+- [x] Verify actual migration-0019 snapshots, unchanged source rows, historical inventory integration and existing minimisation regressions.
 - [ ] Define and authenticate exact external disposition receipts and minimal retained evidence before adding a protocol-schema minimisation transform.
 - [ ] Prove every application/backup writer is covered and verify the generated-person full lifecycle rehearsal before activating production closure.
 

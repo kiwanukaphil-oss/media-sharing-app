@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 21 September 2026. Phase 2 is deployed as a restricted designated-account pilot, not a general release. Worker `59b996f4-aea4-4ece-a808-3798a2d783b3` is at 100%; migrations through 0018 are applied and legacy rows were verified unchanged. Total personal allocation is 1 GiB for the designated-account pilot. Latest release adds atomic transfer-commit authority and navigation-aware polling; hosted CI `35621810303`, private-access boundaries and isolated exact-byte transfer verification passed.
+Updated 22 September 2026. Phase 2 remains a restricted designated-account pilot, not a general release. Live runtime and migration evidence are maintained in [deployment status](../deploy/STATUS.md); the current verified runtime is `5cb25ea3-e4c8-438c-b84c-36f34764c905`. Total personal allocation remains 1 GiB. Navigation, recovery/current-authority checks and retained signed-in library verification passed. Backup coordination is being prepared through its [staged activation record](COORDINATED-BACKUP-ACTIVATION.md); account closure execution remains disabled.
 
 ## Prepared and verified locally
 
