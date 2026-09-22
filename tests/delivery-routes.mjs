@@ -55,6 +55,8 @@ export async function verifyDeliveryRoutes(db,bucket,dispatch){
   const link=await call(recipient,`delivery/${input.id}/${id}/link`);assert.equal(link.status,200);assert.ok(link.data.expiresAt<=Date.now()+60000);
   const saved=await dispatch(new URL(link.data.url,settings.appOrigin).href,{headers:{Cookie:`__Host-relay_account=${recipient.token}`}});
   assert.equal(saved.status,200);assert.match(saved.headers.get('Content-Disposition'),/Reviewed name/);assert.deepEqual(new Uint8Array(await saved.arrayBuffer()),bytes);
+  const nativeSaved=await dispatch(`${settings.appOrigin}/api/delivery/${input.id}/${id}/download`,{headers:{Cookie:`__Host-relay_account=${recipient.token}`}});
+  assert.equal(nativeSaved.status,200);assert.match(nativeSaved.headers.get('Content-Disposition'),/Reviewed name/);assert.deepEqual(new Uint8Array(await nativeSaved.arrayBuffer()),bytes);
   await db.prepare('UPDATE media SET archived_at=? WHERE id=?').bind(now,id).run();
   assert.equal((await call(recipient,`delivery/${input.id}`)).status,404);
   assert.equal((await call(recipient,`delivery/${input.id}/${id}/link`)).status,404);

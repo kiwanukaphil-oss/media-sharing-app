@@ -14,7 +14,7 @@ export async function deliveryOwnerAction(request:Request,owner:AccountSpaceAcce
   const db=database(),live=transferAuthority(owner,Date.now(),true),audience=resourceAudienceAuthority(owner,"delivery_snapshots");
   const guard=`${live.sql} AND ${audience.sql}`,values=[...live.bindings,...audience.bindings];
   if(request.method==="GET"&&!action){
-    const statements=[db.prepare(`SELECT id,title,access_scope_id AS accessScopeId,file_count AS fileCount,total_bytes AS totalBytes,created_at AS createdAt,expires_at AS expiresAt,state,revision,
+    const statements=[db.prepare(`SELECT id,title,sender_name AS senderName,(SELECT name FROM asset_scopes WHERE id=delivery_snapshots.access_scope_id) AS audienceName,access_scope_id AS accessScopeId,file_count AS fileCount,total_bytes AS totalBytes,created_at AS createdAt,expires_at AS expiresAt,state,revision,
       (issuer_membership_id=(SELECT membership_id FROM account_space_actors WHERE device_id=?)) AS canIssue FROM delivery_snapshots WHERE ${guard}${id?" AND id=?":""} ORDER BY created_at DESC,id DESC LIMIT 100`).bind(owner.id,...values,...(id?[id]:[]))];
     if(id)statements.push(
       db.prepare(`SELECT item.media_id AS id,item.name,item.mime,item.size,item.sha256,item.source_revision AS sourceRevision,item.captured_at AS capturedAt,item.position FROM delivery_items item
@@ -26,7 +26,7 @@ export async function deliveryOwnerAction(request:Request,owner:AccountSpaceAcce
     return Response.json({deliveries:deliveries.results,serverTime:Date.now(),...(id?{items:items.results,recipients:recipients.results}:{})});
   }
   if(request.method==="POST"&&!id){
-    const input=await readJson(request,z.object({id:z.string().uuid(),title:z.string().max(120),accessScopeId:z.string().uuid().nullable(),expiresAt:z.number().int(),
+    const input=await readJson(request,z.object({id:z.string().uuid(),title:z.string().max(120),senderName:z.string().min(1).max(120).default("Relay member"),accessScopeId:z.string().uuid().nullable(),expiresAt:z.number().int(),
       files:z.array(z.object({id:z.string().uuid(),revision:z.number().int().nonnegative()})).min(1).max(100),
       recipients:z.array(z.object({id:z.string().uuid(),email:z.string().email().max(320),token:z.string().regex(/^[a-f0-9]{64}$/)})).min(1).max(20),
       confirmed:z.literal(true),confirmAudienceExpansion:z.literal(true)}));

@@ -5,6 +5,7 @@ CREATE TABLE delivery_snapshots (
   issuer_membership_id TEXT NOT NULL REFERENCES space_memberships(id),
   access_scope_id TEXT REFERENCES asset_scopes(id),
   title TEXT NOT NULL,
+  sender_name TEXT NOT NULL DEFAULT 'Relay member',
   intent_hash TEXT NOT NULL,
   file_count INTEGER NOT NULL CHECK(file_count BETWEEN 1 AND 100),
   total_bytes INTEGER NOT NULL CHECK(total_bytes>0),
@@ -46,9 +47,9 @@ CREATE TRIGGER delivery_source_intent BEFORE INSERT ON delivery_snapshots BEGIN
     OR (NEW.access_scope_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM asset_scopes WHERE id=NEW.access_scope_id AND space_id=NEW.space_id))
     THEN RAISE(ABORT,'Incompatible delivery source') END;
 END;
-CREATE TRIGGER delivery_intent_immutable BEFORE UPDATE OF space_id,issuer_membership_id,access_scope_id,intent_hash,title,file_count,total_bytes,created_at,expires_at ON delivery_snapshots
+CREATE TRIGGER delivery_intent_immutable BEFORE UPDATE OF space_id,issuer_membership_id,access_scope_id,intent_hash,title,sender_name,file_count,total_bytes,created_at,expires_at ON delivery_snapshots
 WHEN NEW.space_id IS NOT OLD.space_id OR NEW.issuer_membership_id IS NOT OLD.issuer_membership_id OR NEW.access_scope_id IS NOT OLD.access_scope_id
-  OR NEW.intent_hash IS NOT OLD.intent_hash OR NEW.title IS NOT OLD.title OR NEW.file_count IS NOT OLD.file_count OR NEW.total_bytes IS NOT OLD.total_bytes
+  OR NEW.intent_hash IS NOT OLD.intent_hash OR NEW.title IS NOT OLD.title OR NEW.sender_name IS NOT OLD.sender_name OR NEW.file_count IS NOT OLD.file_count OR NEW.total_bytes IS NOT OLD.total_bytes
   OR NEW.created_at IS NOT OLD.created_at OR NEW.expires_at IS NOT OLD.expires_at
 BEGIN SELECT RAISE(ABORT,'Delivery intent is immutable'); END;
 CREATE TRIGGER delivery_revocation_immutable BEFORE UPDATE OF state,revoked_at ON delivery_snapshots

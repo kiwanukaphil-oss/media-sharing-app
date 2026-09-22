@@ -1162,3 +1162,13 @@ Parent counts are now 20/47, including this completed policy-definition item; on
 - [ ] Integrate runtime writes, reads, previews, exports, activity and navigation before enabling restricted albums.
 
 Corrected folder-import CI at `f588c68` includes successful hosted run `35729947615`; earlier `35729466805` verification passed but its browser selector was corrected. Deployment remains held on B06; the new backup is still unverified.
+
+
+### 22 September - delivery sender and recipient workflows
+
+- [x] Build owner-only captured selections, named-recipient draft/issue/revoke and explicit source-audience expansion review; real D1 atomic retry and stale-access tests pass.
+- [x] Build sender review and recipient-only pages, secret-fragment sign-in handoff and captured public sender labels. Mobile/desktop browser checks and screenshot review pass.
+- [x] Verify actual built-Worker recipient boundaries, native original downloads, captured filenames, sticky suspension and explicit reactivation. Client checksum-verified saving remains distinct from a normal download request.
+- [ ] Complete hosted verification and delivery lifecycle/minimisation before adding its migration. Original package jobs and live release acceptance remain outstanding.
+
+[Delivery contract and checked evidence](DELIVERY-CONTRACT.md). Delivery preparation remains feature-gated and outside the active schema journal. No live audience or file changes; parent completion counts remain 22/47.

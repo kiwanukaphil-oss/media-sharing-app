@@ -28,7 +28,7 @@ export async function deliveryRecipientRequest(request:Request,segments:string[]
 async function previewDelivery(session:AccountSession,hash:string){
   const source=deliverySourceAuthority(),now=Date.now();
   const result=await database().prepare(`SELECT delivery_snapshots.id,delivery_snapshots.title,delivery_snapshots.expires_at AS expiresAt,
-    delivery_snapshots.file_count AS fileCount,delivery_snapshots.total_bytes AS totalBytes,(SELECT name FROM spaces WHERE id=delivery_snapshots.space_id) AS sourceLibrary
+    delivery_snapshots.file_count AS fileCount,delivery_snapshots.total_bytes AS totalBytes,delivery_snapshots.sender_name AS senderName
     FROM delivery_snapshots JOIN delivery_recipients ON delivery_recipients.delivery_id=delivery_snapshots.id
     WHERE delivery_recipients.token_hash=? AND delivery_recipients.revoked_at IS NULL AND ${source.sql}
     AND EXISTS(SELECT 1 FROM account_sessions current JOIN people p ON p.id=current.person_id WHERE current.id=? AND p.id=? AND current.revoked_at IS NULL
@@ -44,7 +44,7 @@ async function previewDelivery(session:AccountSession,hash:string){
 async function readDelivery(session:AccountSession,id:string){
   const authority=deliveryRecipientAuthority(session),db=database();
   const [header,items]=await db.batch([
-    db.prepare(`SELECT delivery_snapshots.id,delivery_snapshots.title,delivery_snapshots.expires_at AS expiresAt,delivery_snapshots.file_count AS fileCount,
+    db.prepare(`SELECT delivery_snapshots.id,delivery_snapshots.title,delivery_snapshots.sender_name AS senderName,delivery_snapshots.expires_at AS expiresAt,delivery_snapshots.file_count AS fileCount,
       delivery_snapshots.total_bytes AS totalBytes FROM delivery_snapshots JOIN delivery_recipients ON delivery_recipients.delivery_id=delivery_snapshots.id WHERE delivery_snapshots.id=? AND ${authority.sql}`)
       .bind(id,...authority.bindings),
     db.prepare(`SELECT DISTINCT item.media_id AS id,item.name,item.mime,item.size,item.sha256,item.captured_at AS capturedAt,item.position FROM delivery_items item
@@ -64,23 +64,24 @@ async function authenticatedDeliveryRequest(request:Request,segments:string[],se
     return Response.json(id==="preview"?await previewDelivery(session,hash):await acceptDelivery(db,session,hash));
   }
   if(id&&!fileId&&request.method==="GET")return Response.json(await readDelivery(session,id));
-  if(id&&fileId&&["link","original"].includes(action)&&request.method==="GET"){
+  if(id&&fileId&&["link","original","download"].includes(action)&&request.method==="GET"){
     const authority=deliveryRecipientAuthority(session);
     const row=await db.prepare(`SELECT item.name,item.size,item.sha256,m.object_key,delivery_snapshots.expires_at FROM delivery_items item JOIN media m ON m.id=item.media_id
       JOIN delivery_snapshots ON delivery_snapshots.id=item.delivery_id JOIN delivery_recipients ON delivery_recipients.delivery_id=delivery_snapshots.id
       WHERE item.delivery_id=? AND item.media_id=? AND ${authority.sql}`).bind(id,fileId,...authority.bindings)
       .first<{name:string;size:number;sha256:string;object_key:string;expires_at:number}>();
     if(!row)throw new AccountError(404,"This delivery is unavailable.");
-    if(action==="original"&&isLocal(request)){
+    if(["original","download"].includes(action)&&isLocal(request)){
       const object=await bucket().get(row.object_key);
       if(!object||object.size!==row.size){await object?.body.cancel();throw new AccountError(409,"This original is temporarily unavailable.");}
       return new Response(object.body,{headers:{"Content-Type":"application/octet-stream","Content-Length":String(row.size),"Content-Disposition":attachmentName(row.name),"X-Content-Type-Options":"nosniff","Content-Security-Policy":"sandbox"}});
     }
-    if(action!=="link")throw new ApiError(404,"This delivery action is unavailable.");
+    if(!["link","download"].includes(action))throw new ApiError(404,"This delivery action is unavailable.");
     if(storageMode(request)==="unconfigured")throw new ApiError(503,"Original downloads are temporarily unavailable.");
     const signedAt=Math.floor(Date.now()/1000)*1000,ttl=Math.min(60,Math.floor((row.expires_at-signedAt)/1000));
     if(ttl<5)throw new AccountError(410,"This delivery is expiring. Ask the sender for a new delivery.");
     const url=isLocal(request)?`/api/delivery/${id}/${fileId}/original`:await signedObjectUrl(row.object_key,"GET",{"X-Amz-Expires":String(ttl),"response-content-disposition":attachmentName(row.name),"response-content-type":"application/octet-stream"},undefined,signedAt);
+    if(action==="download")return Response.redirect(url,302);
     return Response.json({url,expiresAt:signedAt+ttl*1000,size:row.size,sha256:row.sha256,status:"download-started"});
   }
   throw new ApiError(404,"This delivery action is unavailable.");

@@ -5,7 +5,7 @@ import {transferAuthority} from "./transfer-authority";
 import {newAssetAudienceAuthority} from "./asset-scope-authority";
 import {deliverySourceAuthority} from "./delivery-authority";
 
-const draftSchema=z.object({id:z.string().uuid(),title:z.string().trim().min(1).max(120),accessScopeId:z.string().uuid().nullable(),
+const draftSchema=z.object({id:z.string().uuid(),title:z.string().trim().min(1).max(120),senderName:z.string().trim().min(1).max(120).default("Relay member"),accessScopeId:z.string().uuid().nullable(),
   files:z.array(z.object({id:z.string().uuid(),revision:z.number().int().nonnegative()})).min(1).max(100),
   recipients:z.array(z.object({id:z.string().uuid(),email:z.string().trim().email().max(320).transform(value=>value.toLowerCase()),tokenHash:z.string().regex(/^[a-f0-9]{64}$/)})).min(1).max(20),
   expiresAt:z.number().int().positive(),confirmed:z.literal(true),confirmAudienceExpansion:z.literal(true)});
@@ -26,11 +26,11 @@ export async function createDeliveryDraft(database:D1Database,owner:AccountSpace
     AND m.size>0 AND length(m.sha256)=64 AND m.sha256 NOT GLOB '*[^0-9a-f]*'`;
   const selectionBindings=[files,owner.space_id,value.accessScopeId];
   await database.batch([
-    database.prepare(`INSERT OR IGNORE INTO delivery_snapshots(id,space_id,issuer_membership_id,access_scope_id,title,intent_hash,file_count,total_bytes,created_at,expires_at)
-      SELECT ?,?,actor.membership_id,?,?,?,?,(SELECT SUM(size) FROM (${selection})),?,? FROM account_space_actors actor
+    database.prepare(`INSERT OR IGNORE INTO delivery_snapshots(id,space_id,issuer_membership_id,access_scope_id,title,sender_name,intent_hash,file_count,total_bytes,created_at,expires_at)
+      SELECT ?,?,actor.membership_id,?,?,?,?,?,(SELECT SUM(size) FROM (${selection})),?,? FROM account_space_actors actor
       WHERE actor.device_id=? AND ${live.sql} AND ${audience.sql} AND (SELECT COUNT(*) FROM (${selection}))=?
       AND (SELECT COUNT(*) FROM delivery_snapshots WHERE space_id=? AND state IN ('draft','issued','suspended') AND expires_at>? AND revoked_at IS NULL)<100`)
-      .bind(value.id,owner.space_id,value.accessScopeId,value.title,intentHash,value.files.length,...selectionBindings,now,value.expiresAt,owner.id,...live.bindings,...audience.bindings,...selectionBindings,value.files.length,owner.space_id,now),
+      .bind(value.id,owner.space_id,value.accessScopeId,value.title,value.senderName,intentHash,value.files.length,...selectionBindings,now,value.expiresAt,owner.id,...live.bindings,...audience.bindings,...selectionBindings,value.files.length,owner.space_id,now),
     database.prepare(`INSERT INTO delivery_items(delivery_id,media_id,position,source_revision,name,mime,size,sha256,captured_at)
       SELECT ?,m.id,CAST(selected.key AS INTEGER),m.revision,m.name,m.mime,m.size,m.sha256,m.captured_at FROM json_each(?) selected JOIN media m ON m.id=json_extract(selected.value,'$.id')
       WHERE changes()=1 AND EXISTS(SELECT 1 FROM delivery_snapshots WHERE id=? AND intent_hash=? AND state='draft')`)

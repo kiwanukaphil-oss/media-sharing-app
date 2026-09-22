@@ -7,13 +7,13 @@ type SavePickerWindow = Window & { showSaveFilePicker?: (options: { suggestedNam
 export function supportsVerifiedSave() { return typeof (window as SavePickerWindow).showSaveFilePicker === "function"; }
 
 // Open the picker before awaiting network work to preserve the user's transient activation.
-export async function saveVerifiedOriginal(item: MediaItem, options: { accountSpaceId?: string; signal?: AbortSignal; onProgress?: (percent: number) => void } = {}) {
+export async function saveVerifiedOriginal(item: Pick<MediaItem, "id" | "name" | "size" | "sha256">, options: { accountSpaceId?: string; linkPath?: string; signal?: AbortSignal; onProgress?: (percent: number) => void } = {}) {
   const { requestJson } = createLibraryApi(options.accountSpaceId);
   const picker = (window as SavePickerWindow).showSaveFilePicker;
   if (!picker) throw new Error("Use Save to device in this browser.");
   const handle = await picker.call(window, { suggestedName: item.name });
   options.signal?.throwIfAborted();
-  const { url } = await requestJson<{ url: string }>(`media/${item.id}/link`, { signal: options.signal });
+  const { url } = await requestJson<{ url: string }>(options.linkPath || `media/${item.id}/link`, { signal: options.signal });
   const response = await fetch(url, { signal: options.signal });
   if (!response.ok || !response.body) throw new Error("Couldn't download this original. Please try again.");
   const writer = await handle.createWritable().catch(async error => { await response.body!.cancel().catch(() => {}); throw error; });
