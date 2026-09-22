@@ -68,3 +68,10 @@ Branch `work/restricted-scopes` is an unfinished development branch, separate fr
 - [ ] Complete adversarial route/browser coverage, release verification and deployed checks before enabling restricted content.
 
 Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. Storage wording now identifies owner billing totals and audience-filtered lists; visual/browser verification remains outstanding. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.
+
+### Audience administration preparation
+
+- [x] Unrouted `scope-management.ts` implements atomic owner-only shared-scope creation, stable retry IDs, exact-member validation, bounded catalogs/grants, current role checks and opaque audit-version conflicts.
+- [x] Administrator self-access requires its own explicit confirmation and produces an `administrator-grant` event; audit failure rolls back the permission change. Local D1 tests pass.
+- [x] Production-build closure-tracking integration exits 0, including resource-bound multipart capability custody and closure fence entry points.
+- [ ] Route and present these controls only after remaining disclosure and browser acceptance checks. No production scope or grant was created.

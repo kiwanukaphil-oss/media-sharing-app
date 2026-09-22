@@ -5,6 +5,12 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Audience administration checkpoint
+
+- [x] Local atomic creation/grant administration, explicit audited self-access, stale-version/role checks and rollback tests pass. Controls remain unrouted.
+- [x] Built-worker closure-tracking integration exits 0 with scope-aware capability admission.
+- [ ] Finish audience navigation and management UI, full scope coverage and release acceptance.
+
 ## Restricted-scope recovery checkpoint
 
 - [x] Local private-export migration rehearsal preserves all existing rows/columns in 25 tables; restored triggers and access quarantine verified.
