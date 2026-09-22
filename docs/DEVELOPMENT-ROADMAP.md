@@ -1005,7 +1005,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 
 - [x] Verify signed-in pilot navigation and existing private/shared files. The publication dialog restored yesterday's completed operation; read-only D1 confirms no duplicate or new publication.
 - [x] Replace the transient new-publication form with a neutral loading state until history resolves. Distinguish Previously published from a just-completed copy. Delayed-response browser tests verify hidden controls, recovered status and no additional POST; TypeScript, lint and build pass.
-- [ ] Deploy and verify the refined dialog on the live pilot.
+- [x] Deploy and verify the refined dialog on the live pilot (`936e2da9`, 22 September): neutral history loading followed by Previously published, preserving one original and the existing shared copy. A punctuation correction follows the successful live check.
 
 
 ## 22 September 2026 - Authenticated disposition statement boundary
