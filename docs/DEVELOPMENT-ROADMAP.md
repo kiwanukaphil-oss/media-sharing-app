@@ -10,7 +10,7 @@
 - [x] Fix the plain-home/account-return path that hid personal/shared switching. Account navigation now loads independently of the open library, with persistent account links and explicit retry on failure.
 - [x] Verify Chromium, Firefox, WebKit, mobile navigation, existing transfer destinations, permissions, builds and live both-origin health.
 - [x] Deploy isolated live-baseline patch `4aaa73a` as Worker `29137605-6bf6-4c2b-8631-5725b9d0d7c1` at 100%; schema remains 0020. No unreleased features or migrations were activated.
-- [ ] Record corrected hosted browser run `35777938239` once complete. [Repair evidence](WORKSPACE-NAVIGATION-HOTFIX.md).
+- [x] Corrected hosted run `35777938239` passes verification and browser jobs. [Repair evidence](WORKSPACE-NAVIGATION-HOTFIX.md).
 
 ## Delivery preparation checkpoint
 
@@ -1252,3 +1252,8 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [x] Final hosted run `35754168633` passes both verification and browser jobs at `a0e6306`; merged into main.
 - [ ] Live release remains gated on independently verified backup and feature-specific operational conditions.
 
+
+### 22 September - requested 100 GB personal capacity
+
+- [x] Prepare [capacity, backup cost and activation proposal](STORAGE-100GB-PROPOSAL.md) for the existing personal library.
+- [ ] Approve recurring budget/verification policy, validate scalable backup operation, resolve cap/recovery gates and activate the exact allowance. Live quota remains 1 GiB.
