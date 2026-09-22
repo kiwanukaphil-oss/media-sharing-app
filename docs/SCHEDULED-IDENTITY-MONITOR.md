@@ -48,3 +48,10 @@ Provider regressions, independent Node-HMAC signature comparisons, R2 delivery t
 - [ ] Collect continued coverage/capacity evidence before broadening the pilot. The observed post-change samples remain limited evidence, not a capacity guarantee for additional identities. No billing change has been made.
 
 At **16:19 UTC**, the same optimised version passed a second real cron: **5 ms CPU**, **3,113 ms wall time**, outcome `ok`, no exceptions. Independent R2 readback reports success with `eventAt=1790007547320` and `receivedAt=1790007549049`; the external health endpoint again returns 200. There are now three observed scheduled successes, with optimised samples of 8 ms and 5 ms. This supports continuing the existing restricted pilot on the verified Free plan; broader identity capacity remains a separate gate. External test-alert receipt was subsequently verified on 22 September.
+
+
+## 22 September continued observation and plan review
+
+At 08:19 UTC the same optimised version succeeded with no exceptions, 10 ms CPU and 3,290 ms wall time. Private bounded-tail evidence is retained in `.sites-runtime/operations/identity-monitor-tail-2026-09-22-0819.json`. This provides continued coverage, but not CPU headroom. The Workers plans dashboard explicitly marks **Free / Current plan**; the billable-usage period on the overview does not establish a paid subscription.
+
+Workers Paid is recommended at [a $5/month minimum plus usage](https://developers.cloudflare.com/workers/platform/pricing/) to remove dependence on the Free 10 ms CPU ceiling. A recurring-budget decision has been requested. No upgrade or purchase has occurred; expansion remains gated.

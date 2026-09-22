@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { build } from 'esbuild';
 
 const compiled = await build({ entryPoints: ['lib/account-recovery.ts', 'lib/account-sessions.ts'], bundle: true, write: false,
@@ -50,6 +50,37 @@ export async function verifyAccountRecovery(database, dispatch) {
   assert.equal(raced[1].status, 'fulfilled');
   const oversized = request('oversize', changedAt, now, secret, { padding: 'x'.repeat(4096) });
   await assert.rejects(recovery.acceptRecoveryEvent(oversized, database, settings, secret, now), /verified/);
+  // Valid delayed delivery is acknowledged without recreating raw provider identity after closure.
+  await sessions.createAccountSession(database, settings, identity('closed-recovery', now), null, now);
+  await recovery.acceptRecoveryEvent(request('closed-recovery'), database, settings, secret, now);
+  await database.prepare('UPDATE people SET disabled_at=? WHERE issuer=? AND subject=?').bind(now,settings.issuer,'closed-recovery').run();
+  const closedBefore=await database.prepare('SELECT * FROM people WHERE issuer=? AND subject=?').bind(settings.issuer,'closed-recovery').first();
+  assert.equal((await recovery.acceptRecoveryEvent(request('closed-recovery',now),database,settings,secret,now)).status,204);
+  assert.deepEqual(await database.prepare('SELECT * FROM people WHERE id=?').bind(closedBefore.id).first(),closedBefore);
+  assert.equal((await database.prepare('SELECT changed_at FROM recovery_watermarks WHERE issuer=? AND subject=?').bind(settings.issuer,'closed-recovery').first()).changed_at,changedAt);
+  const erasedSubject='erased-recovery', erasedDigest=createHash('sha256').update(JSON.stringify([settings.issuer,erasedSubject])).digest('hex');
+  await database.prepare("INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at,disabled_at) VALUES(?,'urn:relay:erased',?,'Deleted member','',?,?)")
+    .bind(crypto.randomUUID(),erasedDigest,now,now).run();
+  assert.equal((await recovery.acceptRecoveryEvent(request(erasedSubject),database,settings,secret,now)).status,204);
+  assert.equal(await database.prepare('SELECT 1 FROM recovery_watermarks WHERE issuer=? AND subject=?').bind(settings.issuer,erasedSubject).first(),null);
+  await database.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES(?,?,?,?,?,?)')
+    .bind(crypto.randomUUID(),settings.issuer,erasedSubject,'Inconsistent fixture','fixture@example.test',now).run();
+  await recovery.acceptRecoveryEvent(request(erasedSubject),database,settings,secret,now);
+  assert.equal(await database.prepare('SELECT 1 FROM recovery_watermarks WHERE issuer=? AND subject=?').bind(settings.issuer,erasedSubject).first(),null);
+  assert.equal((await database.prepare('SELECT credentials_changed_at FROM people WHERE issuer=? AND subject=?').bind(settings.issuer,erasedSubject).first()).credentials_changed_at,0);
+  const raceSubject='closure-event-race', raceDigest=createHash('sha256').update(JSON.stringify([settings.issuer,raceSubject])).digest('hex');
+  await sessions.createAccountSession(database,settings,identity(raceSubject,now),null,now);
+  // Force minimisation immediately before the recovery transaction; authority must be checked in SQL.
+  const closingDatabase={prepare:database.prepare.bind(database),batch:async statements=>{
+    await database.batch([
+      database.prepare("UPDATE people SET issuer='urn:relay:erased',subject=?,verified_email='',display_name='Deleted member',disabled_at=? WHERE issuer=? AND subject=?")
+        .bind(raceDigest,now,settings.issuer,raceSubject),
+      database.prepare('DELETE FROM recovery_watermarks WHERE issuer=? AND subject=?').bind(settings.issuer,raceSubject),
+    ]);
+    return database.batch(statements);
+  }};
+  assert.equal((await recovery.acceptRecoveryEvent(request(raceSubject),closingDatabase,settings,secret,now)).status,204);
+  assert.equal(await database.prepare('SELECT 1 FROM recovery_watermarks WHERE issuer=? AND subject=?').bind(settings.issuer,raceSubject).first(),null);
   if (dispatch) {
     const valid = request('routed-event');
     const result = await dispatch(valid.url, { method: 'POST', headers: Object.fromEntries(valid.headers), body: await valid.text() });

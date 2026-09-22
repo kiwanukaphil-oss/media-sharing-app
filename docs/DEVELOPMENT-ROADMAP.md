@@ -940,21 +940,21 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Archive coordinated backup copy receipts in B2 before acknowledging settlement; retain immutable receipt-version metadata locally. Failed or mismatched archival leaves the run uncertain. Default uncoordinated backups keep their existing upload behaviour.
 - [x] Bind archived evidence to the exact current coordinator run, snapshot, receipt hash and manifest version. Tests reject changed bytes, another run/version and active/uncertain status. Receipt matching never grants erasure or restore cutover.
 - [x] Pass receipt/client tests, all 13 backup/restore tests, workflow access separation, isolated minimisation regression and focused lint. Device-binding/multipart source CI `35701087440` passed verification and browser jobs.
-- [ ] Activate hosted coordination only after schema minimisation review and dedicated-secret handoff; independently retrieve the first archived completion receipt against current coordinator state.
+- [x] Activate hosted coordination after scoped schema review and dedicated-secret handoff; first archived completion receipt independently verified against current coordinator state (22 September, run `35703394048`).
 
 
 ## 22 September 2026 - Independent backup completion inspection
 
 - [x] Add read-only completion inspection using an independently supplied live coordinator reader and complete B2 version catalog. Verify every retained copy-receipt version against the current digest and its exact manifest version, then reread current run state within 30 seconds.
 - [x] Reject incomplete/wrong-bucket catalogs, conflicting or hidden receipt versions, unfinished snapshot uploads, missing manifest versions, altered bytes and changed/stale coordinator observations. Matching repeated versions is allowed only when each verifies. Tests and focused lint pass.
-- [ ] Wire the authenticated live read/download adapters and collect a hosted coordinated receipt after schema/secret activation. The checker is locally verified; no production activation or quiescence claim.
+- [x] Wire authenticated live read/download adapters and verify the first hosted coordinated receipt (22 September, run `35703394048`). No quiescence claim.
 
 
 ## 22 September 2026 - Backup-only schema minimisation review
 
 - [x] Review the exact protocol schema only for global backup bookkeeping: require no fences, account/device admissions or storage effects, validate every global run and reject orphan links/private free text. The full closure schema is not generally approved.
 - [x] Verify actual-schema minimisation preserves shared originals and completed receipt evidence, quarantines an exported active run, and remains repeat-safe. Unsupported account/legacy/storage/fence references still block transformation. Historical inventory reports the precise review scope.
-- [ ] Promote the reviewed additive schema into migrations, rehearse upgrade/recovery, configure the dedicated coordinator secret, then observe a hosted coordinated backup and independent completion readback. Account closure tracking remains disabled throughout this stage.
+- [x] Promote the reviewed schema as migration 0019, rehearse upgrade/recovery, configure the dedicated secret and verify hosted coordinated backup plus independent receipt readback (22 September). Account closure tracking remains disabled.
 
 
 ## 22 September 2026 - Backup coordination migration preparation
@@ -963,7 +963,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Rehearse a fresh production export in isolation: all 21 existing application tables unchanged, four new tables empty, recovery quarantine/integrity verified. No remote migration yet.
 - [x] Complete pre-change backup/restore run `35702440856`: all 25 originals (321,680,743 bytes) independently restored at 08:01 UTC.
 - [x] Add one public coordination switch for the Worker and writer, protected-copy-job-only secret binding, and an independent live D1/B2 receipt review command. Switch remains off; no secret installed yet.
-- [ ] Complete hosted CI, apply/verify the additive migration, install the dedicated secret and observe the first coordinated backup. [Activation record](COORDINATED-BACKUP-ACTIVATION.md) tracks each gate.
+- [x] Complete hosted CI, apply/verify migration 0019, install the dedicated secret and verify first coordinated backup. [Activation record](COORDINATED-BACKUP-ACTIVATION.md) records all gates.
 
 
 ## 22 September 2026 - Backup coordination activation underway
@@ -980,3 +980,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Independently retrieve and verify the archived completion receipt against authenticated current D1 state and B2 immutable manifest metadata; one matching receipt version. No coordinator credential is used by the reader.
 - [x] Read back live scope: one settled global backup, zero unresolved admissions and zero account/device/fence/storage-effect records. Both web origins retain health 200 and private-feed 401; coordinator requires its separate proof (403 without it).
 - [ ] Complete fresh interactive library verification: the available browser has no Relay session and is at the legitimate Auth0 login screen. User sign-in requested; independent backend work continues.
+
+
+## 22 September 2026 - Historical receipt review and delayed recovery protection
+
+- [x] Extend historical inventory to validate typed completion receipts, exact manifest versions and digest-verified bytes; unknown artifacts still fail closed. Actual read-only rerun reconciles 12 SQL versions, 12 manifests and one completion receipt, with zero unpaired SQL versions. Seven older schemas still require review; no deletion/cutover authority.
+- [x] Add transaction-bound recovery-event guards for disabled and minimised identities, including a forced closure immediately before the recovery batch. Signed delayed delivery cannot recreate raw identity watermarks. Locally verified; deployment evidence follows.
+- [x] Observe the optimised monitor at 08:19 UTC: success, no exceptions, 10 ms CPU and 3,290 ms wall time. Cloudflare Workers plans explicitly marks Free as Current plan on 22 September.
+- [ ] Resolve monitoring CPU headroom: the latest success reaches the Free allowance. Recommend Workers Paid at $5/month plus usage; recurring-budget decision requested, no purchase made.

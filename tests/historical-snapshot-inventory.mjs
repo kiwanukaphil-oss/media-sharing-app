@@ -52,4 +52,20 @@ assert.equal(reconciled.originalBytesVerified,false);
 await assert.rejects(reconcileHistoricalManifests({...manifestCatalog,versions:[catalog.versions[0],manifestRecord]},report,async () => manifestText),/missing/);
 await assert.rejects(reconcileHistoricalManifests(manifestCatalog,report,async () => manifestText+' '),/digest/);
 await assert.rejects(reconcileHistoricalManifests(manifestCatalog,{...report,catalogFingerprint:'other'},async () => manifestText),/agree/);
+const completion = { snapshotId: manifest.snapshotId, status: 'copied-awaiting-restore',
+  coordination: {formatVersion:1,runId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}, manifest: manifestRecord };
+const completionText=JSON.stringify(completion);
+const completionRecord={...record('completion',completionText),fileName:fileName.replace('database.sql','copy-receipt.json')};
+const completeCatalog={...manifestCatalog,versions:[...manifestCatalog.versions,completionRecord]};
+const completeReport=await inventoryHistoricalSnapshots(completeCatalog,async entry=>entry.fileId==='completion'?completionText:readPinned(entry));
+assert.equal(completeReport.sqlUploadVersionsInspected,2);
+assert.equal(completeReport.completionReceipts.length,1);
+assert.equal(completeReport.completionReceipts[0].currentSettlementVerified,false);
+await reconcileHistoricalManifests(completeCatalog,completeReport,async()=>manifestText);
+await assert.rejects(inventoryHistoricalSnapshots(completeCatalog,async entry=>entry.fileId==='completion'?completionText+' ':readPinned(entry)),/digest/);
+const wrongCompletion=JSON.stringify({...completion,snapshotId:'different'});
+await assert.rejects(inventoryHistoricalSnapshots({...completeCatalog,versions:[...manifestCatalog.versions,
+  {...record('completion',wrongCompletion),fileName:completionRecord.fileName}]},async entry=>entry.fileId==='completion'?wrongCompletion:readPinned(entry)),/receipt/);
+await assert.rejects(reconcileHistoricalManifests(completeCatalog,{...completeReport,completionReceipts:[
+  {...completeReport.completionReceipts[0],manifest:{...manifestRecord,fileId:'missing'}}]},async()=>manifestText),/missing/);
 console.log('PASS: all pinned SQL versions, old-schema review, private/shared dependencies, tamper and incomplete catalog denial.');

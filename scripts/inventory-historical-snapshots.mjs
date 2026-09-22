@@ -11,6 +11,22 @@ import { reviewMinimisationSchema } from './review-minimisation-schema.mjs';
 
 const snapshotName = /^relay\/snapshots\/\d{4}-\d{2}-\d{2}T[\d-]+Z-[a-f0-9-]{36}\/database\.sql$/;
 
+// A completion receipt is a separate typed artifact, never SQL and never evidence of current writer
+// settlement by itself. Preserve its exact manifest binding for catalog reconciliation below.
+function inspectArchivedCompletion(text, record) {
+  let receipt;
+  try { receipt = JSON.parse(text); } catch { throw new Error('Historical completion receipt is invalid.'); }
+  if (record.size > 16384 || receipt?.status !== 'copied-awaiting-restore' ||
+      record.fileName !== `relay/snapshots/${receipt.snapshotId}/copy-receipt.json` ||
+      receipt.coordination?.formatVersion !== 1 ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(receipt.coordination.runId ?? '') ||
+      receipt.manifest?.fileName !== record.fileName.replace(/copy-receipt\.json$/, 'manifest.json')) {
+    throw new Error('Historical completion receipt requires review.');
+  }
+  return { ...record, runId: receipt.coordination.runId, manifest: receipt.manifest,
+    currentSettlementVerified: false, quiescenceProven: false };
+}
+
 // Inspect only downloaded, digest-verified SQL in a fresh in-memory database. Older schemas are inventoried
 // but explicitly require separate minimisation review; absent modern tables never mean no historical data.
 export function inspectHistoricalSnapshot(sql) {
@@ -56,22 +72,25 @@ export function inspectHistoricalSnapshot(sql) {
 export async function inventoryHistoricalSnapshots(catalog, readPinnedSql) {
   if (catalog?.listingComplete !== true || !Array.isArray(catalog.versions)) throw new Error('Complete backup catalog required.');
   const versions = catalog.versions.filter(record => record.action === 'upload' && record.fileName.startsWith('relay/snapshots/'));
-  const reports = [], ids = new Set();
+  const reports = [], completionReceipts = [], ids = new Set();
   for (const record of versions) {
     if (record.fileName.endsWith('/manifest.json')) continue;
-    if (!snapshotName.test(record.fileName) || !/^[a-f0-9]{64}$/.test(record.sha256 ?? '') ||
-        !Number.isSafeInteger(record.size) || record.size <= 0 || record.size > 16 * 1024 * 1024 ||
+    const completion = record.fileName.endsWith('/copy-receipt.json');
+    const normalizedName = completion ? record.fileName.replace(/copy-receipt\.json$/, 'database.sql') : record.fileName;
+    if (!snapshotName.test(normalizedName) || !/^[a-f0-9]{64}$/.test(record.sha256 ?? '') ||
+        !Number.isSafeInteger(record.size) || record.size <= 0 || record.size > (completion ? 16384 : 16 * 1024 * 1024) ||
         typeof record.fileId !== 'string' || !record.fileId || ids.has(record.fileId))
       throw new Error('Historical snapshot version requires private review.');
     ids.add(record.fileId);
     const sql = await readPinnedSql(record);
     if (typeof sql !== 'string' || Buffer.byteLength(sql) !== record.size ||
         createHash('sha256').update(sql).digest('hex') !== record.sha256) throw new Error('Historical snapshot digest mismatch.');
-    reports.push({fileId:record.fileId,fileName:record.fileName,size:record.size,sha256:record.sha256,...inspectHistoricalSnapshot(sql)});
+    if (completion) completionReceipts.push(inspectArchivedCompletion(sql, record));
+    else reports.push({fileId:record.fileId,fileName:record.fileName,size:record.size,sha256:record.sha256,...inspectHistoricalSnapshot(sql)});
   }
   return {formatVersion:1,mode:'review-only',executable:false,cutoverAllowed:false,
     catalogFingerprint:catalog.fingerprint,sqlUploadVersionsInspected:reports.length,
-    manifestContentsInspected:false,atomicSnapshot:false,snapshots:reports};
+    manifestContentsInspected:false,atomicSnapshot:false,snapshots:reports,completionReceipts};
 }
 
 // Reconcile every manifest version with its exact SQL and original versions, never latest-name aliases.
@@ -118,6 +137,11 @@ export async function reconcileHistoricalManifests(catalog, snapshotReport, read
     referencedSql.add(sql.fileId);
     manifests.push({fileId:record.fileId,fileName:record.fileName,sha256:record.sha256,databaseFileId:sql.fileId});
   }
+  for (const receipt of snapshotReport.completionReceipts ?? []) {
+    const pinned = matchPinned(receipt.manifest);
+    if (!manifests.some(manifest => manifest.fileId === pinned.fileId) ||
+        pinned.fileName !== receipt.fileName.replace(/copy-receipt\.json$/, 'manifest.json')) throw new Error('Historical completion manifest requires review.');
+  }
   return {...snapshotReport,manifestContentsInspected:true,originalBytesVerified:false,manifests,
     sqlVersionsWithoutManifest:snapshotReport.snapshots.filter(snapshot => !referencedSql.has(snapshot.fileId)).map(snapshot => snapshot.fileId),
     originalVersionDependencies:[...originalDependencies].map(([fileId,dependencies]) => ({fileId,manifestFileIds:[...dependencies]}))};
@@ -145,6 +169,7 @@ async function saveHistoricalSnapshotInventory() {
     catalogUnchangedAcrossReads:true},null,2),{flag:'wx',mode:0o600});
   console.log(JSON.stringify({status:'private-historical-inventory-saved',sqlVersions:report.sqlUploadVersionsInspected,
     manifestVersions:report.manifests.length,sqlVersionsWithoutManifest:report.sqlVersionsWithoutManifest.length,
+    completionReceiptVersions:report.completionReceipts.length,
     olderSchemas:report.snapshots.filter(snapshot => !snapshot.minimisationSchemaReviewed).length,
     executable:false,cutoverAllowed:false}));
 }
