@@ -5,7 +5,7 @@ import Link from "next/link";
 import AccountLibraries from "@/components/account-libraries";
 import AccountInvitation from "@/components/account-invitation";
 import AccountDeletion from "@/components/account-deletion";
-import { ArrowLeft, ArrowRight, ShieldCheck, Monitor, LogOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck, Monitor, LogOut, LoaderCircle } from "lucide-react";
 
 type Session = { sessionId: string; displayName: string; verifiedEmail: string; expiresAt: number };
 type SessionEntry = { id: string; createdAt: number; expiresAt: number; sessionMode: "temporary" | "trusted" };
@@ -16,7 +16,10 @@ export default function AccountPage() {
   const [state, setState] = useState<AccountState | null>(null);
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [signingOutId, setSigningOutId] = useState<string | null>(null);
+  const busy = signingOutId !== null;
+  const [sessionsState, setSessionsState] = useState<"loading" | "ready" | "error">("loading");
+  const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
   const [trustBrowser, setTrustBrowser] = useState(false);
 
@@ -25,6 +28,7 @@ export default function AccountPage() {
     const controller = new AbortController();
     const signInResult = new URLSearchParams(window.location.search).get("signin");
     const loadAccount = async () => {
+      setSessionsState("loading");
       try {
         const response = await fetch("/api/auth/session", { signal: controller.signal, cache: "no-store" });
         const data = await response.json() as AccountState & { error?: string };
@@ -39,8 +43,9 @@ export default function AccountPage() {
           if (!response.ok) throw new Error(list.error || "Sessions could not be loaded.");
           setSessions(list.sessions);
         } else setSessions([]);
+        setSessionsState("ready");
       } catch (failure) {
-        if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Please try again.");
+        if (!controller.signal.aborted) { setSessionsState("error"); setError(failure instanceof Error ? failure.message : "Please try again."); }
       }
     };
     void loadAccount();
@@ -49,16 +54,17 @@ export default function AccountPage() {
 
   // Revoke on the server before changing the screen; failures leave the session visible for retry.
   async function signOutSession(id: string) {
-    setBusy(true); setError("");
+    setSigningOutId(id); setError(""); setNotice("");
     try {
       const response = await fetch(`/api/auth/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!response.ok) { const data = await response.json() as { error?: string }; throw new Error(data.error || "Sign-out failed. Please retry."); }
       const result = await response.json() as { providerLogoutUrl?: string };
       if (result.providerLogoutUrl) { window.location.assign(result.providerLogoutUrl); return; }
+      setNotice("Browser signed out.");
       setRevision(value => value + 1);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Please try again.");
-    } finally { setBusy(false); }
+    } finally { setSigningOutId(null); }
   }
 
   return <main className="account-page min-h-screen">
@@ -83,12 +89,16 @@ export default function AccountPage() {
       <a href={`/api/auth/login?session=${trustBrowser ? "trusted" : "temporary"}`} className="account-primary-action mt-6 inline-flex items-center gap-3 rounded-xl px-5 py-3 font-medium">Sign in securely <ArrowRight size={17} /></a>
     </section>}
     {state?.account && <>
-      <section className="rounded-2xl border border-[var(--line)] p-7"><h2 className="text-lg font-semibold">{state.account.displayName}</h2><p className="mt-1 break-words text-sm text-[var(--muted)]">{state.account.verifiedEmail}</p><p className="mt-5 text-sm leading-6 text-[var(--muted)]">Your account is signed in. Your currently connected library remains available from the link above.</p></section>
+      <section className="rounded-2xl border border-[var(--line)] p-7"><h2 className="break-words text-lg font-semibold">{state.account.displayName}</h2>{state.account.displayName !== state.account.verifiedEmail && <p className="mt-1 break-words text-sm text-[var(--muted)]">{state.account.verifiedEmail}</p>}<p className="mt-5 text-sm leading-6 text-[var(--muted)]">Your account is signed in. Your currently connected library remains available from the link above.</p></section>
       <AccountLibraries key={state.account.sessionId} />
       <section className="mt-10" aria-labelledby="sessions-heading"><h2 id="sessions-heading" className="text-lg font-semibold">Signed-in browsers</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Temporary access lasts up to 8 hours; trusted browsers stay signed in for up to 7 days. Signing out this browser also opens secure provider sign-out. Remote sign-out ends its Relay account access. Connected library devices are managed separately in the library.</p>
-        <ul className="mt-5 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] px-5">
-          {sessions.map(session => <li key={session.id} className="flex items-center gap-4 py-5"><Monitor size={20} className="shrink-0 text-[var(--muted)]" /><div className="min-w-0 flex-1"><strong className="text-sm font-medium">{session.id === state.account!.sessionId ? "This browser" : "Another browser"}</strong><p className="mt-1 text-xs text-[var(--muted)]">{session.sessionMode === "temporary" ? "Temporary" : "Trusted"} &middot; Signed in {new Date(session.createdAt).toLocaleString()}</p><p className="mt-1 text-xs text-[var(--muted)]">Expires {new Date(session.expiresAt).toLocaleString()}</p></div><button disabled={busy} onClick={() => void signOutSession(session.id)} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm hover:bg-[var(--surface)]" aria-label={session.id === state.account!.sessionId ? "Sign out this browser" : `Sign out browser signed in ${new Date(session.createdAt).toLocaleString()}`}><LogOut size={16} /><span className="hidden sm:inline">Sign out</span></button></li>)}
-        </ul>
+        {notice && <p role="status" className="mt-4 text-sm text-[var(--muted)]">{notice}</p>}
+        {sessionsState === "loading" && <p role="status" className="mt-5 text-sm text-[var(--muted)]">Checking signed-in browsers...</p>}
+        {sessionsState === "error" && <p className="mt-5 text-sm text-[var(--muted)]">Browser details could not be refreshed. Retry above to see current access.</p>}
+        {sessionsState === "ready" && sessions.length === 0 && <p className="mt-5 text-sm text-[var(--muted)]">No active browsers were returned. Refresh this page to check your account.</p>}
+        {sessionsState === "ready" && sessions.length > 0 && <ul className="mt-5 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] px-5">
+          {sessions.map(session => <li key={session.id} className="flex items-center gap-4 py-5"><Monitor size={20} className="shrink-0 text-[var(--muted)]" /><div className="min-w-0 flex-1"><strong className="text-sm font-medium">{session.id === state.account!.sessionId ? "This browser" : "Another browser"}</strong><p className="mt-1 text-xs text-[var(--muted)]">{session.sessionMode === "temporary" ? "Temporary" : "Trusted"} &middot; Signed in {new Date(session.createdAt).toLocaleString()}</p><p className="mt-1 text-xs text-[var(--muted)]">Expires {new Date(session.expiresAt).toLocaleString()}</p></div><button disabled={busy} onClick={() => void signOutSession(session.id)} className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm hover:bg-[var(--surface)]" aria-label={session.id === state.account!.sessionId ? "Sign out this browser" : `Sign out browser signed in ${new Date(session.createdAt).toLocaleString()}`}>{signingOutId === session.id ? <LoaderCircle size={16} className="spin" /> : <LogOut size={16} />}<span className={signingOutId === session.id ? "" : "hidden sm:inline"}>{signingOutId === session.id ? "Signing out..." : "Sign out"}</span></button></li>)}
+        </ul>}
       </section>
       <AccountDeletion key={`deletion-${state.account.sessionId}`} />
     </>}

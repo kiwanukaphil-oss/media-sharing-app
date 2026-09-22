@@ -1026,3 +1026,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Add all-run reconciliation for global backup records captured in a restored database. Independently verify exact current run/receipt/manifest versions and refuse conflicting or changed bindings. Preserve historical active/uncertain rows and all restore restrictions.
 - [x] Exercise actual migration-0019 fixtures and the real coordinated backup: one historical active run matches independently verified completion evidence. Existing read-only credentials suffice; no live or backup data changes.
 - [x] Add hosted regression coverage and document the private review command in the [backup activation record](COORDINATED-BACKUP-ACTIVATION.md). Full closure and restore cutover remain gated.
+
+
+## 22 September 2026 - Account session feedback
+
+- [x] Show explicit browser-list loading, per-browser sign-out progress and a successful-revocation notice. Hide stale session controls after refresh failure and preserve a clear retry path. Avoid repeating an email as both profile name and subtitle.
+- [x] Pass delayed/failing-response mobile browser checks, current/remote sign-out regressions, TypeScript, focused lint and production build. Mobile rendering inspected.
+- [ ] Deploy and verify the account presentation increment. No authentication or session policy change.

@@ -14,6 +14,9 @@ let signedIn = true;
 let deletionRequest = null;
 let deletionSubmissions = 0;
 let rejectRevocation = true;
+let rejectSessionList = false;
+let sessionListGate = null, revocationGate = null;
+let releaseSessionList = () => {}, releaseRevocation = () => {};
 let libraryConnected = false;
 let claimConfirmations = 0;
 let entries = [currentId, otherId].map(id => ({ id, createdAt: Date.now(), expiresAt: Date.now() + 604800000, sessionMode: id === currentId ? 'temporary' : 'trusted' }));
@@ -28,7 +31,11 @@ try {
     if (url.pathname === '/api/auth/session') return route.fulfill({ json: { enabled: true, account: signedIn ? {
       sessionId: currentId, displayName: 'Morgan Ellis', verifiedEmail: 'morgan@example.test', expiresAt: Date.now() + 604800000,
     } : null } });
-    if (url.pathname === '/api/auth/sessions') return route.fulfill({ json: { currentSessionId: currentId, sessions: entries } });
+    if (url.pathname === '/api/auth/sessions') {
+      if (sessionListGate) await sessionListGate;
+      if (rejectSessionList) return route.fulfill({status:503,json:{error:'Browser refresh is temporarily unavailable.'}});
+      return route.fulfill({ json: { currentSessionId: currentId, sessions: entries } });
+    }
     if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: libraryConnected ? [{ id: 'library', name: 'Family archive', role: 'owner' }] : [], personalSpace: { enabled: true, quotaBytes: 1073741824 } } });
     if (url.pathname === '/api/auth/personal-space') return route.fulfill({ status: 409, json: { error: 'My space is not available right now. Your existing libraries are unchanged.' } });
     if (url.pathname === '/api/auth/owner-claim') return route.fulfill({ json: {
@@ -48,6 +55,7 @@ try {
       return route.fulfill({ json: { request: deletionRequest, ownershipBlockers: [], recentSignIn: true } });
     }
     if (route.request().method() === 'DELETE') {
+      if (revocationGate) await revocationGate;
       if (rejectRevocation) return route.fulfill({ status: 503, json: { error: 'Sign-out is temporarily unavailable. Please retry.' } });
       const id = url.pathname.split('/').at(-1);
       entries = entries.filter(entry => entry.id !== id);
@@ -56,8 +64,12 @@ try {
     }
     return route.abort();
   });
+  sessionListGate = new Promise(resolve => { releaseSessionList = resolve; });
   await page.reload();
   await expect(page.getByText('morgan@example.test', { exact: true })).toBeVisible();
+  await expect(page.getByText('Checking signed-in browsers...', {exact:true})).toBeVisible();
+  await expect(page.getByText('Another browser', {exact:true})).toHaveCount(0);
+  releaseSessionList();
   await expect(page.getByText('Another browser', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Create My space' }).click();
   await expect(page.getByRole('alert')).toContainText('existing libraries are unchanged');
@@ -88,12 +100,23 @@ try {
   await page.screenshot({ path: '.sites-runtime/account-preview/deletion-mobile.png', fullPage: true });
   await page.getByRole('button', { name: 'Withdraw request', exact: true }).click();
   await expect(page.getByText('Your previous request was withdrawn.', { exact: true })).toBeVisible();
+  revocationGate = new Promise(resolve => { releaseRevocation = resolve; });
   await page.getByRole('button', { name: /Sign out browser signed in/ }).click();
+  await expect(page.getByText('Signing out...', {exact:true})).toBeVisible();
+  await expect(page.getByRole('button', {name:'Sign out this browser',exact:true})).toBeDisabled();
+  releaseRevocation();
   await expect(page.getByRole('alert')).toContainText('temporarily unavailable');
   await expect(page.getByText('Another browser', { exact: true })).toBeVisible();
   rejectRevocation = false;
+  rejectSessionList = true;
   await page.getByRole('button', { name: /Sign out browser signed in/ }).click();
+  await expect(page.getByText('Browser signed out.', {exact:true})).toBeVisible();
+  await expect(page.getByText('Browser details could not be refreshed.', {exact:false})).toBeVisible();
   await expect(page.getByText('Another browser', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', {name:'Sign out this browser',exact:true})).toHaveCount(0);
+  rejectSessionList = false;
+  await page.getByRole('button', {name:'Retry',exact:true}).click();
+  await expect(page.getByRole('button', {name:'Sign out this browser',exact:true})).toBeEnabled();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: '.sites-runtime/account-preview/desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out this browser', exact: true }).click();
@@ -107,4 +130,4 @@ try {
   await page.keyboard.press('Tab');
   assert.deepEqual(errors, []);
   console.log('PASS: disabled production routes, responsive account UI, explicit claim preview/cancel/confirm, failed revocation recovery, remote sign-out and current-browser sign-out. UI account data was mocked.');
-} finally { await browser.close(); }
+} finally { releaseSessionList(); releaseRevocation(); await browser.close(); }
