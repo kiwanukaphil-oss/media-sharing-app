@@ -31,9 +31,11 @@ for (const engine of [chromium, firefox, webkit]) {
     await page.getByRole('option', { name: 'My space', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'My space.', exact: true })).toBeVisible();
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
+    await page.waitForLoadState('networkidle');
     await page.getByRole('link', { name: 'Relay home', exact: true }).click();
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toHaveText(/My space/);
+    await page.waitForLoadState('networkidle');
     await page.getByRole('link', { name: 'Account', exact: true }).click();
     await page.getByRole('link', { name: 'Back to library' }).click();
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
@@ -42,6 +44,7 @@ for (const engine of [chromium, firefox, webkit]) {
     await page.getByRole('option', { name: 'Shared archive', exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get('space')).toBe(shared);
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
+    await page.waitForLoadState('networkidle');
     await page.reload();
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
@@ -52,6 +55,7 @@ for (const engine of [chromium, firefox, webkit]) {
     await expect(page.getByRole('heading', { name: 'My space.', exact: true })).toBeVisible();
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
     await page.setViewportSize({ width: 1360, height: 900 });
+    await page.waitForLoadState('networkidle');
     failure = true;
     await page.goto(origin);
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
@@ -61,6 +65,7 @@ for (const engine of [chromium, firefox, webkit]) {
     await page.getByRole('button', { name: 'Retry libraries' }).click();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
     signedIn = false;
+    await page.waitForLoadState('networkidle');
     await page.reload();
     await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Shared library.', exact: true })).toBeVisible();
