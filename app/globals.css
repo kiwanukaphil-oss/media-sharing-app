@@ -264,3 +264,17 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .interrupted-shortcut span { flex: 1; }
 .interrupted-shortcut small { display: block; color: var(--muted); margin-top: 4px; }
 @media (max-width: 600px) { .recent-albums { grid-template-columns: 1fr; gap: 8px; } .recent-album { padding: 12px 14px; } }
+
+.saved-views-dialog { max-width: 480px; }
+.saved-view-list { list-style: none; padding: 0; margin: 18px 0; }
+.saved-view-list li { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.saved-view-open { display: flex; align-items: center; gap: 12px; text-align: left; min-width: 0; flex: 1; padding: 14px 0; font-size: 14px; }
+.saved-view-open span { overflow-wrap: anywhere; }
+.saved-view-open svg { flex-shrink: 0; }
+.saved-view-empty { padding: 16px 0; }
+.saved-view-form label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 9px; }
+.saved-view-form > div { display: flex; gap: 8px; }
+.saved-view-form input { min-width: 0; flex: 1; padding: 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.saved-view-form > p { margin-top: 10px; }
+
+.library-command-row .saved-views-trigger { order: 3; }

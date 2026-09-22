@@ -261,7 +261,8 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 - [ ] **P7-01 — Better retrieval.** Permission-aware type/uploader/date/album/section filters and useful saved views. Requires identity/access foundations; may be brought forward after Phase 2 by recorded decision.
 
   - [x] Bring forward scope-preserving type/uploader filters under the 22 September instruction to complete unblocked work. Existing account/legacy access foundations are verified; no dependency on multipart deletion guarantees. API and browser checks pass locally. [Evidence and remaining release checks](INDEPENDENT-WEB-IMPROVEMENTS.md).
-  - [ ] Finish saved views and hosted/deployed verification.
+  - [x] Implement eight named tab-local views per verified library/actor, with validated filters, no cached results, reload restoration and explicit storage-failure feedback. Unit and local browser checks pass; initial retrieval CI `35713851326` passed both jobs.
+  - [ ] Complete saved-view hosted checks and deployed verification.
 - [ ] **P7-02 — Exact duplicate assistance.** Scope-safe verified-hash matching with reuse choices, no cross-account existence disclosure and no automatic deletion. Requires settled access-scope rules.
 - [ ] **P7-03 — Broader media relationships and previews.** Prioritise RAW/JPEG companions, sidecars, Live Photo components and unsupported-format fallbacks from real demand. Bound preview costs and preserve bytes; disclose import/export limitations.
 - [ ] **P7-04 — Focused home and presentation privacy.** Current-space recent albums and interrupted transfers; evaluate deliberate thumbnail/name concealment for presentations. Concealment is a presentation feature, not authorisation.

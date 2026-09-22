@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+const compiled=await build({entryPoints:['lib/saved-library-views.ts'],bundle:true,write:false,platform:'node',format:'esm'});
+const {readSavedLibraryViews,savedLibraryViewsKey}=await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
+const view={id:crypto.randomUUID(),name:'My recent photos',view:{category:'all',search:'camera',query:{album:'',section:'',dateMode:'uploaded',from:'2026-09-01',to:'',sort:'newest',batch:'',type:'photo',uploader:'me'}}};
+assert.deepEqual(readSavedLibraryViews(JSON.stringify([view])),[view]);
+for(const raw of [null,'{broken',JSON.stringify([view,view]),' '.repeat(12001),JSON.stringify([{...view,view:{...view.view,category:'admin'}}]),JSON.stringify(Array.from({length:9},()=>({...view,id:crypto.randomUUID()})))]) assert.deepEqual(readSavedLibraryViews(raw),[]);
+assert.deepEqual(readSavedLibraryViews(JSON.stringify([{...view,view:{...view.view,query:{...view.view.query,from:'2026-02-31'}}}])),[]);
+const injected={...view,view:{...view.view,space:'another-space',permission:'owner',query:{...view.view.query,space:'another-space',url:'javascript:alert(1)'}}};
+assert.deepEqual(readSavedLibraryViews(JSON.stringify([injected])),[view],'Saved views cannot inject destination, capability or arbitrary URLs.');
+assert.notEqual(savedLibraryViewsKey('space-a','actor-a','account'),savedLibraryViewsKey('space-b','actor-a','account'));
+assert.notEqual(savedLibraryViewsKey('space-a','actor-a','account'),savedLibraryViewsKey('space-a','actor-b','account'));
+assert.notEqual(savedLibraryViewsKey('space-a','actor-a','account'),savedLibraryViewsKey('space-a','actor-a','legacy'));
+console.log('PASS: bounded validated tab views, identity/space namespaces and rejection of malformed scope/capability/URL injection.');
