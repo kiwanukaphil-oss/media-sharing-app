@@ -177,8 +177,8 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
       return Response.json(await changeSpacePerson(database(), accountAccess, device.space_id, id, input.action, input.revision));
     }
     if (resource === "person-invitations" && !id && method === "POST") {
-      const input = await readJson(request, z.object({ email: z.string().trim().email().max(320) }));
-      return Response.json(await createPersonInvitation(database(), accountAccess, device.space_id, input.email));
+      const input = await readJson(request, z.object({ email: z.string().trim().email().max(320), role: z.enum(["member", "editor", "contributor", "viewer"]).default("contributor") }));
+      return Response.json(await createPersonInvitation(database(), accountAccess, device.space_id, input.email, Date.now(), input.role));
     }
     if (resource === "person-invitations" && id && !action && method === "DELETE") return Response.json(await revokePersonInvitation(database(), accountAccess, device.space_id, id));
     throw new ApiError(404, "This people action is unavailable.");

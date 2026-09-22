@@ -1,5 +1,12 @@
 # Direct Cloudflare deployment
 
+## Scoped collaboration roles - 22 September 2026
+
+Worker `7a64bb09-c235-4958-91d9-b0ce10fd2526` is at **100%**, deployed at 12:02 UTC from `2e2c531`. Editor, Contributor and Viewer are available through explicit owner role changes. Current-authority and exact contribution checks cover file mutations, uploads, publication and legacy credentials. Existing members and devices keep their grants; no real membership was changed during verification.
+
+Hosted CI `35724384084` passed both jobs. Both origins returned health/operations 200 and anonymous feed 401. The signed-in owner library still shows three active files and one in Trash; People shows the unchanged owner and the new role selector. No schema, pilot audience, quota, budget or closure-flag change. Invitations still grant Member until the separate migration release.
+
+
 ## Scoped retrieval and presentation - 22 September 2026
 
 Worker `ebf5e35f-a289-4ec8-ae5e-51b430f8f7d2` is at **100%**, deployed 10:20 UTC from `c4c999d`. Adds file-type/own-upload filters, validated tab-local saved views, recent albums/interrupted-transfer shortcuts and a presentation cover that preserves ongoing transfers. No schema, access, budget or closure-flag change. Migration 0019 and coordinated backups remain active.

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { libraryRoleDescription, libraryRoleLabel } from "@/lib/contracts";
 import { requestJson } from "@/lib/api-client";
 
 const storageKey = "relay-pending-person-invitation";
-type Preview = { spaceName: string; email: string; expiresAt: number };
+type Preview = { spaceName: string; email: string; expiresAt: number; role: string };
 
 // Fragment tokens never enter server URLs. Keep one pending link in this tab through hosted sign-in.
 // Reading the preview grants no access; only explicit acceptance creates a membership.
@@ -47,7 +48,7 @@ export default function AccountInvitation({ sessionId }: { sessionId?: string })
     <h2 className="text-lg font-semibold">{preview ? `Join ${preview.spaceName}?` : "Your library invitation"}</h2>
     {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
     {!sessionId && <p className="mt-3 text-sm leading-6">Sign in below with the email address invited by the owner. You will review the library before joining.</p>}
-    {preview && <><p className="mt-3 break-words text-sm leading-6">Join as {preview.email}. You can view, download and upload shared files. Owners manage shared files. The library owners manage membership.</p><p className="mt-3 text-sm leading-6 text-[var(--muted)]">Your personal space and other libraries remain separate. Files you contribute stay in this shared library if you leave.</p><button disabled={busy} className="account-primary-action mt-5 min-h-11 rounded-xl px-4 text-sm" onClick={() => void acceptInvitation()}>Join library</button></>}
+    {preview && <><p className="mt-3 break-words text-sm leading-6">Join as {preview.email} with {libraryRoleLabel(preview.role)} access. {libraryRoleDescription(preview.role)} The library owners manage membership.</p><p className="mt-3 text-sm leading-6 text-[var(--muted)]">Your personal space and other libraries remain separate. Files you contribute stay in this shared library if you leave.</p><button disabled={busy} className="account-primary-action mt-5 min-h-11 rounded-xl px-4 text-sm" onClick={() => void acceptInvitation()}>Join library</button></>}
     <button disabled={busy} className="mt-3 min-h-11 px-4 text-sm" onClick={() => { try { sessionStorage.removeItem(storageKey); } catch { /* No persistent storage was available. */ } setToken(""); setPreview(null); setError(""); }}>Dismiss invitation</button>
   </section>;
 }

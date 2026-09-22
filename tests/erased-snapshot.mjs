@@ -113,6 +113,10 @@ try {
   const backupSql = protocolSql + `
     INSERT INTO closure_write_admissions(id,kind,generation,state,started_at) VALUES('${runId}','backup',0,'active',1);
     INSERT INTO closure_backup_runs(id,snapshot_id,created_at) VALUES('${runId}','${manifest.snapshotId}',1);`;
+  const roleSql=backupSql+'\n'+await readFile('drizzle/0020_tidy_starjammers.sql','utf8');
+  assert.equal(inspectHistoricalSnapshot(roleSql).minimisationSchemaReviewed,true);
+  const roleMinimised=minimiseErasedSnapshot(roleSql,receipt,1000);
+  assert.equal(minimiseErasedSnapshot(roleMinimised.sql,receipt,1000).sql,roleMinimised.sql);
   const backupReview = inspectHistoricalSnapshot(backupSql);
   assert.equal(backupReview.minimisationSchemaReviewed,true);
   assert.equal(backupReview.minimisationReviewScope,'global-backup-only');

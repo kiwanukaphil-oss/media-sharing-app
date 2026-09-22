@@ -7,18 +7,19 @@ import { useActionConfirmation } from "./action-confirmation";
 import { WorkspaceSelect } from "./workspace-select";
 import LegacyAccessReview from "./legacy-access-review";
 
-import { libraryRoleLabel, type LibraryRole } from "@/lib/contracts";
+import { libraryRoleDescription, libraryRoleLabel, type LibraryRole } from "@/lib/contracts";
 
 type Member = { id: string; name: string; email: string | null; role: LibraryRole; revision: number };
 type People = { space: { id: string; name: string }; currentMembershipId: string; role: string; members: Member[];
-  invitations: { id: string; email: string; expiresAt: number }[]; legacyDevices: number | null };
+  invitations: { id: string; email: string; role: string; expiresAt: number }[]; legacyDevices: number | null };
 
 // Person membership controls are separate from legacy pairing and always bind to the displayed space.
 export default function SpacePeople({ spaceId }: { spaceId: string }) {
   const api = useMemo(() => createLibraryApi(spaceId), [spaceId]);
   const [people, setPeople] = useState<People | null>(null);
   const [email, setEmail] = useState("");
-  const [invitation, setInvitation] = useState<{ url: string; email: string } | null>(null);
+  const [invitedRole, setInvitedRole] = useState("contributor");
+  const [invitation, setInvitation] = useState<{ url: string; email: string; role: string } | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,8 +56,8 @@ export default function SpacePeople({ spaceId }: { spaceId: string }) {
   async function createInvitation(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setNotice(""); setInvitation(null);
     try {
-      const result = await api.requestJson<{ token: string; email: string }>("person-invitations", { method: "POST", body: JSON.stringify({ email }) });
-      setInvitation({ url: `${window.location.origin}/join#invite=${result.token}`, email: result.email }); setEmail(""); await refreshPeople();
+      const result = await api.requestJson<{ token: string; email: string; role: string }>("person-invitations", { method: "POST", body: JSON.stringify({ email, role: invitedRole }) });
+      setInvitation({ url: `${window.location.origin}/join#invite=${result.token}`, email: result.email, role: result.role }); setEmail(""); await refreshPeople();
     } catch (failure) { setError(failure instanceof Error ? failure.message : "The invitation could not be created."); }
     finally { setBusy(false); }
   }
@@ -87,10 +88,10 @@ export default function SpacePeople({ spaceId }: { spaceId: string }) {
         {people.role === "owner" && <p className="text-xs leading-5 text-[var(--muted)]">To hand over ownership, make another member an owner first, then leave or change your own role. Relay always keeps at least one account owner.</p>}
       </section>
       {people.role === "owner" && people.legacyDevices !== null && <LegacyAccessReview api={api} count={people.legacyDevices} onChanged={refreshPeople} />}
-      {people.role === "owner" && <section className="mt-8 rounded-2xl border border-[var(--line)] p-5"><h2 className="flex items-center gap-2 font-semibold"><UserPlus size={18} /> Invite a person</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">They will join {people.space.name} as a member: view, download and upload shared files. Owners and editors organise shared files. The link works once, for their verified email, for 7 days.</p>
-        <form className="library-form mt-4" onSubmit={event => void createInvitation(event)}><label>Email address<input type="email" required maxLength={320} autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} /></label><button disabled={busy} className="account-primary-action mt-3 min-h-11 rounded-xl px-4 text-sm">Create invitation link</button></form>
-        {invitation && <div className="mt-5"><p className="break-all text-sm">Share this link with {invitation.email}. No email has been sent.</p><input className="invitation-link mt-2" aria-label="Invitation link" readOnly value={invitation.url} onFocus={event => event.target.select()} /><button className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm" onClick={() => { void navigator.clipboard.writeText(invitation.url).then(() => setNotice("Invitation link copied.")).catch(() => setError("Select and copy the invitation link above.")); }}><Copy size={15} /> Copy link</button></div>}
-        {people.invitations.length > 0 && <ul className="mt-5 divide-y divide-[var(--line)]">{people.invitations.map(invite => <li key={invite.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="break-all text-sm">{invite.email}</p><p className="mt-1 text-xs text-[var(--muted)]">Expires {new Date(invite.expiresAt).toLocaleDateString()}</p></div><button disabled={busy} className="min-h-11 px-2 text-xs" onClick={() => void revokeInvitation(invite.id)}>Revoke</button></li>)}</ul>}
+      {people.role === "owner" && <section className="mt-8 rounded-2xl border border-[var(--line)] p-5"><h2 className="flex items-center gap-2 font-semibold"><UserPlus size={18} /> Invite a person</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Choose their access to {people.space.name}. The link works once, for their verified email, for 7 days. Ownership is granted separately after joining.</p>
+        <div className="mt-4"><WorkspaceSelect label="Invitation role" value={invitedRole} onChange={setInvitedRole} disabled={busy} options={["contributor", "viewer", "editor", "member"].map(role => ({ value: role, label: libraryRoleLabel(role) }))} /><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{libraryRoleDescription(invitedRole)}</p></div><form className="library-form mt-4" onSubmit={event => void createInvitation(event)}><label>Email address<input type="email" required maxLength={320} autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} /></label><button disabled={busy} className="account-primary-action mt-3 min-h-11 rounded-xl px-4 text-sm">Create invitation link</button></form>
+        {invitation && <div className="mt-5"><p className="break-all text-sm">Share this {libraryRoleLabel(invitation.role)} invitation with {invitation.email}. No email has been sent.</p><input className="invitation-link mt-2" aria-label="Invitation link" readOnly value={invitation.url} onFocus={event => event.target.select()} /><button className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm" onClick={() => { void navigator.clipboard.writeText(invitation.url).then(() => setNotice("Invitation link copied.")).catch(() => setError("Select and copy the invitation link above.")); }}><Copy size={15} /> Copy link</button></div>}
+        {people.invitations.length > 0 && <ul className="mt-5 divide-y divide-[var(--line)]">{people.invitations.map(invite => <li key={invite.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="break-all text-sm">{invite.email}</p><p className="mt-1 text-xs text-[var(--muted)]">{libraryRoleLabel(invite.role)} ? Expires {new Date(invite.expiresAt).toLocaleDateString()}</p></div><button disabled={busy} className="min-h-11 px-2 text-xs" onClick={() => void revokeInvitation(invite.id)}>Revoke</button></li>)}</ul>}
       </section>}
     </>}{confirmation}
   </main>;

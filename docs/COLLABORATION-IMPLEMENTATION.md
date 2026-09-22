@@ -81,7 +81,7 @@ The [route integration review](COLLABORATION-ROUTE-REVIEW.md) maps both web and 
 - [x] Align unfinished transfer and publication cancellation, including both publication API entry points, with current organiser authority. Cleanup retains reviewable state after authority loss.
 - [x] Add owner-controlled named Editor changes, last-owner protection, visible Editor labels and role-aware file controls. Claimed legacy credentials map to Member, never Owner; pending invitations issued under old authority expire. Existing invitations still grant Member.
 - [x] Deny unknown account/device roles rather than treating them as upload-capable defaults. No schema migration is required for the additive Editor value; legacy role responses remain Owner/Member.
-- [ ] Complete full hosted and restricted-production verification before describing Editor as live. No production role was changed for these tests.
+- [x] Complete hosted and restricted-production verification of Editor; see the scoped-role release below. No production role was changed for these tests.
 - [ ] Add Contributor/Viewer persistence and enforcement, role-aware invitations, private favourites/history and bounded intake; this increment does not complete Phase 3.
 
 The existing invitation flow reactivates an existing membership ID as Member. Future Contributor work must explicitly explain what a subsequent own-contribution grant restores; the pure policy never infers attribution from a person's email or a newly allocated membership ID.
@@ -94,7 +94,7 @@ Local release checks: production build, TypeScript, web lint, normal API suite, 
 - [x] Revoke explicitly linked legacy credentials on Viewer demotion; subsequent promotion does not revive them. Explain this consequence in the named role-change confirmation.
 - [x] Hide upload/drop affordances and disallow new/resumed local queue actions for the current Viewer space. Exclude Viewer destinations from new publication choices; retain accurate names in existing publication history.
 - [x] Production-build account/API and browser checks passed; hosted Editor CI `35716768570` passed both jobs. Viewer hosted checks and deployment remain outstanding.
-- [ ] Complete hosted Viewer verification, publication demotion-race checks and restricted production baseline checks. No real membership changes are part of release verification.
+- [x] Complete hosted Viewer verification, publication demotion-race checks and restricted production baseline checks. No real membership changes are part of release verification.
 
 Already issued signed URLs and bytes in flight cannot be recalled by this role change. New part requests and ready-state commits require current upload authority. This is separate from the pending provider-specific account-erasure guarantee.
 
@@ -105,6 +105,14 @@ Already issued signed URLs and bytes in flight cannot be recalled by this role c
 - [x] Return per-file edit capability and distinguish selection from album administration in the web UI. Mixed selections explain the restriction instead of silently applying a permitted subset.
 - [x] Add an explicit Contributor grant and a compact role selector. Its confirmation explains that earlier contributions of the same reactivated membership are included; a new membership or a matching email never grants old attribution.
 - [x] Built Worker account API suite and isolated authority tests passed. Viewer hosted CI `35717310199` passed both jobs.
-- [ ] Complete final browser, hosted and deployed verification. Invitations still grant compatibility Member until the next increment.
+- [x] Complete final browser, hosted and deployed role verification. Invitations still grant compatibility Member until the next increment.
 
 No schema or real membership changes were performed during this increment. The separate provider erasure question still gates account closure; it does not gate these additive roles in the existing pilot.
+
+## Scoped roles released - 22 September, 12:02 UTC
+
+- [x] Editor, Contributor and Viewer hosted checks and restricted-pilot deployment verified. Source `2e2c531`, hosted run `35724384084`, live Worker `7a64bb09-c235-4958-91d9-b0ce10fd2526` at 100%.
+- [x] Existing owner library and role choices verified through the signed-in browser. No real membership was changed; representative-role mutations are verified in isolated built-Worker tests.
+- [ ] Role-aware invitations are implemented locally with additive migration 0020; old links keep Member, new web links default to Contributor, and Owner is never an invitation grant. Local final checks and hosted/deployed verification are in progress.
+
+Earlier increment checklists retain their original local/deployment context; this release record supersedes their outstanding role-release checks. Phase 3 still requires invitation release, private favourites/activity and bounded guest intake.

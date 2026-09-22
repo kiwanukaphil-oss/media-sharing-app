@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 const baseDigest = 'b59ead9f977608a709cc1569f7fa90b6427f18b12908bb3babc57dad12902201';
 const protocolDigest = '94b6d4de5174007726b87356cec7f5f54272cc2e9d5b34c941f24c0041ab36e5';
+// Migration 0020 adds only the bounded invitation role; expiry/revocation and identity minimisation are unchanged.
+const invitationRoleDigest = '24c63d1cc974e20d141decb13ad25444222e3541c1917386aa22339528989188';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 // Review a deliberately narrow activation stage: global backup runs contain only opaque run/snapshot
@@ -11,7 +13,7 @@ export function reviewMinimisationSchema(database, shape) {
   const schemaDigest = createHash('sha256').update(JSON.stringify(shape)).digest('hex');
   if (schemaDigest === baseDigest) return { accepted: true, scope: 'migration-0018', schemaDigest };
   const denied = { accepted: false, scope: 'requires-review', schemaDigest };
-  if (schemaDigest !== protocolDigest) return denied;
+  if (![protocolDigest, invitationRoleDigest].includes(schemaDigest)) return denied;
   if (database.prepare(`SELECT (SELECT COUNT(*) FROM closure_fences) +
       (SELECT COUNT(*) FROM closure_storage_effects) + (SELECT COUNT(*) FROM closure_write_admissions
       WHERE kind<>'backup' OR person_id IS NOT NULL OR device_id IS NOT NULL) AS n`).get().n !== 0) return denied;

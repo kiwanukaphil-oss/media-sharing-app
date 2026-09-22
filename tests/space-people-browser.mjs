@@ -44,7 +44,8 @@ try {
     if (url.pathname === '/api/person-invitations') {
       assert.equal(url.searchParams.get('space'), space);
       assert.equal(route.request().postDataJSON().email, 'alex@example.test');
-      return route.fulfill({ json: { token, email: 'alex@example.test' } });
+      assert.equal(route.request().postDataJSON().role,'contributor');
+      return route.fulfill({ json: { token, email: 'alex@example.test',role:'contributor' } });
     }
     if (url.pathname === '/api/auth/session') return route.fulfill({ json: { enabled: true, account: signedIn ? { sessionId: owner, displayName: 'Alex', verifiedEmail: 'alex@example.test' } : null } });
     if (url.pathname === '/api/auth/sessions') return route.fulfill({ json: { sessions: [] } });
@@ -55,7 +56,7 @@ try {
     }
     if (url.pathname === '/api/auth/invitation-preview') {
       assert.equal(route.request().headers()['x-relay-invitation'], token);
-      return route.fulfill({ json: { spaceName: 'Family archive', email: 'alex@example.test', expiresAt: Date.now() + 604800000 } });
+      return route.fulfill({ json: { spaceName: 'Family archive', email: 'alex@example.test', role:'contributor', expiresAt: Date.now() + 604800000 } });
     }
     if (url.pathname === '/api/auth/invitation-accept') {
       acceptances++; return route.fulfill({ json: { spaceId: space } });

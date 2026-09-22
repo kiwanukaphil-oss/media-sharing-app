@@ -39,6 +39,7 @@ export async function verifySpacePeople(database, dispatch) {
   assert.equal((await request(guest, 'auth/invitation-preview', 'POST', undefined, { ...header, Origin: 'https://evil.example' })).status, 403);
   const preview = await request(guest, 'auth/invitation-preview', 'POST', undefined, header);
   assert.equal(preview.data.spaceName, 'People fixture');
+  assert.equal(preview.data.role,'contributor');
   assert.equal((await request(guest, scoped('feed'))).status, 403, 'Preview cannot grant access');
   const joined = await Promise.allSettled(Array.from({ length: 3 }, () => people.acceptPersonInvitation(database, guest, invite.data.token, now + 100)));
   assert.equal(joined.filter(result => result.status === 'fulfilled').length, 1);
@@ -127,6 +128,21 @@ export async function verifySpacePeople(database, dispatch) {
   await database.prepare('UPDATE person_invitations SET space_id=? WHERE id=?').bind(personalSpace, malformed.id).run();
   await assert.rejects(people.previewPersonInvitation(database, stranger, malformed.token));
   await assert.rejects(people.acceptPersonInvitation(database, stranger, malformed.token));
+  for(const role of ['viewer','editor','contributor','member']) {
+    const recipient=await login('role-'+role);
+    const issued=await request(remaining,scoped('person-invitations'),'POST',{email:recipient.verifiedEmail,role});
+    assert.equal(issued.status,200);
+    const headers={'X-Relay-Invitation':issued.data.token};
+    assert.equal((await request(recipient,'auth/invitation-preview','POST',undefined,headers)).data.role,role);
+    assert.equal((await request(recipient,'auth/invitation-accept','POST',undefined,headers)).status,200);
+    assert.equal((await request(recipient,scoped('session'))).data.role,role);
+  }
+  assert.equal((await request(remaining,scoped('person-invitations'),'POST',{email:'no-owner@example.test',role:'owner'})).status,400);
+  const malformedRoleRecipient=await login('malformed-role');
+  const invalidRole=await people.createPersonInvitation(database,remaining,space,malformedRoleRecipient.verifiedEmail);
+  await database.prepare("UPDATE person_invitations SET role='owner' WHERE id=?").bind(invalidRole.id).run();
+  await assert.rejects(people.previewPersonInvitation(database,malformedRoleRecipient,invalidRole.token));
+  await assert.rejects(people.acceptPersonInvitation(database,malformedRoleRecipient,invalidRole.token));
   const pending = await people.createPersonInvitation(database, remaining, space, 'future@example.test');
   const capacityNow = Date.now();
   const existingInvites = (await database.prepare('SELECT COUNT(*) AS n FROM person_invitations WHERE space_id=? AND revoked_at IS NULL AND accepted_at IS NULL AND expires_at>?').bind(space, capacityNow).first()).n;

@@ -89,6 +89,7 @@ export const personInvitations = sqliteTable("person_invitations", {
   spaceId: text("space_id").notNull().references(() => spaces.id),
   createdBy: text("created_by").notNull().references(() => spaceMemberships.id),
   email: text("email").notNull(),
+  role: text("role").notNull().default("member"),
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
   revokedAt: integer("revoked_at"),

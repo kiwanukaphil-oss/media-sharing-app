@@ -20,7 +20,7 @@ export async function listSpacePeople(database: D1Database, session: SpacePerson
     CASE WHEN ? = 'owner' OR p.id = ? THEN p.verified_email ELSE NULL END AS email
     FROM space_memberships m JOIN people p ON p.id = m.person_id WHERE m.space_id = ? AND m.revoked_at IS NULL
     AND p.disabled_at IS NULL ORDER BY m.created_at, m.id LIMIT 100`).bind(own.role, session.personId, spaceId).all();
-  const invitations = own.role === "owner" ? (await database.prepare(`SELECT id, email, expires_at AS expiresAt FROM person_invitations
+  const invitations = own.role === "owner" ? (await database.prepare(`SELECT id, email, role, expires_at AS expiresAt FROM person_invitations
     WHERE space_id = ? AND revoked_at IS NULL AND accepted_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 20`)
     .bind(spaceId, now).all()).results : [];
   const legacy = own.role === "owner" ? await database.prepare(`SELECT COUNT(*) AS count FROM devices
@@ -63,21 +63,22 @@ export async function changeSpacePerson(database: D1Database, session: SpacePers
   return { changed: true };
 }
 
-// Allocate one bounded, email-bound invitation; it grants Member access only after the recipient confirms.
-export async function createPersonInvitation(database: D1Database, session: SpacePersonSession, spaceId: string, email: string, now = Date.now()) {
+// Bind a bounded invitation to a reviewed non-owner role; older callers/invitations retain Member access.
+export async function createPersonInvitation(database: D1Database, session: SpacePersonSession, spaceId: string, email: string, now = Date.now(), role: "member" | "editor" | "contributor" | "viewer" = "member") {
   const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
   const id = crypto.randomUUID();
   const normalizedEmail = email.trim().toLowerCase();
+  if (!["member", "editor", "contributor", "viewer"].includes(role)) throw new AccountError(400, "Choose a non-owner invitation role.");
   const admission = accountClosureCommitAuthority(session);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || normalizedEmail.length > 320) throw new AccountError(400, "Enter a valid email address.");
-  const result = await database.prepare(`INSERT INTO person_invitations (id, token_hash, space_id, created_by, email, created_at, expires_at)
-    SELECT ?, ?, m.space_id, m.id, ?, ?, ? FROM space_memberships m WHERE m.person_id = ? AND m.space_id = ? AND m.role = 'owner'
+  const result = await database.prepare(`INSERT INTO person_invitations (id, token_hash, space_id, created_by, email, created_at, expires_at, role)
+    SELECT ?, ?, m.space_id, m.id, ?, ?, ?, ? FROM space_memberships m WHERE m.person_id = ? AND m.space_id = ? AND m.role = 'owner'
     AND m.revoked_at IS NULL AND ${sharedSpace} AND ${liveSession}
     AND (SELECT COUNT(*) FROM person_invitations i WHERE i.space_id = m.space_id AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?) < 20
     AND NOT EXISTS (SELECT 1 FROM person_invitations i WHERE i.space_id = m.space_id AND i.email = ? AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?) AND ${admission.sql}`)
-    .bind(id, await digest(token), normalizedEmail, now, now + inviteLifetime, session.personId, spaceId, session.sessionId, session.personId, now, now, normalizedEmail, now, ...admission.bindings).run();
+    .bind(id, await digest(token), normalizedEmail, now, now + inviteLifetime, role, session.personId, spaceId, session.sessionId, session.personId, now, now, normalizedEmail, now, ...admission.bindings).run();
   if (!result.meta.changes) throw new AccountError(409, "An invitation may already exist, the invitation limit was reached, or your access changed. Refresh and try again.");
-  return { id, token, email: normalizedEmail, expiresAt: now + inviteLifetime };
+  return { id, token, email: normalizedEmail, role, expiresAt: now + inviteLifetime };
 }
 
 // Revocation is owner-scoped and does not reveal foreign invitation identifiers.
@@ -91,7 +92,7 @@ export async function revokePersonInvitation(database: D1Database, session: Spac
 }
 
 // Reusable SQL checks live issuer authority and recipient identity both in preview and in the accepting write.
-const eligibleInvitation = `m.space_id = i.space_id AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?
+const eligibleInvitation = `m.space_id = i.space_id AND i.role IN ('member','editor','contributor','viewer') AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?
   AND m.revoked_at IS NULL AND m.role = 'owner' AND issuer.disabled_at IS NULL AND ${sharedSpace}
   AND ${liveSession} AND i.email = (SELECT lower(verified_email) FROM people WHERE id = ?)
   AND NOT EXISTS (SELECT 1 FROM space_memberships old WHERE old.space_id = i.space_id AND old.person_id = ?
@@ -101,12 +102,12 @@ const eligibleInvitation = `m.space_id = i.space_id AND i.revoked_at IS NULL AND
 // Preview reveals the destination only to the invited, verified account and never grants membership.
 export async function previewPersonInvitation(database: D1Database, session: SpacePersonSession, token: string, now = Date.now()) {
   if (!credentialPattern.test(token)) throw new AccountError(404, "This invitation is not available to this account.");
-  const invitation = await database.prepare(`SELECT s.id AS spaceId, s.name AS spaceName, i.email, i.expires_at AS expiresAt
+  const invitation = await database.prepare(`SELECT s.id AS spaceId, s.name AS spaceName, i.email, i.role, i.expires_at AS expiresAt
     FROM person_invitations i JOIN spaces s ON s.id = i.space_id JOIN space_memberships m ON m.id = i.created_by
     JOIN people issuer ON issuer.id = m.person_id WHERE i.token_hash = ? AND ${eligibleInvitation}`)
     .bind(await digest(token), now, session.sessionId, session.personId, now, session.personId, session.personId).first();
   if (!invitation) throw new AccountError(404, "This invitation expired, was used or is for a different verified account.");
-  return { ...invitation, role: "member" };
+  return invitation;
 }
 
 // Consume and attach membership in one transaction. An older invitation cannot resurrect removed access.
@@ -122,8 +123,8 @@ export async function acceptPersonInvitation(database: D1Database, session: Spac
         WHERE i.token_hash = ? AND ${eligibleInvitation}) AND ${admission.sql} RETURNING space_id AS spaceId`)
       .bind(now, session.personId, operation, hash, now, session.sessionId, session.personId, now, session.personId, session.personId, ...admission.bindings),
     database.prepare(`INSERT INTO space_memberships (id, person_id, space_id, role, created_at)
-      SELECT ?, ?, space_id, 'member', ? FROM person_invitations WHERE token_hash = ? AND accepted_by = ? AND accepted_operation = ?
-      ON CONFLICT(person_id, space_id) DO UPDATE SET role = 'member', revoked_at = NULL, revision = space_memberships.revision + 1`)
+      SELECT ?, ?, space_id, role, ? FROM person_invitations WHERE token_hash = ? AND accepted_by = ? AND accepted_operation = ?
+      ON CONFLICT(person_id, space_id) DO UPDATE SET role = excluded.role, revoked_at = NULL, revision = space_memberships.revision + 1`)
       .bind(crypto.randomUUID(), session.personId, now, hash, session.personId, operation),
     database.prepare(`INSERT INTO membership_events (id, space_id, actor_id, membership_id, action, created_at)
       SELECT ?, m.space_id, ?, m.id, 'join', ? FROM space_memberships m JOIN person_invitations i ON i.space_id = m.space_id
