@@ -8,7 +8,8 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Cho
 const origin = `http://127.0.0.1:${port}`;
 const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
-const closureTrackingChecks = process.argv.includes('--closure-tracking');
+const closureEntryChecks = process.argv.includes('--closure-entrypoints');
+const closureTrackingChecks = process.argv.includes('--closure-tracking') || closureEntryChecks;
 const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks;
 const backupCoordinationChecks = process.argv.includes('--backup-coordination');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
@@ -61,6 +62,9 @@ try {
   } else if (servePreview) {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
+  } else if (closureEntryChecks) {
+    const {verifyClosureEntryPoints}=await import('../tests/closure-entrypoints.mjs');
+    await verifyClosureEntryPoints(database,(url,options)=>emulator.dispatchFetch(url,options),origin);
   } else if (accountAccessChecks) {
     const { verifyAccountDeletion } = await import('../tests/account-deletion.mjs');
     await verifyAccountDeletion(database, (url, options) => emulator.dispatchFetch(url, options));

@@ -7,13 +7,16 @@ const {beginApprovedClosureFence}=await import(`data:text/javascript;base64,${Bu
 // Pair a disposable legacy owner through the actual built Worker, then fence its positively linked
 // person. An already-issued invitation must not create a new credential after that transaction.
 export async function verifyClosureEntryPoints(database,dispatch,origin) {
-  const connect=await dispatch(`${origin}/api/connect`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
+  // Independent fixture traffic must not share the authentication rate budget consumed by earlier
+  // account tests. Keep real production limits enabled and use an isolated documentation-range IP.
+  const fixtureDispatch=(url,options={})=>dispatch(url,{...options,headers:{...options.headers,'CF-Connecting-IP':'192.0.2.201'}});
+  const connect=await fixtureDispatch(`${origin}/api/connect`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
     body:JSON.stringify({name:'Closure fixture',spaceName:'Closure fixture'})});
   assert.equal(connect.status,200);
   const cookie=connect.headers.get('set-cookie').split(';')[0];
-  const sessionResponse=await dispatch(`${origin}/api/session`,{headers:{Cookie:cookie}});
+  const sessionResponse=await fixtureDispatch(`${origin}/api/session`,{headers:{Cookie:cookie}});
   const session=await sessionResponse.json();
-  const invitationResponse=await dispatch(`${origin}/api/invitations`,{method:'POST',headers:{Cookie:cookie,Origin:origin}});
+  const invitationResponse=await fixtureDispatch(`${origin}/api/invitations`,{method:'POST',headers:{Cookie:cookie,Origin:origin}});
   assert.equal(invitationResponse.status,200);
   const invitation=await invitationResponse.json();
   const prefix=crypto.randomUUID(),person=prefix+'-owner',other=prefix+'-other',membership=prefix+'-member';
@@ -32,13 +35,13 @@ export async function verifyClosureEntryPoints(database,dispatch,origin) {
   await beginApprovedClosureFence(database,{id:prefix+'-fence',personId:person,requestId:request,requestRevision:now-1,
     issuer,subject:person,planDigest:'a'.repeat(64),decisionDigest:'b'.repeat(64),approvalDigest:'c'.repeat(64),authorisedAt:now},now);
   for(const endpoint of ['connect','native/connect']) {
-    const response=await dispatch(`${origin}/api/${endpoint}`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
+    const response=await fixtureDispatch(`${origin}/api/${endpoint}`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
       body:JSON.stringify({name:'Denied late pairing',invitation:invitation.token})});
     assert.equal(response.status,410);
   }
   assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM devices WHERE space_id=?').bind(session.space.id).first()).n,before);
   assert.equal((await database.prepare('SELECT disabled_at FROM people WHERE id=?').bind(other).first()).disabled_at,null);
-  const denied=await dispatch(`${origin}/api/session`,{headers:{Cookie:cookie}});
+  const denied=await fixtureDispatch(`${origin}/api/session`,{headers:{Cookie:cookie}});
   assert.equal(denied.status,401);
   console.log('PASS: actual closure fence blocks pre-issued browser/native pairing invitations and linked credentials without disabling the retained owner.');
 }

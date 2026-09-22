@@ -116,3 +116,5 @@ No schema or real membership changes were performed during this increment. The s
 - [ ] Role-aware invitations are implemented locally with additive migration 0020; old links keep Member, new web links default to Contributor, and Owner is never an invitation grant. Local final checks and hosted/deployed verification are in progress.
 
 Earlier increment checklists retain their original local/deployment context; this release record supersedes their outstanding role-release checks. Phase 3 still requires invitation release, private favourites/activity and bounded guest intake.
+
+Invitation hosted run `35725104303` passed browser checks but failed the final closure-entry fixture because preceding authentication fixtures consumed its shared IP rate budget (429 instead of the expected fenced-invitation 410). The independent fixture now uses its own documentation-range test IP; production limits remain unchanged. Migration 0020 is still held pending the corrected hosted run.
