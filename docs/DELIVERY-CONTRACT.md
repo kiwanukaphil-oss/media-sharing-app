@@ -113,3 +113,5 @@ Format and save semantics reviewed against [PKWARE ZIP specification](https://pk
 Hosted run `35749765799` passed verification and browser jobs at `c0a5151` for the delivery lifecycle/schema increment. Earlier `35749339230` passed verification and delivery browser checks but failed a repeated folder-import browser step; the unchanged folder workflow passed locally and in the subsequent complete hosted run. Package changes require their own hosted run.
 
 Package run `35750453833` passed verification but caught a mobile selection-toolbar overflow in the album-section browser. The new package action exceeded the old no-wrap toolbar. Wrapping is restored; the affected real album-section, library-package and delivery-package browser tests pass locally. A corrected hosted run is required before merge.
+
+Corrected hosted package run `35751118759` passes verification and browser jobs at `5c66996`; package work is merged into main with production unchanged. The full 2 GiB generated-stream writer test also passes locally.
