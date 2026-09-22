@@ -25,7 +25,8 @@ function selectionGuard(state: "any" | "active" | "trashed" = "any") {
 async function manageAlbums(request: Request, device: ActiveDevice, id?: string) {
   if (request.method === "GET" && !id) {
     const albums = await database().prepare(`SELECT a.id, a.name, a.description, a.created_at AS createdAt, a.archived_at AS archivedAt,
-      a.deleted_at AS deletedAt, a.revision, COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count
+      a.deleted_at AS deletedAt, a.revision, COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count,
+      MAX(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN MAX(m.created_at,a.created_at) ELSE a.created_at END) AS latestUploadAt
       FROM albums a LEFT JOIN album_media am ON am.album_id = a.id LEFT JOIN media m ON m.id = am.media_id
       WHERE a.space_id = ? AND a.deleted_at IS NULL GROUP BY a.id ORDER BY a.archived_at IS NOT NULL, a.name COLLATE NOCASE, a.id`).bind(device.space_id).all<Album>();
     const sections = await database().prepare(`SELECT s.id, s.album_id AS albumId, s.name, s.position,

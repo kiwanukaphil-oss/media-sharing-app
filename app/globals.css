@@ -240,3 +240,27 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 
 /* Keep account access and invitation guidance distinct on narrow signed-out screens. */
 .welcome-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+/* Neutral presentation cover conceals names, thumbnails, notices and queue details together. */
+.presentation-shield { min-height: 100dvh; display: grid; place-items: center; padding: 28px; background: var(--surface); }
+.presentation-shield-card { width: min(100%, 440px); text-align: center; }
+.presentation-shield-symbol { display: inline-grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--line); border-radius: 20px; margin-bottom: 28px; color: var(--muted); }
+.presentation-shield h1 { font-size: clamp(28px, 5vw, 40px); letter-spacing: -.04em; margin: 12px 0 16px; }
+.presentation-shield p { line-height: 1.7; color: var(--muted); }
+.presentation-shield .button { margin: 26px auto; }
+.presentation-shield .small-muted { max-width: 360px; margin-inline: auto; }
+
+.presentation-shield .eyebrow { justify-content: center; }
+.library-overview { margin: 0 0 24px; }
+.library-overview h2 { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+.recent-albums { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.recent-album { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; text-align: left; }
+.recent-album:hover { background: var(--surface); border-color: var(--accent); }
+.recent-album > span { min-width: 0; flex: 1; }
+.recent-album strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.recent-album small { display: block; margin-top: 5px; font-size: 11px; color: var(--muted); }
+.recent-album > svg { flex-shrink: 0; color: var(--muted); }
+.interrupted-shortcut { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; margin-bottom: 18px; text-align: left; width: 100%; font-size: 13px; }
+.interrupted-shortcut span { flex: 1; }
+.interrupted-shortcut small { display: block; color: var(--muted); margin-top: 4px; }
+@media (max-width: 600px) { .recent-albums { grid-template-columns: 1fr; gap: 8px; } .recent-album { padding: 12px 14px; } }

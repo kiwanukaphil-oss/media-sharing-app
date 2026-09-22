@@ -19,9 +19,9 @@ const sha256 = createHash('sha256').update(bytes).digest('hex');
 const batch = randomUUID();
 
 // Real multipart transfers ensure organisation never substitutes or rewrites original object bytes.
-async function upload(name, albumId, capturedAt) {
+async function upload(name, albumId, capturedAt, mime = 'application/octet-stream') {
   const id = randomUUID();
-  await json(await api('uploads', member, 'POST', { id, name, mime: 'application/octet-stream', size: bytes.length, sha256, category: 'original', albumId, capturedAt, uploadBatch: batch }));
+  await json(await api('uploads', member, 'POST', { id, name, mime, size: bytes.length, sha256, category: 'original', albumId, capturedAt, uploadBatch: batch }));
   const partLink = await json(await api(`uploads/${id}/part`, member, 'POST', { number: 1 }));
   const part = await fetch(new URL(partLink.url, origin), { method: 'PUT', headers: { Origin: origin, Cookie: member }, body: bytes });
   assert.equal(part.status, 200);
@@ -32,6 +32,14 @@ async function upload(name, albumId, capturedAt) {
 const first = await upload('camera-one.raw', album.id, '2024-02-29T23:45:00');
 const second = await upload('camera-two.raw', album.id, '1960-01-01T00:00:00');
 const loose = await upload('unorganised.raw');
+assert.equal((await json(await api('feed?uploader=me', member))).total, 3);
+assert.equal((await json(await api('feed?uploader=me', owner))).total, 0);
+assert.equal((await json(await api('feed?uploader=me&type=other', stranger))).total, 0);
+assert.equal((await json(await api('feed?type=other', member))).total, 3);
+assert.equal((await json(await api('feed?type=photo', member))).total, 0);
+assert.equal((await json(await api('feed?type=video', member))).total, 0);
+assert.equal((await api('feed?type=unknown', member)).status, 400);
+assert.equal((await api('feed?uploader=another-account', member)).status, 400);
 const feed = async query => json(await api(`feed?${query || ''}`, owner));
 const selected = async ids => (await feed()).items.filter(item => ids.includes(item.id)).map(item => ({ id: item.id, expectedRevision: item.revision }));
 const organise = async (action, ids, albumId) => json(await api('library/organise', owner, 'POST', { action, albumId, files: await selected(ids) }));
@@ -97,4 +105,10 @@ assert.equal((await api('library/organise', owner, 'POST', { action: 'add', albu
 assert.equal((await feed()).items.find(file => file.id === second).revision, mixedBefore.revision, 'A stale bulk selection must leave every other file unchanged.');
 const crossOrigin = await fetch(`${origin}/api/library/rename`, { method: 'POST', headers: { Cookie: owner, Origin: 'https://untrusted.example', 'Content-Type': 'application/json' }, body: JSON.stringify({ files }) });
 assert.equal(crossOrigin.status, 403);
+const photo = await upload('filter-photo.png', undefined, undefined, 'image/png');
+const video = await upload('filter-video.webm', undefined, undefined, 'video/webm');
+assert.deepEqual((await feed('type=photo')).items.map(item=>item.id),[photo]);
+assert.deepEqual((await feed('type=video')).items.map(item=>item.id),[video]);
+assert.equal((await feed('type=photo&uploader=me')).total,0);
+assert.deepEqual((await json(await api('feed?type=video&uploader=me',member))).items.map(item=>item.id),[video]);
 console.log('PASS: direct album uploads, multiple memberships, permissions, tenant isolation, atomic/stale renames, extension protection, original-name search, download names and bytes, dates, pagination, batch filtering, Trash membership retention, album archive/remove/restore, CSRF.');

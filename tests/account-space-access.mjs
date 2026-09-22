@@ -92,6 +92,19 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.equal(feed.status, 200);
   assert.equal(feed.data.items[0].deviceName, 'alice');
   assert.equal(feed.data.items[0].id, upload.id);
+  assert.equal((await request(aliceOtherBrowser, scoped('feed?uploader=me'))).data.total, 1);
+  assert.equal((await request(bob, scoped('feed?uploader=me'))).data.total, 0);
+  // A recorded claim attributes older uploads to this exact membership without guessing from names.
+  const legacyId = crypto.randomUUID();
+  await database.prepare("INSERT INTO devices (id,space_id,name,token_hash,role,created_at,expires_at) VALUES (?,?,'alice',?,'owner',?,?)")
+    .bind(legacyId,space,crypto.randomUUID(),now,now+60000).run();
+  await database.prepare('UPDATE media SET device_id=? WHERE id=?').bind(legacyId,upload.id).run();
+  assert.equal((await request(alice, scoped('feed?uploader=me'))).data.total, 0, 'Matching device name is not attribution.');
+  await database.prepare('INSERT INTO legacy_owner_claims (device_id,membership_id,session_id,claimed_at) VALUES (?,?,?,?)')
+    .bind(legacyId,membership,alice.sessionId,now).run();
+  assert.equal((await request(aliceOtherBrowser, scoped('feed?uploader=me'))).data.total, 1);
+  assert.equal((await request(bob, scoped('feed?uploader=me'))).data.total, 0);
+  await database.prepare('UPDATE media SET device_id=? WHERE id=?').bind(first.data.deviceId,upload.id).run();
   const download = await request(bob, scoped(`media/${upload.id}/link`));
   assert.equal(download.status, 200);
   assert.equal(new URL(download.data.url, settings.appOrigin).searchParams.get('space'), space);

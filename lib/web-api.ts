@@ -16,6 +16,22 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   const values: (string | number)[] = [device.space_id];
   let where = `media.space_id = ? AND media.status ${category === "trash" ? "IN ('ready', 'deleting')" : "= 'ready'"} AND media.archived_at IS ${category === "trash" ? "NOT " : ""}NULL`;
   if (category === "original" || category === "final") { where += " AND media.category = ?"; values.push(category); }
+  const mediaType = query.get("type") || "";
+  if (!["", "photo", "video", "other"].includes(mediaType)) throw new ApiError(400, "Choose a valid file type.");
+  if (mediaType === "photo") where += " AND media.mime LIKE 'image/%'";
+  if (mediaType === "video") where += " AND media.mime LIKE 'video/%'";
+  if (mediaType === "other") where += " AND media.mime NOT LIKE 'image/%' AND media.mime NOT LIKE 'video/%'";
+  const uploader = query.get("uploader") || "";
+  if (!["", "me"].includes(uploader)) throw new ApiError(400, "Choose a valid uploader filter.");
+  if (uploader === "me") {
+    // Account ownership uses this exact membership's recorded actors, including explicitly claimed
+    // legacy devices. A different browser name or a rejoined membership never inherits attribution.
+    where += device.authentication === "account" ? ` AND (media.device_id = ? OR EXISTS (
+      SELECT 1 FROM legacy_owner_claims claimed JOIN account_space_actors actor ON actor.membership_id=claimed.membership_id
+      WHERE actor.device_id=? AND claimed.device_id=media.device_id))` : " AND media.device_id = ?";
+    values.push(device.id);
+    if (device.authentication === "account") values.push(device.id);
+  }
   const album = query.get("album");
   if (album === "unorganised") where += " AND NOT EXISTS (SELECT 1 FROM album_media am JOIN albums a ON a.id = am.album_id WHERE am.media_id = media.id AND a.deleted_at IS NULL)";
   else if (album) { await requireAlbum(device, album); where += " AND EXISTS (SELECT 1 FROM album_media WHERE media_id = media.id AND album_id = ?)"; values.push(album); }

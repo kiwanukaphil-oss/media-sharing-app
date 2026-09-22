@@ -8,8 +8,8 @@ import { useLibraryApi } from "./library-scope";
 import { numberedFilename, splitFilename, validFilename } from "@/lib/library-names";
 import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contracts";
 
-export type LibraryQuery = { album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string };
-export const emptyLibraryQuery: LibraryQuery = { album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "" };
+export type LibraryQuery = { album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string; type: string; uploader: string };
+export const emptyLibraryQuery: LibraryQuery = { album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "", type: "", uploader: "" };
 type Props = {
   albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; isOwner: boolean;
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
@@ -42,7 +42,7 @@ export function LibraryTools(props: Props) {
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterPanelId = useId();
-  const activeFilterCount = Number(Boolean(query.from || query.to)) + Number(Boolean(query.batch)) + Number(query.dateMode === "captured");
+  const activeFilterCount = Number(Boolean(query.from || query.to)) + Number(Boolean(query.batch)) + Number(query.dateMode === "captured") + Number(Boolean(query.type)) + Number(Boolean(query.uploader));
   const activeAlbum = albums.find(album => album.id === query.album);
   const activeAlbums = albums.filter(album => !album.archivedAt);
 
@@ -115,6 +115,8 @@ export function LibraryTools(props: Props) {
       <div className="filter-field"><span>Browse</span><WorkspaceSelect label="Browse library" value={query.album} onChange={album => onQuery({ ...query, album, section: "" })} options={[{ value: "", label: "All files" }, { value: "unorganised", label: "Unorganised" }, ...albums.map(album => ({ value: album.id, label: `${album.name} (${album.count})`, group: album.archivedAt ? "Archived albums" : "Albums" }))]} /></div>
     </div>
     <div className="library-filters">
+      <div className="filter-field"><span>File type</span><WorkspaceSelect label="File type" value={query.type} onChange={type => onQuery({ ...query, type })} options={[{ value: "", label: "All types" }, { value: "photo", label: "Photos" }, { value: "video", label: "Videos" }, { value: "other", label: "Other files" }]} /></div>
+      <div className="filter-field"><span>Added by</span><WorkspaceSelect label="Added by" value={query.uploader} onChange={uploader => onQuery({ ...query, uploader })} options={[{ value: "", label: "Anyone" }, { value: "me", label: "Me" }]} /></div>
       <div className="filter-field"><span>Dates</span><WorkspaceSelect label="Dates" value={query.dateMode} onChange={dateMode => onQuery({ ...query, dateMode })} options={[{ value: "uploaded", label: "Date uploaded (UTC)" }, { value: "captured", label: "Date taken" }]} /></div>
       <label>From<input type="date" data-empty={!query.from} value={query.from} max={query.to || undefined} onChange={event => onQuery({ ...query, from: event.target.value })} /></label>
       <label>To<input type="date" data-empty={!query.to} value={query.to} min={query.from || undefined} onChange={event => onQuery({ ...query, to: event.target.value })} /></label>
@@ -125,10 +127,12 @@ export function LibraryTools(props: Props) {
     {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Everyone in this space can view and save these files."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{isOwner && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
     {activeAlbum && <AlbumSections album={activeAlbum} sections={props.sections.filter(section => section.albumId === activeAlbum.id)} query={query} onQuery={onQuery} selected={selected} isOwner={isOwner} refresh={refresh} clearSelection={props.onClearSelection} feedback={props.feedback} />}
     {activeFilterCount > 0 && <div className="active-library-filters" aria-label="Active filters">
+      {query.type && <button className="filter-chip" onClick={() => onQuery({ ...query, type: "" })}>{({ photo: "Photos", video: "Videos", other: "Other files" } as Record<string, string>)[query.type] || "File type"}<X size={13} /></button>}
+      {query.uploader && <button className="filter-chip" onClick={() => onQuery({ ...query, uploader: "" })}>Added by me<X size={13} /></button>}
       {query.dateMode === "captured" && <button className="filter-chip" onClick={() => onQuery({ ...query, dateMode: "uploaded" })}>Date taken<X size={13} /></button>}
       {(query.from || query.to) && <button className="filter-chip" onClick={() => onQuery({ ...query, from: "", to: "" })}>{query.from || "Any start"} – {query.to || "Any end"}<X size={13} /></button>}
       {query.batch && <button className="filter-chip" onClick={() => onQuery({ ...query, batch: "" })}>Upload batch<X size={13} /></button>}
-      <button className="text-button" onClick={() => onQuery({ ...query, dateMode: "uploaded", from: "", to: "", batch: "" })}>Clear all filters</button>
+      <button className="text-button" onClick={() => onQuery({ ...query, dateMode: "uploaded", from: "", to: "", batch: "", type: "", uploader: "" })}>Clear all filters</button>
     </div>}
     {isOwner && <div className={`selection-toolbar${selected.length ? " has-selection" : ""}`} aria-label="Bulk file actions">
       {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>

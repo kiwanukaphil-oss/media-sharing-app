@@ -210,7 +210,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Smaller audiences inside a shared space are protected across every access path.
 **Entry:** Phase 2 and P3-01/P3-02; D08 resolved; central access policy reviewed.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** Not started. Owner: Codex under standing execution authority; feature-specific dependencies still apply.
 
 - [ ] **P4-01 — Define asset access scopes.** Restrict album membership to compatible asset scopes. Sections inherit the album audience. Define explicit and audited administrator grants; never imply shared-space administrators own personal spaces.
 - [ ] **P4-02 — Implement restricted album management.** Specific people, access preview, scoped organisation and explicit cross-scope publication. Adding an album reference cannot silently union audiences or remove prior exposure.
@@ -259,9 +259,15 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 **Status:** Not started. Owner: unassigned. Approval: not recorded.
 
 - [ ] **P7-01 — Better retrieval.** Permission-aware type/uploader/date/album/section filters and useful saved views. Requires identity/access foundations; may be brought forward after Phase 2 by recorded decision.
+
+  - [x] Bring forward scope-preserving type/uploader filters under the 22 September instruction to complete unblocked work. Existing account/legacy access foundations are verified; no dependency on multipart deletion guarantees. API and browser checks pass locally. [Evidence and remaining release checks](INDEPENDENT-WEB-IMPROVEMENTS.md).
+  - [ ] Finish saved views and hosted/deployed verification.
 - [ ] **P7-02 — Exact duplicate assistance.** Scope-safe verified-hash matching with reuse choices, no cross-account existence disclosure and no automatic deletion. Requires settled access-scope rules.
 - [ ] **P7-03 — Broader media relationships and previews.** Prioritise RAW/JPEG companions, sidecars, Live Photo components and unsupported-format fallbacks from real demand. Bound preview costs and preserve bytes; disclose import/export limitations.
 - [ ] **P7-04 — Focused home and presentation privacy.** Current-space recent albums and interrupted transfers; evaluate deliberate thumbnail/name concealment for presentations. Concealment is a presentation feature, not authorisation.
+
+  - [x] Implement current-space recent albums, interrupted-transfer shortcut and full-page presentation cover. Local browser checks and mobile visual inspection pass; transfers continue behind the cover.
+  - [ ] Complete hosted and deployed verification.
 - [ ] **P7-05 — Notification preferences and quiet digests.** Extend scoped in-app activity only after demand is demonstrated; include consent/preferences and no sensitive content leakage through notification previews.
 - [ ] **P7-06 — Evaluate optional semantic search.** Discovery only until explicit approval: processing consent, cost, retention, index authorisation and deletion propagation must be agreed before a pilot. Default-on AI or face identification is not included.
 
