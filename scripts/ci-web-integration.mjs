@@ -118,7 +118,7 @@ try {
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   } else if (browserChecks) {
-    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'space-people-browser', 'publication-browser', 'retrieval-presentation-browser', 'editor-browser', 'favorites-browser', 'activity-browser', 'access-scopes-browser', 'intake-browser', 'delivery-browser', 'metadata-export-browser', 'original-package-browser', 'original-package-file-writer', 'duplicate-browser', 'folder-import-browser']) await runIntegrationTest(name);
+    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'workspace-navigation-browser', 'space-people-browser', 'publication-browser', 'retrieval-presentation-browser', 'editor-browser', 'favorites-browser', 'activity-browser', 'access-scopes-browser', 'intake-browser', 'delivery-browser', 'metadata-export-browser', 'original-package-browser', 'original-package-file-writer', 'duplicate-browser', 'folder-import-browser']) await runIntegrationTest(name);
   } else {
     for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation', 'album-sections']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
