@@ -27,10 +27,13 @@ try {
   insertMedia.run('private-upload','personal','private-actor','pending-hash','personal/pending','uploading',null);
   insertMedia.run('published','shared','shared-actor','same-hash','shared/copy','ready',null);
   insertMedia.run('other-private','other','other-actor','other-hash','other/original','ready',null);
+  insertMedia.run('pending-copy','shared','shared-actor','same-hash','shared/pending','publishing',null);
   database.exec(`INSERT INTO publications(id,source_id,source_space_id,destination_space_id,person_id,source_revision,created_at,phase)
     VALUES ('published','private-original','personal','shared','leaver',0,1,'ready'),
     ('pending-copy','private-original','personal','shared','leaver',0,2,'pending');
     INSERT INTO publication_attempts VALUES ('shared/unfinished-copy','pending-copy',2);`);
+  // Reconciliation must retain custody even when historical cleanup removed the reserved media row.
+  database.exec("DELETE FROM media WHERE id='pending-copy'");
   const before = database.prepare('SELECT total_changes() AS n').get().n;
   const first = planAccountErasure(database,'request');
   assert.equal(first.executable,false);

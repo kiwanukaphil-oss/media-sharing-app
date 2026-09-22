@@ -116,6 +116,8 @@ export const publications = sqliteTable("publications", {
   destinationSpaceId: text("destination_space_id").notNull().references(() => spaces.id),
   personId: text("person_id").notNull().references(() => people.id),
   sourceRevision: integer("source_revision").notNull(),
+  sourceScopeId: text("source_scope_id").references(() => assetScopes.id),
+  destinationScopeId: text("destination_scope_id").references(() => assetScopes.id),
   albumId: text("album_id"),
   sectionId: text("section_id"),
   createdAt: integer("created_at").notNull(),
@@ -167,8 +169,33 @@ export const invitations = sqliteTable("invitations", {
   expiresAt: integer("expires_at").notNull(),
   redeemedAt: integer("redeemed_at"),
 });
+// Restricted audiences are immutable asset scopes; application activation waits for every surface.
+export const assetScopes = sqliteTable("asset_scopes", {
+  id: text("id").primaryKey().notNull(),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  name: text("name").notNull(),
+  createdBy: text("created_by").notNull().references(() => spaceMemberships.id),
+  createdAt: integer("created_at").notNull(),
+}, table => [index("idx_asset_scopes_space").on(table.spaceId)]);
+export const scopeGrants = sqliteTable("scope_grants", {
+  scopeId: text("scope_id").notNull().references(() => assetScopes.id),
+  membershipId: text("membership_id").notNull().references(() => spaceMemberships.id),
+  grantedBy: text("granted_by").notNull().references(() => people.id),
+  createdAt: integer("created_at").notNull(),
+  revokedAt: integer("revoked_at"),
+}, table => [primaryKey({ columns: [table.scopeId, table.membershipId] }), index("idx_scope_grants_member").on(table.membershipId, table.revokedAt)]);
+export const assetScopeEvents = sqliteTable("asset_scope_events", {
+  id: text("id").primaryKey().notNull(),
+  scopeId: text("scope_id").notNull().references(() => assetScopes.id),
+  actorId: text("actor_id").notNull().references(() => people.id),
+  membershipId: text("membership_id").references(() => spaceMemberships.id),
+  action: text("action").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [check("asset_scope_event_action", sql`${table.action} IN ('create','grant','revoke','administrator-grant')`)]);
+
 export const media = sqliteTable("media", {
   id: text("id").primaryKey(),
+  accessScopeId: text("access_scope_id").references(() => assetScopes.id),
   spaceId: text("space_id").notNull().references(() => spaces.id),
   deviceId: text("device_id").notNull().references(() => devices.id),
   name: text("name").notNull(),
@@ -192,6 +219,7 @@ export const media = sqliteTable("media", {
 
 export const albums = sqliteTable("albums", {
   id: text("id").primaryKey(),
+  accessScopeId: text("access_scope_id").references(() => assetScopes.id),
   spaceId: text("space_id").notNull().references(() => spaces.id),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
@@ -286,6 +314,7 @@ export const libraryEvents = sqliteTable("library_events", {
   spaceId: text("space_id").notNull().references(() => spaces.id),
   actorId: text("actor_id").notNull().references(() => devices.id),
   action: text("action").notNull(),
+  scopeIds: text("scope_ids").notNull().default("[null]"),
   resources: text("resources").notNull(),
   affectedCount: integer("affected_count").notNull(),
   createdAt: integer("created_at").notNull(),

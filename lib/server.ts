@@ -1,3 +1,4 @@
+import { resourceAudienceAuthority, newAssetAudienceAuthority, mediaOperationAuthority } from "./asset-scope-authority";
 import { env } from "cloudflare:workers";
 import { AwsClient } from "aws4fetch";
 import { z } from "zod";
@@ -81,7 +82,7 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
   if (!device) throw new ApiError(401, "This device has been disconnected. Pair it again to continue.");
   return device;
 }
-export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number; revision: number };
+export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number; revision: number; access_scope_id: string | null };
 export function spaceLimitBytes(device: ActiveDevice) { return device.storage_limit_bytes ?? 100 * 1024 * 1024 * 1024; }
 // Byte-producing operations need current upload permission before storage dispatch or URL signing.
 export async function requireUploadAccess(device: ActiveDevice) {
@@ -90,7 +91,8 @@ export async function requireUploadAccess(device: ActiveDevice) {
     throw new ApiError(403, "Upload access changed. Refresh this library; viewers can browse and save files.");
 }
 export async function requireMedia(device: ActiveDevice, id: string, ownerOnly = false) {
-  const item = await database().prepare("SELECT * FROM media WHERE id = ? AND space_id = ?").bind(id, device.space_id).first<UploadRow>();
+  const audience = resourceAudienceAuthority(device);
+  const item = await database().prepare(`SELECT * FROM media WHERE id = ? AND space_id = ? AND ${audience.sql}`).bind(id, device.space_id, ...audience.bindings).first<UploadRow>();
   if (!item || (ownerOnly && item.device_id !== device.id)) throw new ApiError(404, "This file is not available.");
   if (ownerOnly) await requireUploadAccess(device);
   return item;
@@ -117,19 +119,24 @@ export const uploadSchema = z.object({
   mime: z.string().max(150).regex(/^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/),
   size: z.number().int().positive().max(MAX_FILE_SIZE), sha256: z.string().regex(/^[a-f0-9]{64}$/),
   category: z.enum(["original", "final"]),
+  accessScopeId: z.string().uuid().nullable().optional(),
   albumId: z.string().uuid().optional(), sectionId: z.string().uuid().optional(), capturedAt: z.string().refine(validCaptureDate).optional(), uploadBatch: z.string().uuid().optional(),
 });
 // Reuse a caller's stable upload ID after interrupted requests rather than creating duplicates.
 export async function initializeUpload(device: ActiveDevice, input: z.infer<typeof uploadSchema>, storage: R2Bucket = bucket()) {
   await requireUploadAccess(device);
-  const existing = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
+  const scopeId = input.accessScopeId ?? null, scopeAuthority = newAssetAudienceAuthority(device, scopeId);
+  if (!await database().prepare(`SELECT 1 WHERE ${scopeAuthority.sql}`).bind(...scopeAuthority.bindings).first()) throw new ApiError(409, "The upload audience is unavailable. Review its destination.");
+  const existingAuthority = mediaOperationAuthority(device, input.id);
+  const existing = await database().prepare(`SELECT * FROM media WHERE id = ? AND ${existingAuthority.sql}`).bind(input.id, ...existingAuthority.bindings).first<UploadRow>();
   if (existing) {
-    if (existing.space_id !== device.space_id || existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size) throw new ApiError(409, "That transfer belongs to a different file.");
+    if (existing.space_id !== device.space_id || existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size || existing.access_scope_id !== scopeId) throw new ApiError(409, "That transfer belongs to a different file.");
     if (!["ready", "uploading"].includes(existing.status) || existing.archived_at) throw new ApiError(409, "This original was removed from the feed.");
     return { id: existing.id, partSize: existing.part_size, status: existing.status, uploadId: existing.upload_id };
   }
+  if (await database().prepare("SELECT 1 FROM media WHERE id=?").bind(input.id).first()) throw new ApiError(409, "That transfer is unavailable. Review its original destination.");
   if (input.albumId) {
-    const album = await database().prepare("SELECT id FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL").bind(input.albumId, device.space_id).first();
+    const album = await database().prepare("SELECT id FROM albums WHERE id = ? AND space_id = ? AND access_scope_id IS ? AND deleted_at IS NULL AND archived_at IS NULL").bind(input.albumId, device.space_id, scopeId).first();
     if (!album) throw new ApiError(409, "The upload album is unavailable or archived. Choose an active album.");
   }
   if (input.sectionId) {
@@ -143,13 +150,13 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
   });
   try {
     const authority = transferAuthority(device);
-    const reservation = database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at, original_name, captured_at, upload_batch)
-      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?
+    const reservation = database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at, original_name, captured_at, upload_batch, access_scope_id)
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?, ?
       WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?
-      AND (? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL))
+      AND (? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND access_scope_id IS ? AND deleted_at IS NULL AND archived_at IS NULL))
       AND (? IS NULL OR EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL))
-      AND ${authority.sql}`)
-      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, device.space_id, input.size, spaceLimitBytes(device), input.albumId || null, input.albumId || null, device.space_id, input.sectionId || null, input.albumId || null, input.sectionId || null,...authority.bindings);
+      AND ${authority.sql} AND ${scopeAuthority.sql}`)
+      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, scopeId, device.space_id, input.size, spaceLimitBytes(device), input.albumId || null, input.albumId || null, device.space_id, scopeId, input.sectionId || null, input.albumId || null, input.sectionId || null,...authority.bindings,...scopeAuthority.bindings);
     const statements = [reservation];
     if (input.albumId) statements.push(database().prepare("INSERT INTO album_media (album_id, media_id, section_id) SELECT ?, id, ? FROM media WHERE id = ? AND space_id = ?").bind(input.albumId, input.sectionId || null, input.id, device.space_id));
     const [reserved] = await database().batch(statements);
@@ -162,9 +169,9 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
   } catch (error) {
     await upload.abort();
     // Two retries may initialize the same UUID concurrently; reuse the winning immutable manifest.
-    const current = transferAuthority(device);
+    const current = mediaOperationAuthority(device, input.id);
     const winner = await database().prepare(`SELECT * FROM media WHERE id = ? AND ${current.sql}`).bind(input.id,...current.bindings).first<UploadRow>();
-    if (winner && winner.space_id === device.space_id && winner.device_id === device.id && winner.sha256 === input.sha256 && winner.size === input.size && ["uploading", "ready"].includes(winner.status) && !winner.archived_at) {
+    if (winner && winner.space_id === device.space_id && winner.device_id === device.id && winner.sha256 === input.sha256 && winner.size === input.size && winner.access_scope_id === scopeId && ["uploading", "ready"].includes(winner.status) && !winner.archived_at) {
       return { id: winner.id, partSize: winner.part_size, status: winner.status, uploadId: winner.upload_id };
     }
     throw error;

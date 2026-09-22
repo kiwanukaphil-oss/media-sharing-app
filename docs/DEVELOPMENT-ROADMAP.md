@@ -5,16 +5,17 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
-## Restricted-scope development checkpoint
+## Restricted-audience development acceptance
 
-**22 September:** Isolated branch `work/restricted-scopes`, copy/UI/runtime commit `8f022f2`, is pushed; hosted verification `35737908803` is running. The prior hosted browser job passed; its legacy migration assertion was corrected to allow additive columns while checking every original field. Main remains the separate release candidate held for independent backup download capacity. Migrations 0023/0024 are not in main or production, and no deployment configuration enables restricted creation.
+**22 September:** Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0024 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
 
-- [x] Current audience enforcement, retained activity privacy, explicit upload destinations and retry integrity pass local D1 tests.
-- [x] Private-export migration rehearsal preserves existing rows/columns in 25 tables; restored triggers and access quarantine pass. Restricted-scope minimisation retains shared originals and revokes grants.
-- [x] Flag-gated owner management, explicit audited self-access, general/restricted/combined navigation, album navigation and durable upload context pass local route and browser checks.
-- [x] Built-Worker account and closure-tracking integration pass; full browser regression exits 0, preserving existing Chrome/Edge/Firefox/WebKit workflows. TypeScript, production build and full web lint pass.
-- [x] Cross-audience copy review, independent checksum-verified bytes, exact retry/recovery, destination-only history and grant-loss commit rollback pass local D1/R2 and mobile browser tests. Existing personal publication regression passes. Schema 0024 private-export migration/restore preserves all original columns/rows.
-- [ ] Final disclosure/lifecycle review, hosted acceptance and production release. No restricted-feature parent is marked complete by these local milestones.
+- [x] Current audience enforcement, retained activity privacy, same-scope album references, explicit upload destinations and retry integrity pass local D1/route tests.
+- [x] Private-export rehearsal preserves all original fields/rows in 25 tables through schema 0024, invents no grants, and retains restored triggers/quarantine. Populated-scope minimisation retains shared originals and revokes grants.
+- [x] Owner management, explicit audited self-access, general/restricted/combined navigation, scoped album/import/upload capture and durable queue destinations pass mobile/desktop checks.
+- [x] Cross-audience copies use explicit recipient review, checksum-verified independent originals, exact retry/recovery, destination-only history and current-grant visibility commits. Existing personal publication remains compatible.
+- [x] Disclosure review corrected the feed source-scope field and stale open dialogs after combined-view revocation. Built-Worker copy checks pass with account-closure tracking enabled.
+- [x] Hosted lint, TypeScript, build, relevant unit/integration/recovery tests and cross-browser regression passed. Earlier migration/erasure fixture failures were corrected and the full hosted rerun passed.
+- [ ] Independent backup gate, remote migration, live pilot acceptance and activation. No restricted-feature parent is marked deployed or complete. See [implementation and disclosure evidence](RESTRICTED-ALBUMS-IMPLEMENTATION.md).
 
 ## Current position
 

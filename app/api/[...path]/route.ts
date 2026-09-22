@@ -1,3 +1,5 @@
+import { restrictedScopesEnabled } from "@/lib/restricted-runtime";
+import { mediaOperationAuthority } from "@/lib/asset-scope-authority";
 import { arrivalActivityStatement } from "@/lib/library-activity-statements";
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
@@ -9,7 +11,7 @@ import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
 import { changeSpacePerson, createPersonInvitation, listSpacePeople, revokePersonInvitation } from "@/lib/space-people";
-import { cancelPublication, finishPublication, reservePublication } from "@/lib/publications";
+import { cancelPublication, finishPublication, reservePublication, readScopePublication } from "@/lib/publications";
 import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
@@ -146,6 +148,23 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
     }
     throw new ApiError(404, "Action not found.");
   }
+  if (resource === "scope-copies") {
+    if (!restrictedScopesEnabled()) throw new ApiError(404, "Restricted audiences are not available yet.");
+    if (!accountAccess || accountAccess.space_kind !== "shared") throw new ApiError(403, "Choose a shared library.");
+    requireOwner(device);
+    if (!id && method === "GET") {
+      const sourceId = new URL(request.url).searchParams.get("sourceId") || "";
+      if (!z.string().uuid().safeParse(sourceId).success) throw new ApiError(400, "Choose an original.");
+      return Response.json({ publication: await readScopePublication(database(), accountAccess, sourceId) });
+    }
+    if (!id && method === "POST") {
+      const input = await readJson(request, z.object({ id: z.string().uuid(), sourceId: z.string().uuid(), sourceRevision: z.number().int().nonnegative(),
+        sourceScopeId: z.string().uuid().nullable(), destinationScopeId: z.string().uuid().nullable(), albumId: z.string().uuid().optional(), sectionId: z.string().uuid().optional(), confirmed: z.literal(true) }));
+      const job = await reservePublication(database(), accountAccess, accountAccess, { ...input, destinationSpaceId: accountAccess.space_id }, spaceLimitBytes(accountAccess));
+      return Response.json(await finishPublication(database(), storage, accountAccess, job));
+    }
+    throw new ApiError(404, "This audience-copy action is unavailable.");
+  }
   if (resource === "publications") {
     if (!accountAccess) throw new ApiError(403, "Sign in with your account to publish a personal file.");
     if (!id && method === "GET") {
@@ -186,7 +205,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
   }
   const webResponse = await webAction(request, device, resource, id, action, storage);
   if (webResponse) return webResponse;
-  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
+  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, restrictedScopes: Boolean(accountAccess && device.space_kind === "shared" && restrictedScopesEnabled()), transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
   if (resource === "session" && !id && method === "DELETE") {
     await changeDeviceAccess(device, device.id);
     return Response.json({ disconnected: true }, { headers: { "Set-Cookie": expiredSessionCookie(request) } });
@@ -234,11 +253,13 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
     if (action === "part" && method === "POST") {
       if (item.status !== "uploading") throw new ApiError(409, "This transfer is no longer accepting parts.");
       const { number } = await readJson(request, z.object({ number: z.number().int().min(1).max(Math.ceil(item.size / item.part_size)) }));
+      const partAuthority = mediaOperationAuthority(device, item.id);
+      if (!await database().prepare(`SELECT 1 WHERE ${partAuthority.sql}`).bind(...partAuthority.bindings).first()) throw new ApiError(403, "The upload audience changed. Review its destination.");
       const expectedBytes = Math.min(item.part_size, item.size - (number - 1) * item.part_size);
       const signedAt = Math.floor(Date.now() / 1000) * 1000;
       if (admissionId && storageMode(request) !== "local") {
         await reserveClosureUploadCapability(database(), admissionId, { objectKey: item.object_key,
-          uploadId: item.upload_id, partNumber: number, expiresAt: signedAt + 3600000 });
+          uploadId: item.upload_id, partNumber: number, expiresAt: signedAt + 3600000 }, Date.now(), partAuthority);
       }
       const url = storageMode(request) === "local" ? scopedTransferUrl(`/api/uploads/${id}/bytes/${number}`, device) : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) }, expectedBytes, signedAt);
       return Response.json({ url });
@@ -263,7 +284,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
         await storage.delete(item.object_key);
         throw new ApiError(409, "File size did not match. Restart this transfer to send the original again.");
       }
-      const authority = transferAuthority(device);
+      const authority = mediaOperationAuthority(device, item.id);
       const [published] = await database().batch([database().prepare(`UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ? AND ${authority.sql}`)
         .bind(item.id, device.id, item.upload_id,...authority.bindings), arrivalActivityStatement(database(), item.id)]);
       if (!published.meta.changes) {

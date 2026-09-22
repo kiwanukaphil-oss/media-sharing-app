@@ -9,9 +9,10 @@ import { useLibraryApi } from "./library-scope";
 import { numberedFilename, splitFilename, validFilename } from "@/lib/library-names";
 import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contracts";
 
-export type LibraryQuery = { album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string; type: string; uploader: string; favorites: string };
-export const emptyLibraryQuery: LibraryQuery = { album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "", type: "", uploader: "", favorites: "" };
+export type LibraryQuery = { scope: string; album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string; type: string; uploader: string; favorites: string };
+export const emptyLibraryQuery: LibraryQuery = { scope: "", album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "", type: "", uploader: "", favorites: "" };
 type Props = {
+  accessScopeId?: string | null;
   albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; canOrganise: boolean; canSelectFiles?: boolean; canEditFiles?: boolean; canFavorite?: boolean;
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
   refresh: () => Promise<void>; renameItems: MediaItem[]; onRename: (items: MediaItem[]) => void;
@@ -73,7 +74,7 @@ export function LibraryTools(props: Props) {
 
   async function saveAlbum(name: string, description: string) {
     if (albumEditor === "new") {
-      const result = await requestJson<{ id: string }>("albums", { method: "POST", body: JSON.stringify({ name, description }) });
+      const result = await requestJson<{ id: string }>("albums", { method: "POST", body: JSON.stringify({ name, description, accessScopeId: props.accessScopeId ?? null }) });
       onQuery({ ...query, album: result.id, section: "" }); setMessage("Album created. Drop files here to add them."); setUndo(null);
     } else if (albumEditor) await updateAlbum(albumEditor, { name, description });
     setAlbumEditor(null);

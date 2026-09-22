@@ -300,3 +300,18 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .folder-import-mapping th, .folder-import-mapping td { padding: 8px 4px; overflow-wrap: anywhere; border-bottom: 1px solid var(--border, #e5e7eb); }
 .folder-import-mapping th:last-child { width: 42px; }
 .folder-import-mapping input { width: 100%; min-width: 0; }
+
+/* Audience boundaries remain visible without competing with the album and file controls. */
+.audience-bar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 24px; padding:14px 16px; border:1px solid var(--border,#deded8); border-radius:14px; }
+.audience-bar .small-muted { flex-basis:100%; margin:0; }
+.audience-manager { max-width:620px; }
+.audience-members { border:0; padding:0; margin:20px 0; max-height:320px; overflow:auto; }
+.audience-members legend { margin-bottom:12px; font-weight:600; }
+.audience-members label { display:flex; gap:12px; align-items:center; padding:10px 0; }
+.audience-members input { accent-color:var(--accent,#335a48); width:17px; height:17px; }
+.audience-members small { display:block; opacity:.65; margin-top:3px; }
+.audience-manager .field-label { display:grid; gap:8px; margin-top:20px; }
+@media(max-width:600px) { .audience-bar .workspace-select { flex:1; min-width:0; } .audience-members .device-row { gap:12px; } }
+
+.audience-bar > .workspace-select { width:auto; flex:1 1 220px; max-width:360px; }
+.audience-bar > svg { flex-shrink:0; }

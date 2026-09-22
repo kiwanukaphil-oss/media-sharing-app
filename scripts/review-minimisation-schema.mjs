@@ -8,6 +8,12 @@ const invitationRoleDigest = '24c63d1cc974e20d141decb13ad25444222e3541c1917386aa
 const favoritesDigest = '70affae232b112a24fee850030defa3b6b78fe5f13359e804521a7601516af47';
 // Migration 0022 history stores opaque scope/actor/resource references; private history is removed.
 const activityDigest = '076d4b49ad38a4fd0616b5bc75dff4d7bc5191d040fee8e2d3ca06ef0d11fddd';
+// Migration 0023 adds shared-content scope labels and opaque membership/person audit references.
+// Person minimisation revokes grants; shared content and pseudonymous ownership remain retained.
+const restrictedDigest = '896bd38831c71628bab581dcd4e661273a23a9dbcf9bc9c5e7331c38e94063d2';
+// Migration 0024 retains opaque source/destination scope IDs on existing copy custody records.
+// They carry no names or new identity fields; existing publication minimisation remains applicable.
+const scopeCopyDigest = '73207a15ec5ef28a6fcc7c485c09e484eae28f29792998daab8e13c000f6b2b7';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 // Review a deliberately narrow activation stage: global backup runs contain only opaque run/snapshot
@@ -17,7 +23,7 @@ export function reviewMinimisationSchema(database, shape) {
   const schemaDigest = createHash('sha256').update(JSON.stringify(shape)).digest('hex');
   if (schemaDigest === baseDigest) return { accepted: true, scope: 'migration-0018', schemaDigest };
   const denied = { accepted: false, scope: 'requires-review', schemaDigest };
-  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest].includes(schemaDigest)) return denied;
+  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest, restrictedDigest, scopeCopyDigest].includes(schemaDigest)) return denied;
   if (database.prepare(`SELECT (SELECT COUNT(*) FROM closure_fences) +
       (SELECT COUNT(*) FROM closure_storage_effects) + (SELECT COUNT(*) FROM closure_write_admissions
       WHERE kind<>'backup' OR person_id IS NOT NULL OR device_id IS NOT NULL) AS n`).get().n !== 0) return denied;

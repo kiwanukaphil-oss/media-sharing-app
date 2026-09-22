@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 const compiled=await build({entryPoints:['lib/saved-library-views.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const {readSavedLibraryViews,savedLibraryViewsKey}=await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-const view={id:crypto.randomUUID(),name:'My recent photos',view:{category:'all',search:'camera',query:{album:'',section:'',dateMode:'uploaded',from:'2026-09-01',to:'',sort:'newest',batch:'',type:'photo',uploader:'me',favorites:''}}};
+const view={id:crypto.randomUUID(),name:'My recent photos',view:{category:'all',search:'camera',query:{scope:'',album:'',section:'',dateMode:'uploaded',from:'2026-09-01',to:'',sort:'newest',batch:'',type:'photo',uploader:'me',favorites:''}}};
 assert.deepEqual(readSavedLibraryViews(JSON.stringify([view])),[view]);
 for(const raw of [null,'{broken',JSON.stringify([view,view]),' '.repeat(12001),JSON.stringify([{...view,view:{...view.view,category:'admin'}}]),JSON.stringify(Array.from({length:9},()=>({...view,id:crypto.randomUUID()})))]) assert.deepEqual(readSavedLibraryViews(raw),[]);
 assert.deepEqual(readSavedLibraryViews(JSON.stringify([{...view,view:{...view.view,query:{...view.view.query,from:'2026-02-31'}}}])),[]);
@@ -11,4 +11,9 @@ assert.deepEqual(readSavedLibraryViews(JSON.stringify([injected])),[view],'Saved
 assert.notEqual(savedLibraryViewsKey('space-a','actor-a','account'),savedLibraryViewsKey('space-b','actor-a','account'));
 assert.notEqual(savedLibraryViewsKey('space-a','actor-a','account'),savedLibraryViewsKey('space-a','actor-b','account'));
 assert.notEqual(savedLibraryViewsKey('space-a','actor-a','account'),savedLibraryViewsKey('space-a','actor-a','legacy'));
+const legacy=structuredClone(view);delete legacy.view.query.scope;
+assert.equal(readSavedLibraryViews(JSON.stringify([legacy]))[0].view.query.scope,'');
+const restricted=structuredClone(view);restricted.view.query.scope=crypto.randomUUID();
+assert.equal(readSavedLibraryViews(JSON.stringify([restricted]))[0].view.query.scope,restricted.view.query.scope);
+restricted.view.query.scope='arbitrary';assert.deepEqual(readSavedLibraryViews(JSON.stringify([restricted])),[]);
 console.log('PASS: bounded validated tab views, identity/space namespaces and rejection of malformed scope/capability/URL injection.');

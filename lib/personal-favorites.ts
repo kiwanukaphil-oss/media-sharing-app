@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApiError, database, readJson, type ActiveDevice } from "./server";
-import { transferAuthority } from "./transfer-authority";
+import { resourceAudienceAuthority } from "./asset-scope-authority";
 
 // Viewer read access is sufficient for a private bookmark, never shared metadata. Recheck it in the
 // same SQL write, bind the authenticated person, and cap retained bookmarks across all their spaces.
@@ -8,8 +8,8 @@ export async function changePersonalFavorite(request: Request, device: ActiveDev
   if (device.authentication !== "account" || !device.personId) throw new ApiError(403, "Sign in to keep private favourites.");
   if (!z.string().uuid().safeParse(mediaId).success) throw new ApiError(404, "This file is unavailable.");
   const { favorite } = await readJson(request, z.object({ favorite: z.boolean() }));
-  const authority = transferAuthority(device, Date.now(), "read");
-  const available = `EXISTS (SELECT 1 FROM media WHERE id=? AND space_id=? AND status='ready') AND ${authority.sql}`;
+  const authority = resourceAudienceAuthority(device);
+  const available = `EXISTS (SELECT 1 FROM media WHERE id=? AND space_id=? AND status='ready' AND ${authority.sql})`;
   const bindings = [mediaId, device.space_id, ...authority.bindings];
   if (favorite) {
     const result = await database().prepare(`INSERT INTO personal_favorites(person_id,media_id,created_at)

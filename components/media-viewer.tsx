@@ -12,13 +12,14 @@ type Props = {
   onClose: () => void;
   onSave: () => void;
   onPublish?: () => void;
+  onCopyAudience?: () => void;
   preview: ReactNode;
   thumbnail: (item: MediaItem) => ReactNode;
   children: ReactNode;
 };
 
 // Keep the original-file actions intact while giving images and videos a dedicated viewing surface.
-export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, onPublish, preview, thumbnail, children }: Props) {
+export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, onPublish, onCopyAudience, preview, thumbnail, children }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -52,6 +53,7 @@ export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, 
         <button autoFocus className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={21} /></button>
         <div className="viewer-file"><h2 id={titleId}>{item.name}</h2><p>{item.category === "final" ? "Final cut" : "Original"} · {formatBytes(item.size)} · {item.deviceName}</p></div>
         <div className="viewer-controls">
+          {onCopyAudience && <button className="icon-button" aria-label="Copy to another audience" title="Copy to another audience" onClick={onCopyAudience}><Share2 size={20} /></button>}
           {onPublish && <button className="icon-button" aria-label="Publish shared copy" title="Publish shared copy" onClick={onPublish}><Share2 size={20} /></button>}
           {canZoom && <button className="icon-button" aria-label={zoomed ? "Zoom out" : "Zoom in"} aria-pressed={zoomed} onClick={() => setZoomedId(zoomed ? null : item.id)}>{zoomed ? <ZoomOut size={20} /> : <ZoomIn size={20} />}</button>}
           <button className="icon-button" aria-label="File details" aria-expanded={detailsOpen} aria-controls={detailsId} onClick={() => setDetailsOpen(!detailsOpen)}><Info size={20} /></button>

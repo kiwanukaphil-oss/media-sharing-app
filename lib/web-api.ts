@@ -1,3 +1,6 @@
+import { restrictedScopesEnabled } from "./restricted-runtime";
+import { readAccessScopes, createAccessScope, changeScopeGrant } from "./scope-management";
+import { mediaOperationAuthority, browseAudienceAuthority, requestedBrowseAudience, resourceAudienceAuthority } from "./asset-scope-authority";
 import { changePersonalFavorite } from "./personal-favorites";
 import { exportSelectedMetadata } from "./metadata-export";
 import { createImportLayout } from "./import-layout";
@@ -18,8 +21,11 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   const search = (query.get("q") || "").trim().slice(0, 200);
   const limit = Math.min(100, Math.max(1, Number(query.get("limit") || 48)));
   if (!Number.isInteger(limit)) throw new ApiError(400, "Invalid page size.");
-  const values: (string | number)[] = [device.space_id];
-  let where = `media.space_id = ? AND media.status ${category === "trash" ? "IN ('ready', 'deleting')" : "= 'ready'"} AND media.archived_at IS ${category === "trash" ? "NOT " : ""}NULL`;
+  const scope = requestedBrowseAudience(request, device);
+  if (scope === false) throw new ApiError(400, "Choose a valid library audience.");
+  const audience = browseAudienceAuthority(device, scope);
+  const values: (string | number | null)[] = [device.space_id, ...audience.bindings];
+  let where = `media.space_id = ? AND ${audience.sql} AND media.status ${category === "trash" ? "IN ('ready', 'deleting')" : "= 'ready'"} AND media.archived_at IS ${category === "trash" ? "NOT " : ""}NULL`;
   if (category === "original" || category === "final") { where += " AND media.category = ?"; values.push(category); }
   const mediaType = query.get("type") || "";
   if (!["", "photo", "video", "other"].includes(mediaType)) throw new ApiError(400, "Choose a valid file type.");
@@ -54,7 +60,8 @@ export async function readFeed(request: Request, device: ActiveDevice) {
       where += " AND EXISTS (SELECT 1 FROM album_media am LEFT JOIN album_sections s ON s.album_id = am.album_id AND s.id = am.section_id WHERE am.media_id = media.id AND am.album_id = ? AND (am.section_id IS NULL OR s.deleted_at IS NOT NULL))";
       values.push(album);
     } else {
-      const available = await database().prepare("SELECT id FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL").bind(album, section).first();
+      const sectionAudience = resourceAudienceAuthority(device, "a");
+      const available = await database().prepare(`SELECT id FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM albums a WHERE a.id=album_sections.album_id AND ${sectionAudience.sql})`).bind(album, section, ...sectionAudience.bindings).first();
       if (!available) throw new ApiError(404, "This section is no longer available.");
       where += " AND EXISTS (SELECT 1 FROM album_media WHERE media_id = media.id AND album_id = ? AND section_id = ?)";
       values.push(album, section);
@@ -88,7 +95,7 @@ export async function readFeed(request: Request, device: ActiveDevice) {
     } catch { throw new ApiError(400, "This page link is invalid. Refresh the feed."); }
   }
   const editable = fileEditAuthority(device);
-  const result = await database().prepare(`SELECT EXISTS (SELECT 1 FROM personal_favorites favorite WHERE favorite.media_id=media.id AND favorite.person_id=?) AS isFavorite, (${editable.sql}) AS canEdit, media.id, media.name, media.mime, media.size, media.sha256, media.category,
+  const result = await database().prepare(`SELECT EXISTS (SELECT 1 FROM personal_favorites favorite WHERE favorite.media_id=media.id AND favorite.person_id=?) AS isFavorite, (${editable.sql}) AS canEdit, media.access_scope_id AS accessScopeId, media.id, media.name, media.mime, media.size, media.sha256, media.category,
     COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
     FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(device.authentication === "account" ? device.personId || "" : "", ...editable.bindings, ...values, limit + 1).all<MediaItem & { sortValue: number }>();
   const items = result.results.slice(0, limit);
@@ -96,17 +103,18 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   const counts = await database().prepare(`SELECT COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS "all",
     COUNT(CASE WHEN archived_at IS NULL AND category = 'original' THEN 1 END) AS original,
     COUNT(CASE WHEN archived_at IS NULL AND category = 'final' THEN 1 END) AS final,
-    COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS trash FROM media WHERE space_id = ? AND status IN ('ready','deleting')`).bind(device.space_id).first();
+    COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) AS trash FROM media WHERE space_id = ? AND status IN ('ready','deleting') AND ${audience.sql}`).bind(device.space_id, ...audience.bindings).first();
   return Response.json({ items, role: device.role, total: total?.count || 0, counts, nextCursor: result.results.length > limit && last ? btoa(JSON.stringify({ createdAt: last.sortValue, id: last.id })) : null });
 }
 
 export async function readStorage(device: ActiveDevice) {
-  const usage = await database().prepare(`SELECT COALESCE(SUM(size + preview_size),0) AS used,
+  const audience = resourceAudienceAuthority(device), owner = transferAuthority(device, Date.now(), true);
+  const usage = await database().prepare(`SELECT (${owner.sql}) AS allScopeBilling, COALESCE(SUM(size + preview_size),0) AS used,
     COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling','publishing') THEN size + preview_size ELSE 0 END),0) AS reserved,
-    COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ?`).bind(device.space_id).first();
+    COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ? AND ((${owner.sql}) OR ${audience.sql})`).bind(...owner.bindings, device.space_id, ...owner.bindings, ...audience.bindings).first();
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
     (? <> 'viewer' AND (media.device_id = ? OR ? = 'owner' OR (? = 1 AND ? = 'editor'))) AS canCancel, (media.status = 'publishing') AS publication
-    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.role, device.id, device.role, device.authentication === "account" ? 1 : 0, device.role, device.space_id).all();
+    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') AND ${audience.sql} ORDER BY media.created_at LIMIT 100`).bind(device.role, device.id, device.role, device.authentication === "account" ? 1 : 0, device.role, device.space_id, ...audience.bindings).all();
   return Response.json({ ...usage, limit: spaceLimitBytes(device), uploads: uploads.results });
 }
 
@@ -127,7 +135,7 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   if (size < 4 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[size - 2] !== 255 || bytes[size - 1] !== 217) throw new ApiError(415, "Invalid JPEG preview.");
-  const authority = transferAuthority(device);
+  const authority = mediaOperationAuthority(device, item.id);
   const reserved = await database().prepare(`UPDATE media SET preview_size = ? WHERE id = ? AND status = 'ready' AND preview_ready = 0 AND preview_size = 0
     AND archived_at IS NULL AND ${authority.sql}
     AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE space_id = ?) + ? <= ?`)
@@ -135,7 +143,7 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
   if (!reserved.meta.changes) return Response.json({ ready: false });
   try {
     await storage.put(`${item.object_key}.preview.jpg`, bytes, { httpMetadata: { contentType: "image/jpeg" } });
-    const current = transferAuthority(device);
+    const current = mediaOperationAuthority(device, item.id);
     const committed = await database().prepare(`UPDATE media SET preview_ready = 1 WHERE id = ? AND status = 'ready'
       AND archived_at IS NULL AND ${current.sql}`).bind(id,...current.bindings).run();
     if (!committed.meta.changes) {
@@ -151,14 +159,14 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
 // A tombstone prevents new links during deletion; storage is released only after R2 acknowledges it.
 async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: ActiveDevice) {
   if (!item.archived_at) throw new ApiError(409, "Move this file to Trash before deleting it permanently.");
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = mediaOperationAuthority(device, item.id, true);
   const deleting = await database().prepare(`UPDATE media SET status = 'deleting' WHERE id = ?
     AND object_key = ? AND archived_at IS NOT NULL AND status IN ('ready','deleting') AND ${authority.sql}`)
     .bind(item.id, item.object_key, ...authority.bindings).run();
   if (!deleting.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before deleting.");
   await storage.delete([item.object_key, `${item.object_key}.preview.jpg`]);
-  const completion = transferAuthority(device, Date.now(), true);
-  const [removed] = await activityBatch(device, "file.delete", [{ kind: "media", id: item.id }], [database().prepare(`DELETE FROM media WHERE id = ? AND status = 'deleting' AND ${completion.sql}`)
+  const completion = mediaOperationAuthority(device, item.id, true);
+  const [removed] = await activityBatch(device, "file.delete", [{ kind: "media", id: item.id, retainedScope: item.access_scope_id }], [database().prepare(`DELETE FROM media WHERE id = ? AND status = 'deleting' AND ${completion.sql}`)
     .bind(item.id, ...completion.bindings)]);
   if (!removed.meta.changes) throw new ApiError(409, "Access changed during cleanup. Refresh to review the remaining record.");
   return Response.json({ deleted: true });
@@ -167,6 +175,13 @@ async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: Act
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
 export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string, storage: R2Bucket = bucket()): Promise<Response | null> {
   const method = request.method;
+  if (resource === "access-scopes") {
+    if (!restrictedScopesEnabled()) throw new ApiError(404, "Restricted audiences are not available yet.");
+    if (!id && method === "GET") return Response.json(await readAccessScopes(device, new URL(request.url).searchParams.get("administration") === "1"));
+    if (!id && method === "POST") return createAccessScope(request, device);
+    if (id && method === "PUT") return changeScopeGrant(request, device, id);
+    throw new ApiError(404, "This audience action is unavailable.");
+  }
   if (resource === "import-layout" && !id && method === "POST") return createImportLayout(request, device);
   if (resource === "metadata-export" && !id && method === "POST") return exportSelectedMetadata(request, device);
   if (resource === "activity" && !id && method === "GET") return readLibraryActivity(request, device);
@@ -205,7 +220,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
       return Response.json(await cancelPublication(database(), storage, { ...device, personId: device.authentication === "account" ? publisher?.person_id : undefined }, id));
     }
     if (!["uploading", "cancelling"].includes(item.status)) throw new ApiError(409, "This file has already arrived. Refresh your feed.");
-    const authority = transferAuthority(device, Date.now(), item.device_id !== device.id ? "organiser" : false);
+    const authority = mediaOperationAuthority(device, item.id, item.device_id !== device.id ? "organiser" : false);
     const cancelled = await database().prepare(`UPDATE media SET status = 'cancelling' WHERE id = ?
       AND upload_id = ? AND status IN ('uploading','cancelling') AND ${authority.sql}`)
       .bind(id, item.upload_id, ...authority.bindings).run();
@@ -213,7 +228,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     try { await storage.resumeMultipartUpload(item.object_key, item.upload_id).abort(); }
     catch (failure) { if (!/NoSuchUpload|does not exist|not found/i.test(String(failure))) throw failure; }
     await storage.delete(item.object_key);
-    const completion = transferAuthority(device, Date.now(), item.device_id !== device.id ? "organiser" : false);
+    const completion = mediaOperationAuthority(device, item.id, item.device_id !== device.id ? "organiser" : false);
     const removed = await database().prepare(`DELETE FROM media WHERE id = ? AND status = 'cancelling' AND upload_id = ? AND ${completion.sql}`)
       .bind(id, item.upload_id, ...completion.bindings).run();
     if (!removed.meta.changes) throw new ApiError(409, "Access changed during cancellation. Refresh to review the remaining transfer.");
@@ -223,7 +238,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     const item = await requireMedia(device, id, true);
     if (item.status !== "uploading") throw new ApiError(409, "Only unfinished uploads can be restarted.");
     const upload = await storage.createMultipartUpload(item.object_key, { httpMetadata: { contentType: item.mime }, customMetadata: { sha256: item.sha256, filename: item.name } });
-    const authority = transferAuthority(device);
+    const authority = mediaOperationAuthority(device, item.id);
     const changed = await database().prepare(`UPDATE media SET upload_id = ? WHERE id = ? AND upload_id = ? AND status = 'uploading' AND ${authority.sql}`)
       .bind(upload.uploadId, id, item.upload_id, ...authority.bindings).run();
     if (!changed.meta.changes) { await upload.abort(); throw new ApiError(409, "This transfer changed. Refresh and retry."); }

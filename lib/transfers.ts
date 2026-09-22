@@ -7,7 +7,7 @@ import type { Category, UploadSession } from "./contracts";
 
 export type Transfer = {
   id: string; deviceId: string; accountSpaceId?: string; spaceName?: string; name: string; size: number; mime: string; category: Category;
-  albumId?: string; albumName?: string; sectionId?: string; sectionName?: string; capturedAt?: string; uploadBatch?: string;
+  accessScopeId?: string | null; audienceName?: string; albumId?: string; albumName?: string; sectionId?: string; sectionName?: string; capturedAt?: string; uploadBatch?: string;
   hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
   state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
   progress: number; preparationProgress?: number; message?: string;
@@ -130,7 +130,7 @@ export async function uploadOriginal(file: File, initial: Transfer, signal: Abor
     }
     update({ hash, capturedAt: current.capturedAt || await readCaptureDate(file) });
     await persistTransfer(current);
-    const session = await requestJson<UploadSession>("uploads", { method: "POST", signal, body: JSON.stringify({ id: current.id, name: current.name, mime: current.mime, size: current.size, category: current.category, sha256: hash, albumId: current.albumId, sectionId: current.sectionId, capturedAt: current.capturedAt, uploadBatch: current.uploadBatch }) });
+    const session = await requestJson<UploadSession>("uploads", { method: "POST", signal, body: JSON.stringify({ id: current.id, name: current.name, mime: current.mime, size: current.size, category: current.category, sha256: hash, accessScopeId: current.accessScopeId ?? null, albumId: current.albumId, sectionId: current.sectionId, capturedAt: current.capturedAt, uploadBatch: current.uploadBatch }) });
     update({ partSize: session.partSize, state: "sending", uploadId: session.uploadId, ...(current.uploadId && session.uploadId && current.uploadId !== session.uploadId ? { parts: [], progress: 0 } : {}) });
     await persistTransfer(current);
     const total = Math.ceil(file.size / session.partSize);

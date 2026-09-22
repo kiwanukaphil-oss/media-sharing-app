@@ -4,6 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {build} from 'esbuild';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
+import {minimiseErasedSnapshot,providerIdentityDigest} from '../scripts/minimise-erased-snapshot.mjs';
 import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
 
 const bundle=await build({entryPoints:['lib/asset-scope-authority.ts'],bundle:true,write:false,platform:'node',format:'esm'});
@@ -11,7 +12,7 @@ const {resourceAudienceAuthority,eventAudienceAuthority}=await import(`data:text
 const db=new DatabaseSync(':memory:');
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
-  db.exec(await readFile('docs/prototypes/restricted-scope-schema.sql','utf8'));
+  if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='asset_scopes'").get()) db.exec(await readFile('docs/prototypes/restricted-scope-schema.sql','utf8'));
   const now=Date.now();
   db.exec("INSERT INTO spaces VALUES('shared','Shared',1),('personal','Personal',1),('foreign','Foreign',1)");
   for(const member of ['owner','viewer']){
@@ -29,6 +30,16 @@ try {
     db.prepare("INSERT INTO media(id,space_id,device_id,name,mime,size,sha256,category,object_key,upload_id,part_size,status,created_at,access_scope_id) VALUES(?,'shared','owner',?,'text/plain',1,?,'original',?,'complete',1,'ready',1,?)").run(id,id,'a'.repeat(64),id,scope);
     db.prepare("INSERT INTO albums(id,space_id,name,created_at,access_scope_id) VALUES(?,'shared',?,1,?)").run(id,id,scope);
   }
+  const erasurePlan=planReadOnlySnapshot(db.prepare(schemaQuery).all());
+  const erasureInput=restoreReadOnlySnapshot(erasurePlan,db.prepare(erasurePlan.sql).all());
+  const erased=minimiseErasedSnapshot(erasureInput,{formatVersion:1,personId:'owner',identityDigest:providerIdentityDigest('https://fixture.invalid','owner')},now);
+  const erasedDb=importSnapshot(erased.sql);
+  try {
+    assert.equal(erasedDb.prepare("SELECT display_name FROM people WHERE id='owner'").get().display_name,'Deleted member');
+    assert.equal(erasedDb.prepare("SELECT COUNT(*) AS n FROM media WHERE space_id='shared'").get().n,2,'Shared originals survive identity minimisation.');
+    assert.equal(erasedDb.prepare('SELECT COUNT(*) AS n FROM scope_grants WHERE revoked_at IS NULL').get().n,0,'Restored restricted grants remain quarantined.');
+    assert.equal(erasedDb.prepare("SELECT COUNT(*) AS n FROM asset_scopes WHERE id='restricted'").get().n,1);
+  } finally {erasedDb.close();}
   const actor=id=>({id,space_id:'shared',role:id,authentication:'account',personId:id,sessionId:id});
   const visible=principal=>{const rule=resourceAudienceAuthority(principal);return db.prepare(`SELECT id FROM media WHERE ${rule.sql} ORDER BY id`).all(...rule.bindings).map(row=>row.id);};
   assert.deepEqual(visible(actor('owner')),['general'],'Space owner has no implicit restricted read grant.');
@@ -72,5 +83,5 @@ try {
     assert.equal((await d1.prepare("SELECT revoked_at FROM scope_grants WHERE membership_id='owner'").first()).revoked_at,4);
     assert.equal((await d1.prepare(`SELECT COUNT(*) AS n FROM library_events e WHERE ${ownerRule.sql}`).bind(...ownerRule.bindings).first()).n,0);
   } finally {await runtime.dispose();}
-  console.log('PASS: isolated proposed-schema SQLite/D1 grants, owner/legacy denial, immutable compatible references, retained history scopes, offboarding and restored-trigger quarantine. Not wired into runtime.');
+  console.log('PASS: isolated proposed-schema SQLite/D1 grants, owner/legacy denial, immutable compatible references, retained history scopes, offboarding and restored-trigger quarantine. Scope creation remains disabled.');
 } finally {db.close();}

@@ -19,7 +19,7 @@ export async function limitDeviceRequest(request: Request, deviceId: string, res
   const local = isLocal(request);
   await consumeLimit(env.DEVICE_RATE_LIMIT, `relay:device:${deviceId}`, local);
   const createsUpload = resource === "uploads" && (!id || action === "restart");
-  if (request.method !== "GET" && (createsUpload || resource === "invitations" || resource === "person-invitations" || resource === "people" || resource === "favorites" || resource === "metadata-export" || resource === "import-layout" || resource === "publications" || request.method === "DELETE")) {
+  if (request.method !== "GET" && (createsUpload || resource === "invitations" || resource === "person-invitations" || resource === "people" || resource === "favorites" || resource === "metadata-export" || resource === "import-layout" || resource === "access-scopes" || resource === "scope-copies" || resource === "publications" || request.method === "DELETE")) {
     await consumeLimit(env.WRITE_RATE_LIMIT, `relay:write:${deviceId}`, local);
   }
 }
