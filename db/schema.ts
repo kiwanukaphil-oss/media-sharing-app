@@ -321,3 +321,39 @@ export const libraryEvents = sqliteTable("library_events", {
 }, table => [index("idx_library_events_page").on(table.spaceId, table.createdAt, table.id),
   check("library_event_resources", sql`json_valid(${table.resources}) AND json_array_length(${table.resources}) BETWEEN 1 AND 101`),
   check("library_event_count", sql`${table.affectedCount} BETWEEN 1 AND 500`)]);
+
+// Narrow collection grants reserve capacity but never create library memberships or read authority.
+export const uploadRequests=sqliteTable("upload_requests",{
+  id:text("id").primaryKey().notNull(), tokenHash:text("token_hash").notNull().unique(),
+  spaceId:text("space_id").notNull().references(()=>spaces.id),
+  issuerMembershipId:text("issuer_membership_id").notNull().references(()=>spaceMemberships.id),
+  recipientEmail:text("recipient_email").notNull(),acceptedBy:text("accepted_by").references(()=>people.id),acceptedAt:integer("accepted_at"),
+  title:text("title").notNull(),albumId:text("album_id").notNull().references(()=>albums.id),sectionId:text("section_id"),
+  accessScopeId:text("access_scope_id").references(()=>assetScopes.id),createdAt:integer("created_at").notNull(),expiresAt:integer("expires_at").notNull(),revokedAt:integer("revoked_at"),
+  maxFiles:integer("max_files").notNull(),maxFileBytes:integer("max_file_bytes").notNull(),maxBytes:integer("max_bytes").notNull(),
+  state:text("state",{enum:["draft","open","closed"]}).notNull().default("draft"),revision:integer("revision").notNull().default(0),
+},table=>[index("idx_upload_requests_space").on(table.spaceId,table.expiresAt),
+  check("intake_file_count",sql`${table.maxFiles} BETWEEN 1 AND 100`),check("intake_file_size",sql`${table.maxFileBytes} BETWEEN 1 AND 262144000`),
+  check("intake_total_size",sql`${table.maxBytes} BETWEEN 1 AND 1073741824`),check("intake_file_allowance",sql`${table.maxFileBytes}<=${table.maxBytes}`),
+  check("intake_expiry",sql`${table.expiresAt}>${table.createdAt} AND ${table.expiresAt}<=${table.createdAt}+604800000`),
+  check("intake_state",sql`${table.state} IN ('draft','open','closed')`),check("intake_recipient_binding",sql`(${table.acceptedBy} IS NULL)=(${table.acceptedAt} IS NULL)`)]);
+
+// Keep exact custody independently of media metadata so cleanup or a restore cannot lose late writes.
+export const intakeSubmissions=sqliteTable("intake_submissions",{
+  id:text("id").primaryKey().notNull(),requestId:text("request_id").notNull().references(()=>uploadRequests.id),
+  personId:text("person_id").notNull().references(()=>people.id),size:integer("size").notNull(),sha256:text("sha256").notNull(),createdAt:integer("created_at").notNull(),
+  phase:text("phase").notNull().default("reserved"),attemptKey:text("attempt_key"),leaseExpiresAt:integer("lease_expires_at").notNull().default(0),verifiedAt:integer("verified_at"),
+},table=>[index("idx_intake_submissions_request").on(table.requestId,table.personId),check("intake_submission_size",sql`${table.size}>0`),
+  check("intake_submission_phase",sql`${table.phase} IN ('reserved','starting','uploading','received','accepted','rejected','cancelled')`)]);
+
+export const intakeUploadAttempts=sqliteTable("intake_upload_attempts",{
+  objectKey:text("object_key").primaryKey().notNull(),submissionId:text("submission_id").notNull().references(()=>intakeSubmissions.id),
+  uploadId:text("upload_id"),state:text("state").notNull().default("creating"),createdAt:integer("created_at").notNull(),
+},table=>[index("idx_intake_attempt_submission").on(table.submissionId),check("intake_attempt_state",sql`${table.state} IN ('creating','active','abort-acknowledged','uncertain')`)]);
+
+export const intakeCapabilities=sqliteTable("intake_capabilities",{
+  id:text("id").primaryKey().notNull(),submissionId:text("submission_id").notNull().references(()=>intakeSubmissions.id),
+  objectKey:text("object_key").notNull(),uploadId:text("upload_id").notNull(),partNumber:integer("part_number").notNull(),expectedBytes:integer("expected_bytes").notNull(),
+  issuedAt:integer("issued_at").notNull(),expiresAt:integer("expires_at").notNull(),admissionId:text("admission_id").references(()=>closureWriteAdmissions.id),
+},table=>[index("idx_intake_capabilities_submission").on(table.submissionId),check("intake_part_number",sql`${table.partNumber} BETWEEN 1 AND 16`),
+  check("intake_part_size",sql`${table.expectedBytes} BETWEEN 1 AND 16777216`),check("intake_capability_expiry",sql`${table.expiresAt}>${table.issuedAt} AND ${table.expiresAt}<=${table.issuedAt}+60000`)]);

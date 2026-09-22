@@ -10,18 +10,23 @@
 - [x] Isolated named-recipient authority and immutable snapshot labels pass real D1 tests: no membership grant, all-source availability, session/recovery/expiry denial, sticky Trash/source/grant suspension and restored quarantine.
 - [ ] Sender issuance, recipient UI/downloads, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
 
-## Upload-request development checkpoint
+## Upload-request development acceptance
 
-Work continues on isolated branch `work/upload-requests`, latest source `cd01dcd`. The feature remains disabled; prototype tables are outside the active migration journal. Parent counts are unchanged.
-
-- [x] Named-account invitation authority, atomic shared quota, bounded multipart custody, independent streamed verification and closure-race tests pass locally. Core hosted run 35741321353 passed.
-- [x] Actual built-Worker routes pass with account-closure tracking: recipients gain no membership or file downloads; only owner-verified originals enter the library.
-- [x] Mobile/desktop owner creation and recipient sign-in, explicit acceptance, receipts and exact interrupted-file retry pass browser checks.
-- [ ] Lifecycle/minimisation/inventory review, rejection/custody reconciliation and release acceptance. Full hosted route/UI run [35744040823](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35744040823) is pending.
+- [x] Bounded named-account intake contract and isolated SQLite/D1 acceptance/authority tests. A recipient gains no membership or file-viewing grant; drafts, expired requests, revoked sessions and rebinding attempts are denied.
+- [x] Atomic shared-quota activation and exact submission reservation pass D1 concurrency, retry, file/byte limit and non-visibility checks.
+- [x] Isolated exact owner draft/retry/close and quota-exchange rollback tests pass; closing preserves staged originals.
+- [x] Isolated multipart receipt, streamed checksum acceptance, corruption/authority-race denial and maximum 250 MiB local workerd verification pass. Files remain outside the feed until verified acceptance.
+- [x] Durable bounded part-capability custody and built-Worker owner/recipient routes pass with closure tracking, including no membership, no recipient download, and verified owner acceptance. Hosted core checks passed in run 35741321353.
+- [x] Owner destination/allowance confirmation, secret-fragment sign-in handoff, recipient receipts and exact interrupted-file retry pass rendered mobile/desktop browser checks. Files stay outside the library until verified acceptance.
+- [x] Isolated lifecycle preparation inventories exact contributor/issuer custody, retains accepted shared files, minimises request contact details, prevents reopening and reconciles late multipart/staged bytes.
+- [x] Owner review download and reversible decline/restore pass local built-Worker/browser checks. Full route/UI hosted run 35744040823 passed before this review increment.
+- [x] Migration 0025, populated snapshot minimisation and private-export upgrade rehearsal preserve existing rows, accepted shared originals and exact intake custody. No invitations are invented; restored triggers/quarantine pass.
+- [x] Full hosted migration/review/lifecycle source `269c1ef` passed both jobs in [35745353865](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35745353865). Subsequent refresh/clock correction `1000fd7` passes local lint, TypeScript and browser checks.
+- [ ] Physical cleanup/disposition and release. Migration 0025 is prepared locally; the feature remains disabled and no remote intake migration has run. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
 
 ## Restricted-audience development acceptance
 
-**22 September:** Main merge `d32e7cc` also passed hosted run 35739071750. Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0024 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
+**22 September:** Main merge `d32e7cc` passed hosted run 35739071750. Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0025 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
 
 - [x] Current audience enforcement, retained activity privacy, same-scope album references, explicit upload destinations and retry integrity pass local D1/route tests.
 - [x] Private-export rehearsal preserves all original fields/rows in 25 tables through schema 0024, invents no grants, and retains restored triggers/quarantine. Populated-scope minimisation retains shared originals and revokes grants.
