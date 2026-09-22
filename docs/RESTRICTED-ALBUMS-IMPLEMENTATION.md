@@ -66,7 +66,7 @@ Branch `work/restricted-scopes` is an unfinished development branch, separate fr
 - [x] Resource-bound multipart capability admission and built-worker closure integration pass. Revocation denies new part URLs and original links in real local route tests.
 - [x] Current restricted browser workflows pass: general/combined navigation, scope-preserving album selection, audience preview, explicit self-access, revoked-content clearing and queue destination capture.
 - [x] Add scope management/navigation, audience previews, saved-view scope and durable queue context behind `RELAY_RESTRICTED_SCOPES_ENABLED`. No deployment configuration enables it.
-- [ ] Add independently verified cross-scope copying with explicit audience-expansion review.
+- [x] Add independently verified cross-scope copying with explicit audience-expansion review, locally verified behind the disabled flag.
 - [ ] Complete adversarial route/browser coverage, release verification and deployed checks before enabling restricted content.
 
 Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. Storage wording now identifies owner billing totals and audience-filtered lists; mobile and desktop visual checks plus the full local browser regression pass. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.
@@ -79,3 +79,16 @@ Owners may see aggregate billed storage across scopes for administration; file l
 - [x] Route and present controls behind the disabled activation flag. Dedicated built-Worker D1/R2 tests verify CSRF, owner-without-grant denial, Viewer bytes/read-only behavior, metadata/thumbnail/section denial and audited self-access. No production scope or grant was created.
 - [x] Full local browser regression exits 0: existing Chrome/Edge/Firefox/WebKit workflows preserved, plus new mobile/desktop audience checks and queue/navigation checks. Production build, TypeScript and full web lint pass.
 - [ ] Hosted verification and production release remain outstanding; cross-scope copying and final lifecycle/disclosure review remain activation gates.
+
+
+### Cross-audience copy implementation (22 September)
+
+- [x] Owner-only, same-shared-space copies require current grants to both audiences and different explicit source/destination scopes. Existing personal publication remains general-only and passes its full built-Worker regression.
+- [x] The original stays unchanged. R2 checks the streamed original checksum; distinct object keys/IDs, quota reservations, exact retry intent, attempt custody and current-authority visibility commits reuse the publication engine.
+- [x] New copy review shows source, destination, current named audience and future membership semantics. General-source copying explicitly cannot recall existing access/downloads. Recovery after a lost response keeps the same operation and destination; cancellation releases only the unfinished copy.
+- [x] Built-Worker D1/R2 tests cover both directions, missing grants, Viewer denial, incompatible destination album, stale source, independent bytes, exact retry, destination-only history and a grant lost after bytes arrive but before visibility. The last case never publishes and cleans its own attempt.
+- [x] Migration 0024 adds only nullable scope references on publication custody plus immutable/compatible audience triggers. Private-export rehearsal preserves all original fields in 25 tables, invents no grants and retains restored triggers/quarantine. Reviewed schema: `73207a15ec5ef28a6fcc7c485c09e484eae28f29792998daab8e13c000f6b2b7`.
+- [x] Local production build, TypeScript, full lint and mobile copy/retry/recovery/browser audience checks pass. Mobile success dialog visually inspected. Original personal publication checksum/race/cancellation regression exits 0.
+- [ ] Finish final disclosure/lifecycle review, hosted verification, independent backup/restore gate and deployed acceptance. Neither migration 0023/0024 nor the activation flag has been applied remotely.
+
+Retention review: scope references are opaque identifiers. Existing publication custody inventories include same-space jobs; unfinished jobs still block erasure, restored jobs quarantine to cancelling, and minimisation retains shared originals while revoking membership/grants. No new deletion authority is implied. The existing 1 GiB per-copy limit applies. Current named recipients are a review of a managed audience, not an immutable recipient snapshot; the dialog explicitly states owners can change that audience later.

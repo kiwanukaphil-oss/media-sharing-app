@@ -8,8 +8,9 @@ const page=await browser.newPage({viewport:{width:390,height:844}});
 const space=crypto.randomUUID(),actor=crypto.randomUUID(),peer=crypto.randomUUID(),scope=crypto.randomUUID();
 const album=crypto.randomUUID();
 let releaseUpload;const uploadGate=new Promise(resolve=>{releaseUpload=resolve;});let capturedUpload=null;
+let pendingCopy=null,copyRequests=0;
 let granted=true,version=crypto.randomUUID(),created=null;
-const file={id:crypto.randomUUID(),name:'Restricted portrait.jpg',mime:'image/jpeg',size:4,sha256:'a'.repeat(64),category:'original',createdAt:Date.now(),deviceName:'Owner',hasPreview:false,revision:0,canEdit:true};
+const file={id:crypto.randomUUID(),name:'Restricted portrait.jpg',mime:'image/jpeg',size:4,sha256:'a'.repeat(64),category:'original',createdAt:Date.now(),deviceName:'Owner',hasPreview:false,revision:0,canEdit:true,accessScopeId:scope};
 // Mock only transport to exercise rendered navigation/dialog/confirmation state. Real D1 tests cover
 // the same API operations, current authority, transactions and permission revocation independently.
 await page.route('**/api/**',async route=>{
@@ -37,6 +38,13 @@ await page.route('**/api/**',async route=>{
   }
   if(url.pathname==='/api/albums')return route.fulfill({json:{albums:granted&&[scope,'accessible'].includes(url.searchParams.get('scope'))?[{id:album,name:'Sensitive album',description:'',revision:0,createdAt:1,archivedAt:null,deletedAt:null,count:1}]:[],sections:[]}});
   if(url.pathname==='/api/uploads'&&request.method()==='POST'){capturedUpload=request.postDataJSON();await uploadGate;return route.fulfill({json:{id:capturedUpload.id,status:'ready',partSize:16777216}});}
+  if(url.pathname==='/api/scope-copies'){
+    if(request.method()==='GET')return route.fulfill({json:{publication:pendingCopy}});
+    const input=request.postDataJSON();copyRequests++;assert.equal(input.sourceScopeId,scope);assert.equal(input.destinationScopeId,null);assert.equal(input.confirmed,true);
+    if(!pendingCopy){pendingCopy={...input,phase:'pending'};return route.fulfill({status:503,json:{error:'Copy response interrupted. Retry the same copy.'}});}
+    assert.equal(input.id,pendingCopy.id);pendingCopy.phase='ready';return route.fulfill({json:{published:true,id:input.id,destinationSpaceId:space}});
+  }
+  if(/\/media\/.*\/(thumbnail|preview)$/.test(url.pathname))return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC0lEQVR42mP8/x8AAusB9Wl2nS8AAAAASUVORK5CYII=','base64')});
   if(url.pathname==='/api/storage')return route.fulfill({json:{allScopeBilling:true,used:4,reserved:0,trash:0,limit:100000,uploads:[]}});
   if(url.pathname==='/api/activity')return route.fulfill({json:{events:[],next:null}});
   throw new Error('Unexpected audience UI request '+url.pathname);
@@ -50,6 +58,24 @@ try {
   await expect(page.getByText(file.name,{exact:true})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Restricted library.'})).toBeVisible();
   assert.equal(new URL(page.url()).searchParams.get('scope'),scope);
+  await page.getByRole('button',{name:`Preview ${file.name}`,exact:true}).click();
+  await page.getByRole('button',{name:'Copy to another audience',exact:true}).click();
+  const copyDialog=page.getByRole('dialog',{name:'Copy to another audience',exact:true});
+  await expect(copyDialog.getByRole('button',{name:'Create copy',exact:true})).toBeDisabled();
+  await choose('Destination audience','General library');
+  await expect(copyDialog.getByText(/Fixture owner, Fixture viewer, plus paired devices/)).toBeVisible();
+  await expect(copyDialog.getByText(/restricted original stays/)).toBeVisible();
+  await copyDialog.getByRole('button',{name:'Create copy',exact:true}).click();
+  await expect(copyDialog.getByRole('alert')).toContainText('interrupted');
+  await expect(copyDialog.getByRole('combobox',{name:'Destination audience'})).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:`Preview ${file.name}`,exact:true}).click();
+  await page.getByRole('button',{name:'Copy to another audience',exact:true}).click();
+  await copyDialog.getByRole('button',{name:'Retry copy',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Copy verified',exact:true})).toBeVisible();
+  assert.equal(copyRequests,2);await expect(page.getByRole('link',{name:'Open destination'})).toHaveAttribute('href',`/?space=${space}`);
+  await mkdir('outputs/access-scopes',{recursive:true});await page.screenshot({path:'outputs/access-scopes/copy-mobile.png',fullPage:true});
+  await page.keyboard.press('Escape');
   await choose('Browse audience','Everything I can access');
   await expect(page.getByRole('button',{name:'Add files',exact:true})).toHaveCount(0);
   await expect(page.getByText(/Choose one audience before adding files/)).toBeVisible();

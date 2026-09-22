@@ -11,7 +11,7 @@ import { AccountError } from "@/lib/account-sessions";
 import { requireAccountSpaceAccess, scopedTransferUrl } from "@/lib/account-space-access";
 import { readAuth0Settings } from "@/lib/auth0-config";
 import { changeSpacePerson, createPersonInvitation, listSpacePeople, revokePersonInvitation } from "@/lib/space-people";
-import { cancelPublication, finishPublication, reservePublication } from "@/lib/publications";
+import { cancelPublication, finishPublication, reservePublication, readScopePublication } from "@/lib/publications";
 import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
@@ -147,6 +147,23 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
       if (input.confirmed) return Response.json(await revokeLegacyAccess(database(), accountAccess, device.space_id, id === "all" ? null : id));
     }
     throw new ApiError(404, "Action not found.");
+  }
+  if (resource === "scope-copies") {
+    if (!restrictedScopesEnabled()) throw new ApiError(404, "Restricted audiences are not available yet.");
+    if (!accountAccess || accountAccess.space_kind !== "shared") throw new ApiError(403, "Choose a shared library.");
+    requireOwner(device);
+    if (!id && method === "GET") {
+      const sourceId = new URL(request.url).searchParams.get("sourceId") || "";
+      if (!z.string().uuid().safeParse(sourceId).success) throw new ApiError(400, "Choose an original.");
+      return Response.json({ publication: await readScopePublication(database(), accountAccess, sourceId) });
+    }
+    if (!id && method === "POST") {
+      const input = await readJson(request, z.object({ id: z.string().uuid(), sourceId: z.string().uuid(), sourceRevision: z.number().int().nonnegative(),
+        sourceScopeId: z.string().uuid().nullable(), destinationScopeId: z.string().uuid().nullable(), albumId: z.string().uuid().optional(), sectionId: z.string().uuid().optional(), confirmed: z.literal(true) }));
+      const job = await reservePublication(database(), accountAccess, accountAccess, { ...input, destinationSpaceId: accountAccess.space_id }, spaceLimitBytes(accountAccess));
+      return Response.json(await finishPublication(database(), storage, accountAccess, job));
+    }
+    throw new ApiError(404, "This audience-copy action is unavailable.");
   }
   if (resource === "publications") {
     if (!accountAccess) throw new ApiError(403, "Sign in with your account to publish a personal file.");

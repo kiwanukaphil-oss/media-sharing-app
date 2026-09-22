@@ -5,6 +5,12 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Cross-audience copy checkpoint
+
+- [x] Local explicit owner-reviewed general/restricted copy flow, checksum-verified independent bytes, durable retry/recovery, destination-only history and grant-loss commit safeguards.
+- [x] Built-Worker copy and existing personal-publication regressions, mobile browser retry/recovery, build, TypeScript, lint and private-export migration/restore rehearsal pass through schema 0024.
+- [ ] Final disclosure review, hosted verification and release gates. Production remains at schema 0020; restricted creation is disabled. Parent completion counts are unchanged.
+
 ## Hosted verification correction
 
 - [x] Hosted browser job passed in run 35735781823 (source 62de840).

@@ -19,7 +19,8 @@ export async function rehearseRestrictedUpgrade(sql) {
     for(const table of before)table.digest=fingerprint(table);
     if(!names().includes('personal_favorites'))db.exec(await readFile('drizzle/0021_magical_raza.sql','utf8'));
     if(!names().includes('library_events'))db.exec(await readFile('drizzle/0022_glamorous_star_brand.sql','utf8'));
-    db.exec(await readFile('drizzle/0023_eager_penance.sql','utf8'));checkDatabase(db);
+    db.exec(await readFile('drizzle/0023_eager_penance.sql','utf8'));
+    db.exec(await readFile('drizzle/0024_burly_senator_kelly.sql','utf8'));checkDatabase(db);
     for(const table of before)if(fingerprint(table)!==table.digest)throw new Error('Existing records changed.');
     for(const name of ['media','albums'])if(db.prepare(`SELECT COUNT(*) AS n FROM ${name} WHERE access_scope_id IS NOT NULL`).get().n)throw new Error('Migration invented a scope.');
     const shape=names().map(name=>[name,db.prepare('SELECT name,type FROM pragma_table_info(?) ORDER BY cid').all(name)]);

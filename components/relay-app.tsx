@@ -11,6 +11,7 @@ import { WorkspaceSelect } from "./workspace-select";
 import { PresentationShield, HideLibraryButton } from "./presentation-shield";
 import { LibraryScope, useLibraryApi } from "./library-scope";
 import PublicationDialog from "./publication-dialog";
+import ScopeCopyDialog from "./scope-copy-dialog";
 import { SavedLibraryViews } from "./saved-library-views";
 import { savedLibraryViewsKey } from "@/lib/saved-library-views";
 import { AccessScopes } from "./access-scopes";
@@ -94,6 +95,7 @@ function RelayWorkspace() {
   const [mediaActionBusy, setMediaActionBusy] = useState(false);
   const { confirm, confirmation } = useActionConfirmation();
   const [renameItems, setRenameItems] = useState<MediaItem[]>([]);
+  const [scopeCopyItem, setScopeCopyItem] = useState<MediaItem | null>(null);
   const [publicationItem, setPublicationItem] = useState<MediaItem | null>(null);
   const [dateItem, setDateItem] = useState<MediaItem | null>(null);
   const selectionAnchor = useRef<string | null>(null);
@@ -162,7 +164,7 @@ function RelayWorkspace() {
         controllers.current.forEach(controller => controller.abort());
         verifiedDownload.current?.abort();
         setSession(null); setSessionFailure(true); setItems([]); setAlbums([]); setSections([]);
-        setStorage(null); setTransfers([]); setSelectedIds(new Set()); setModal(null); setPublicationItem(null);
+        setStorage(null); setTransfers([]); setSelectedIds(new Set()); setModal(null); setPublicationItem(null); setScopeCopyItem(null);
         setRenameItems([]); setDateItem(null); setFeedbackMessage(""); setUndoLibraryAction(null); setDownload(null);
         setCounts({ all: 0, original: 0, final: 0, trash: 0 });
       }
@@ -555,7 +557,7 @@ function RelayWorkspace() {
     if (scope === audienceRef.current) return;
     audienceRef.current = scope; ++feedRevision.current;
     setItems([]); setAlbums([]); setSections([]); setCounts({ all: 0, original: 0, final: 0, trash: 0 });
-    setTotal(0); setNextCursor(null); setSelectedIds(new Set()); setRenameItems([]); setDateItem(null); setPublicationItem(null);
+    setTotal(0); setNextCursor(null); setSelectedIds(new Set()); setRenameItems([]); setDateItem(null); setPublicationItem(null); setScopeCopyItem(null);
     setFeedbackMessage(""); setUndoLibraryAction(null); setModal(null);
   }
   function changeLibraryQuery(query: LibraryQuery) {
@@ -569,7 +571,7 @@ function RelayWorkspace() {
   // Grant updates clear content-dependent dialogs and Undo before refreshing current authority.
   const refreshAudienceAccess = useCallback(async () => {
     setItems([]); setAlbums([]); setSections([]); setSelectedIds(new Set()); setModal(null);
-    setRenameItems([]); setDateItem(null); setPublicationItem(null); setFeedbackMessage(""); setUndoLibraryAction(null);
+    setRenameItems([]); setDateItem(null); setPublicationItem(null); setScopeCopyItem(null); setFeedbackMessage(""); setUndoLibraryAction(null);
     await refreshLibrary();
   }, [refreshLibrary]);
   // Shift selection is bounded to the visible result order and the 100-file bulk action limit.
@@ -666,7 +668,8 @@ function RelayWorkspace() {
     {confirmation}
     {notice && <div className="toast" role="status"><Check size={17} />{notice}</div>}
 
-    {publicationItem && accountSpaceId && <PublicationDialog item={publicationItem} sourceSpaceId={accountSpaceId} libraries={accountLibraries} onClose={() => { setPublicationItem(null); void refreshStorage().catch(failure => setError(failure.message)); }} />}
+    {scopeCopyItem && accountSpaceId && <ScopeCopyDialog item={scopeCopyItem} spaceId={accountSpaceId} onClose={() => { setScopeCopyItem(null); void refreshLibrary().catch(failure => setError(failure.message)); }} />}
+    {publicationItem && accountSpaceId && <PublicationDialog item={publicationItem} sourceSpaceId={accountSpaceId} libraries={accountLibraries} onClose={() => { setPublicationItem(null); setScopeCopyItem(null); void refreshStorage().catch(failure => setError(failure.message)); }} />}
     {modal === "devices" && <ModalFrame title="Your connected devices" onClose={() => setModal(null)}>
       {error && <p role="alert" className="error-banner">{error}</p>}
       <p className="modal-intro">{isOwner ? "You are an owner. Manage who can use this shared space." : "You are a member. Upload, browse, and save files; an owner manages access and shared-file removal."}</p>
@@ -695,7 +698,7 @@ function RelayWorkspace() {
     </ModalFrame>}
     {modal === "storage" && <ModalFrame title={session?.space.kind === "personal" ? "Your personal storage" : "Your shared storage"} onClose={() => setModal(null)}>{error && <p role="alert" className="error-banner">{error}</p>}{storage ? <><p className="modal-intro">{formatBytes(storage.used)} of {formatBytes(storage.limit)} used. Originals stay until you choose to remove them.</p><progress className="storage-meter" max={storage.limit} value={storage.used} aria-label="Storage used" /><p className="small-muted">{formatBytes(storage.reserved)} reserved for unfinished uploads · {formatBytes(storage.trash)} in Trash. Trash continues to use storage.</p><button className="button secondary" onClick={() => { setModal(null); setFilter("trash"); }}>Open Trash</button><p className="small-muted">{session?.space.kind === "personal" ? "Only your personal files are included." : storage.allScopeBilling ? "Owner billing totals include every audience in this space. File lists show only content you can access." : "Usage shows content you can access; the limit applies to the whole space."}</p><h3 className="storage-heading">Unfinished uploads you can access</h3>{storage.uploads.length ? storage.uploads.map(upload => <div className="device-row" key={upload.id}><div><strong>{upload.name}</strong><p>{formatBytes(upload.size)} · {upload.deviceName}</p></div>{Boolean(upload.canCancel) && <button className="text-button danger" onClick={event => { event.currentTarget.focus(); void cancelUpload(upload.id, upload.name); }}>{upload.publication ? "Cancel publication" : "Cancel upload"}</button>}</div>) : <p className="small-muted">No unfinished transfers are available to you.</p>}</> : <p>Loading storage…</p>}</ModalFrame>}
     {modal === "help" && <ModalFrame title="A simple way to pass it on." onClose={() => setModal(null)}><div className="help-step"><span>01</span><div><h3>Drop your originals.</h3><p>Add files or drag them into your shared space. Relay sends the original bytes, without re-encoding.</p></div></div><div className="help-step"><span>02</span><div><h3>Save. Then make it yours.</h3><p>Save to device starts an original-file download. Edit locally in whichever tools you love.</p></div></div><div className="help-step"><span>03</span><div><h3>Drop the final cut.</h3><p>Open Final cuts and add your export. It is immediately available once the transfer finishes.</p></div></div><p className="modal-intro">Everyone paired to a space can view and save its files. Originals keep their metadata, including any embedded location. Albums group files without making copies. Removing a file from an album keeps it in the library. Owners and account editors can organise shared files. Only owners manage access or permanently delete files.</p><div className="help-note"><ShieldCheck size={20} /><p>Keep this browser tab open during uploads. After a reload, choose the same file to resume. Browser downloads go to Downloads or the location you select. Direct saving to Photos requires the native mobile app.</p></div></ModalFrame>}
-    {modal && typeof modal === "object" && <MediaViewer item={modal} items={visibleItems} saving={savingVerified} onNavigate={setModal} onClose={() => setModal(null)} onSave={() => void saveOriginal(modal)} onPublish={session?.space.kind === "personal" && !modal.archivedAt ? () => { setPublicationItem(modal); setModal(null); } : undefined} preview={<MediaPreview key={modal.id} item={modal} large />} thumbnail={item => <MediaPreview item={item} />}>
+    {modal && typeof modal === "object" && <MediaViewer item={modal} items={visibleItems} saving={savingVerified} onNavigate={setModal} onClose={() => setModal(null)} onSave={() => void saveOriginal(modal)} onCopyAudience={session?.restrictedScopes && session.role === "owner" && !modal.archivedAt ? () => { setScopeCopyItem(modal); setModal(null); } : undefined} onPublish={session?.space.kind === "personal" && !modal.archivedAt ? () => { setPublicationItem(modal); setModal(null); } : undefined} preview={<MediaPreview key={modal.id} item={modal} large />} thumbnail={item => <MediaPreview item={item} />}>
       <div className="detail-metadata"><span>{modal.category === "final" ? "Final cut" : "Original"}</span><span>{formatBytes(modal.size)}</span><span>{modal.mime}</span></div><p className="small-muted">Shared by {modal.deviceName}</p><dl className="file-details"><dt>Uploaded name</dt><dd>{modal.originalName || modal.name}</dd><dt>Uploaded</dt><dd>{new Date(modal.createdAt).toISOString().replace("T", " ").slice(0, 19)} UTC</dd><dt>Date taken</dt><dd>{modal.capturedAt?.replace("T", " ") || "Unknown - browsing uses upload date"}</dd></dl><div className="detail-actions">{canEditFile(modal) && !modal.archivedAt && <><button className="button secondary compact" onClick={() => { setRenameItems([modal]); setModal(null); }}>Rename file</button><button className="text-button" onClick={() => { setDateItem(modal); setModal(null); }}>Correct capture date</button></>}{modal.uploadBatch && <button className="text-button" onClick={() => { changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, batch: modal.uploadBatch! }); setFilter("all"); setSearch(""); setModal(null); }}>View upload batch</button>}</div><details className="integrity-details"><summary>Original file fingerprint</summary><code>{modal.sha256}</code><p>SHA-256 of the file selected for upload. Browser-managed downloads do not verify this automatically.</p></details>
       {/* The earlier inline preview dialog is superseded by MediaViewer; its styles are removal candidates after release approval. */}
     </MediaViewer>}

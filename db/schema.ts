@@ -116,6 +116,8 @@ export const publications = sqliteTable("publications", {
   destinationSpaceId: text("destination_space_id").notNull().references(() => spaces.id),
   personId: text("person_id").notNull().references(() => people.id),
   sourceRevision: integer("source_revision").notNull(),
+  sourceScopeId: text("source_scope_id").references(() => assetScopes.id),
+  destinationScopeId: text("destination_scope_id").references(() => assetScopes.id),
   albumId: text("album_id"),
   sectionId: text("section_id"),
   createdAt: integer("created_at").notNull(),
