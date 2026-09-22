@@ -67,6 +67,7 @@ jobs:
       - run: node tests/asset-scope-policy.mjs
       - run: node --disable-warning=ExperimentalWarning tests/asset-scope-authority.mjs
       - run: node tests/scope-management.mjs
+      - run: node tests/upload-request-authority.mjs
       - run: node --disable-warning=ExperimentalWarning tests/restricted-migration.mjs
       - run: node tests/saved-library-views.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs

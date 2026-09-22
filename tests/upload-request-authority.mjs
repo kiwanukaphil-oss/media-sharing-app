@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {DatabaseSync} from 'node:sqlite';
+import {build} from 'esbuild';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
+import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
+import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
+
+const bundle=await build({entryPoints:['lib/upload-request-authority.ts'],bundle:true,write:false,platform:'node',format:'esm'});
+const {acceptUploadRequest,intakeRecipientAuthority}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const db=new DatabaseSync(':memory:'),now=Date.now();
+try {
+  for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
+  db.exec(await readFile('docs/prototypes/upload-request-schema.sql','utf8'));
+  db.exec("INSERT INTO spaces VALUES('shared','Receiving studio',1),('foreign','Other',1)");
+  for(const person of ['owner','recipient','other']){
+    db.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES(?,?,?,?,?,?)').run(person,'https://fixture.invalid',person,person,person+'@example.invalid',now);
+    db.prepare('INSERT INTO account_sessions(id,person_id,token_hash,configuration_hash,created_at,expires_at,authenticated_at) VALUES(?,?,?,?,?,?,?)').run(person,person,person,'fixture',now,now+3600000,now);
+  }
+  db.exec("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES('owner','owner','shared','owner',1); INSERT INTO asset_scopes VALUES('private','shared','Never disclosed','owner',1); INSERT INTO scope_grants VALUES('private','owner','owner',1,NULL)");
+  db.exec("INSERT INTO albums(id,space_id,name,created_at,access_scope_id) VALUES('album','shared','Private album',1,'private'); INSERT INTO album_sections(album_id,id,name,position) VALUES('album','section','Hidden section',0)");
+  const seed=db.prepare(`INSERT INTO upload_requests(id,token_hash,space_id,issuer_membership_id,recipient_email,title,album_id,section_id,access_scope_id,created_at,expires_at,max_files,max_file_bytes,max_bytes,state)
+    VALUES(?,?,'shared','owner','recipient@example.invalid','Send event photos','album','section','private',?,?,20,1024,2048,?)`);
+  seed.run('request','a'.repeat(64),now,now+86400000,'draft');
+  seed.run('expired','b'.repeat(64),now-2000,now-1,'open');
+  assert.throws(()=>seed.run('oversized','c'.repeat(64),now,now+604800001,'open'),/CHECK constraint/);
+  assert.throws(()=>db.exec("UPDATE upload_requests SET access_scope_id=NULL WHERE id='request'"),/immutable/);
+  const session=person=>({sessionId:person,personId:person,displayName:person,verifiedEmail:person+'@example.invalid',createdAt:now,expiresAt:now+3600000,sessionMode:'temporary'});
+  const plan=planReadOnlySnapshot(db.prepare(schemaQuery).all()),snapshot=JSON.parse(db.prepare(plan.sql).get().snapshot);
+  const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'intake-prototype',modules:true,script:'export default {fetch(){return new Response("fixture");}}',d1Databases:['DB']}]}));
+  try {
+    const d1=await runtime.getD1Database('DB');
+    for(const statement of plan.schema.filter(row=>row.type==='table'))await d1.prepare(statement.sql).run();
+    await d1.batch([d1.prepare('PRAGMA defer_foreign_keys=ON'),...snapshot.tables.flatMap(table=>table.rows.map(statement=>d1.prepare(statement)))]);
+    for(const statement of plan.schema.filter(row=>row.type!=='table'))await d1.prepare(statement.sql).run();
+    await assert.rejects(acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now),/unavailable/,'A draft is not a capability.');
+    // Test-only activation: production activation must first reserve the shared quota in the same transaction.
+    await d1.prepare("UPDATE upload_requests SET state='open' WHERE id='request'").run();
+    await assert.rejects(acceptUploadRequest(d1,session('other'),'a'.repeat(64),now),/unavailable/);
+    await assert.rejects(acceptUploadRequest(d1,session('recipient'),'b'.repeat(64),now),/unavailable/);
+    const accepted=await acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now);
+    assert.equal(accepted.title,'Send event photos');assert.equal(accepted.receivingLibrary,'Receiving studio');
+    assert.doesNotMatch(JSON.stringify(accepted),/Private album|Hidden section|Never disclosed|token_hash|recipient_email/);
+    assert.equal((await d1.prepare('SELECT COUNT(*) AS n FROM space_memberships').first()).n,1,'Acceptance creates no membership.');
+    assert.equal((await d1.prepare('SELECT COUNT(*) AS n FROM scope_grants').first()).n,1,'Acceptance creates no content audience grant.');
+    await d1.prepare("UPDATE people SET verified_email='recipient@example.invalid' WHERE id='other'").run();
+    await assert.rejects(acceptUploadRequest(d1,session('other'),'a'.repeat(64),now),/unavailable/,'Matching email cannot rebind acceptance.');
+    await d1.prepare("UPDATE people SET verified_email='changed@example.invalid' WHERE id='recipient'").run();
+    assert.equal((await acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now)).id,'request');
+    await d1.prepare("UPDATE account_sessions SET revoked_at=? WHERE id='recipient'").bind(now).run();
+    await assert.rejects(acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now),/unavailable/);
+    await d1.prepare("UPDATE account_sessions SET revoked_at=NULL WHERE id='recipient'").run();
+    await d1.prepare("UPDATE scope_grants SET revoked_at=? WHERE scope_id='private'").bind(now).run();
+    await d1.prepare("UPDATE scope_grants SET revoked_at=NULL WHERE scope_id='private'").run();
+    await assert.rejects(acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now),/unavailable/,'Restoring issuer access cannot revive a revoked request.');
+  } finally {await runtime.dispose();}
+  db.exec("UPDATE upload_requests SET state='open',accepted_by='recipient',accepted_at=1 WHERE id='request'");
+  const authority=intakeRecipientAuthority(session('recipient'),now);
+  assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM upload_requests WHERE ${authority.sql}`).get(...authority.bindings).n,1);
+  db.exec("UPDATE album_sections SET deleted_at=2 WHERE id='section'; UPDATE album_sections SET deleted_at=NULL WHERE id='section'");
+  assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM upload_requests WHERE ${authority.sql}`).get(...authority.bindings).n,0);
+  const restorePlan=planReadOnlySnapshot(db.prepare(schemaQuery).all()),restored=importSnapshot(restoreReadOnlySnapshot(restorePlan,db.prepare(restorePlan.sql).all()));
+  try{sanitizeRestoredAccess(restored,now+1);assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM upload_requests WHERE revoked_at IS NULL').get().n,0);}
+  finally{restored.close();}
+  console.log('PASS: isolated SQLite/D1 intake invitation binding, no membership/disclosure, draft/expiry/session denial, immutable destination, non-resurrecting grants and restore quarantine. No quota activation or transfer routes exist yet.');
+} finally {db.close();}

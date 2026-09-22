@@ -5,6 +5,11 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Upload-request preparation
+
+- [x] Bounded named-account intake contract and isolated SQLite/D1 acceptance/authority tests. A recipient gains no membership or file-viewing grant; drafts, expired requests, revoked sessions and rebinding attempts are denied.
+- [ ] Atomic shared-quota activation, transfer custody, routes/UI, lifecycle review and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
+
 ## Restricted-audience development acceptance
 
 **22 September:** Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0024 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
