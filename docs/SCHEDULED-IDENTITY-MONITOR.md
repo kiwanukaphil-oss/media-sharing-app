@@ -30,7 +30,7 @@ The browser requires approval before copying the existing provider secret into a
 - [x] Set `MONITOR_ENABLED` to `true`, add `19,49 * * * *`, deploy the tracked configuration and read back its version/schedule.
 - [x] Observe a real cron execution and verify signed health delivery. At 15:19 UTC, live tail recorded cron `19,49 * * * *`, outcome `ok`, static success log and no exceptions. R2 readback confirms success with `eventAt=1790003947351` and `receivedAt=1790003949249`; public health returned HTTP 200.
 - [x] Inspect initial hosted timing: wall time 3,225 ms; CPU time 10 ms. Actual account dashboard confirms **Workers Free**. This is one successful execution, not capacity proof.
-- [ ] Establish CPU headroom and continued scheduled coverage before general release. The initial sample is at the documented Free 10 ms CPU limit. Do not treat the 40-identity subrequest guard as a CPU capacity guarantee. Reconcile the earlier note about an existing $5 subscription before any new paid-plan decision; no purchase made.
+- [x] Establish current-pilot CPU headroom and continued scheduled coverage after the explicitly approved Paid upgrade; 22 September 08:49 run and independent signed delivery verified below. The 40-identity guard is still not broad capacity proof.
 - [x] Confirm the already-sent Better Stack test alert arrived. Open Gmail inspected with user authorisation on 22 September: identity/recovery test message in Inbox, dated 21 September at 11:57 a.m. EAT. No additional email sent.
 
 If credential installation or checks fail, keep the Worker disabled and use the existing manual combined workflow while investigating. Do not claim unattended monitoring is complete until hosted scheduled execution has been observed.
