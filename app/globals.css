@@ -290,3 +290,13 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .activity-event-title time, .activity-list small { font-size: 11px; color: var(--muted, #667085); }
 .activity-list p { font-size: 13px; margin: 6px 0; overflow-wrap: anywhere; }
 .activity-empty { padding: 32px 0; color: var(--muted, #667085); text-align: center; }
+
+.page-upload-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.folder-import-dialog { width: min(720px, calc(100vw - 28px)); max-height: calc(100dvh - 40px); overflow-y: auto; }
+.folder-import-name { display: flex; flex-direction: column; gap: 6px; margin: 18px 0; font-size: 13px; }
+.folder-import-mapping { overflow-x: auto; margin: 18px 0; }
+.folder-import-mapping table { width: 100%; table-layout: fixed; font-size: 12px; text-align: left; border-collapse: collapse; }
+.folder-import-mapping caption { text-align: left; font-weight: 600; padding-bottom: 10px; }
+.folder-import-mapping th, .folder-import-mapping td { padding: 8px 4px; overflow-wrap: anywhere; border-bottom: 1px solid var(--border, #e5e7eb); }
+.folder-import-mapping th:last-child { width: 42px; }
+.folder-import-mapping input { width: 100%; min-width: 0; }

@@ -14,6 +14,7 @@ import PublicationDialog from "./publication-dialog";
 import { SavedLibraryViews } from "./saved-library-views";
 import { savedLibraryViewsKey } from "@/lib/saved-library-views";
 import { LibraryActivity } from "./library-activity";
+import { FolderImport, type MappedImportFile } from "./folder-import";
 import { LibraryOverview } from "./library-overview";
 import { LibraryTools, emptyLibraryQuery, type LibraryQuery } from "./library-tools";
 import { MediaViewer } from "./media-viewer";
@@ -123,6 +124,7 @@ function RelayWorkspace() {
   const [deviceName, setDeviceName] = useState("My desktop");
   const [spaceName, setSpaceName] = useState("Our shared space");
   const fileInput = useRef<HTMLInputElement>(null);
+  const queuedImportTransfers = useRef(new Set<string>());
   const resumeInput = useRef<HTMLInputElement>(null);
   const resumeTarget = useRef<Transfer | null>(null);
   const files = useRef(new Map<string, File>());
@@ -369,6 +371,24 @@ function RelayWorkspace() {
     });
     transferTasks.current.set(transfer.id, serialQueue.current);
   }
+  // Folder previews carry an explicit immutable destination for each file. Persist before dispatch,
+  // skip entries already queued by this preview, and retain partial progress if browser storage fails.
+  async function queueFolderImport(entries: MappedImportFile[]) {
+    if (!session || !["owner", "editor"].includes(session.role)) throw new Error("Organiser access changed. Refresh before importing.");
+    const uploadBatch = crypto.randomUUID();
+    let queued = 0;
+    for (const entry of entries) {
+      if (queuedImportTransfers.current.has(entry.transferId)) { queued++; continue; }
+      const transfer: Transfer = { id: entry.transferId, deviceId: session.deviceId, accountSpaceId, spaceName: session.space.name,
+        name: entry.file.name, size: entry.file.size, mime: entry.file.type || "application/octet-stream", category: "original",
+        albumId: entry.albumId, albumName: entry.albumName, sectionId: entry.sectionId, sectionName: entry.sectionName,
+        uploadBatch, parts: [], state: "queued", progress: 0 };
+      try { await persistTransfer(transfer); }
+      catch { throw new Error(`${queued} of ${entries.length} files queued. Allow browser storage, then retry the remaining files from this preview.`); }
+      queuedImportTransfers.current.add(entry.transferId); queued++; scheduleTransfer(entry.file, transfer);
+    }
+    await refreshAlbums();
+  }
   // Persist source manifests before queueing so reloads can recover unfinished work.
   async function selectOriginals(selected: FileList | File[]) {
     if (!session || session.role === "viewer" || filter === "trash") return;
@@ -581,7 +601,7 @@ function RelayWorkspace() {
     <div className="workspace" inert={navigationOpen}>
       <header className="topbar"><div className="breadcrumb"><button ref={navigationButton} className="icon-button navigation-open" aria-label="Open navigation" aria-expanded={navigationOpen} onClick={() => setNavigationOpen(true)}><Menu size={20} /></button><span title={session?.space.name}>{session?.space.name || "Workspace"}</span><ChevronRight size={14} /><strong>{pageTitle}</strong></div><div className="topbar-right">{session && <LibraryActivity key={session.deviceId} />}<HideLibraryButton /><button className="icon-button mobile-help" aria-label="How Relay works" onClick={() => setModal("help")}><CircleHelp size={20} /></button><span className="connection"><span className={`status-dot ${session && online ? "online" : ""}`} />{loading ? "Opening…" : session ? online ? "Connected" : "Reconnecting" : accountSpaceId !== undefined ? "Not connected" : "Not paired"}</span>{accountSpaceId !== undefined ? <a className="button secondary compact" href="/account">Account</a> : <button className="button secondary compact" aria-label={isOwner ? "Pair a device" : "Devices"} disabled={!session} onClick={() => setModal("devices")}><MonitorSmartphone size={16} /><span>{isOwner ? "Pair a device" : "Devices"}</span></button>}</div></header>
       <main id="main-content" tabIndex={-1}>
-        <div className="page-heading"><div><div className="eyebrow"><span className="small-line" />LESS SENDING. MORE CREATING.</div><h1>{pageTitle}<span className="title-dot">.</span></h1><p>{filter === "trash" ? "Restore removed files or free up shared storage." : filter === "final" ? "The finished work, ready for its next stop." : "A little less sending. A lot more creating."}</p></div>{filter !== "trash" && canUpload && <button className="button primary" disabled={!session || session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={() => fileInput.current?.click()}><Plus size={18} />{filter === "final" ? "Drop final cuts" : "Add files"}</button>}{filter === "trash" && <button className="button secondary" onClick={() => setFilter("all")}>Back to files</button>}</div>
+        <div className="page-heading"><div><div className="eyebrow"><span className="small-line" />LESS SENDING. MORE CREATING.</div><h1>{pageTitle}<span className="title-dot">.</span></h1><p>{filter === "trash" ? "Restore removed files or free up shared storage." : filter === "final" ? "The finished work, ready for its next stop." : "A little less sending. A lot more creating."}</p></div>{filter !== "trash" && canUpload && <div className="page-upload-actions">{isOrganiser && <FolderImport disabled={!session || session.transport === "unconfigured"} spaceName={session?.space.name || "This library"} queue={queueFolderImport} />}<button className="button primary" disabled={!session || session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={() => fileInput.current?.click()}><Plus size={18} />{filter === "final" ? "Drop final cuts" : "Add files"}</button></div>}{filter === "trash" && <button className="button secondary" onClick={() => setFilter("all")}>Back to files</button>}</div>
         {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError("")}><X size={17} /></button></div>}
         {!online && session && <div className="error-banner" role="status">Connection interrupted. Your queue is retained; resume sending when you are back online.</div>}
         {session?.transport === "local" && <div className="local-note"><span className="status-dot" />Local workspace · files stay on this computer until hosting is connected.</div>}

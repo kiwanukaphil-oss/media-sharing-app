@@ -17,7 +17,15 @@ This is metadata-only portability. Original downloads remain separate and unchan
 
 ## Remaining P5-04 scope
 
-- [ ] Preview folder-to-album/section mapping before queueing a directory import; handle names, collisions and browser capability fallback.
+- [x] Preview folder-to-album/section mapping before queueing a directory import; handle names, collisions and browser capability fallback. Locally verified; deployment remains pending.
 - [ ] Include the manifest in bounded selected-original export packages when P5-03 jobs exist; verify byte integrity and complete package contents.
 
 The parent roadmap item remains unchecked. No new database tables or stored export artifacts are needed for the metadata increment.
+
+## Folder import increment
+
+Owner/Editor can preview up to 200 files and 50 section groups in a new album. Top-level files remain unsectioned; deeper paths become editable single-level section labels. Repeated filenames remain separate originals and are disclosed before queueing. Paths with traversal/control characters are rejected. Plain-file fallback is available when the browser lacks folder selection.
+
+Layout creation is atomic and uses stable preview IDs. A lost response can be retried without creating another album; another organiser cannot adopt the preview ID, and a changed layout is not overwritten. Existing transfer persistence/resume and current server authority remain in force. Queue status never claims completed uploads. Partial local-persistence failures retain queued IDs and offer retry of the remainder.
+
+Local evidence: `tests/folder-import.mjs`, `tests/import-layout.mjs`, `tests/folder-import-browser.mjs`. The browser check creates only generated local fixtures, loses the first successful layout response, retries once, verifies one album and three byte-identical originals with the reviewed section mappings, and exercises the unsupported-folder fallback. Hosted and deployed checks remain outstanding for this increment.

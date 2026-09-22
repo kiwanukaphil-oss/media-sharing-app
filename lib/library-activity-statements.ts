@@ -7,10 +7,10 @@ export type ActivityResource = { kind: "media" | "album"; id: string; revision?:
 
 // Append immediately after the final guarded mutation. SQLite changes() reports that statement's
 // affected rows; the event and mutation roll back together if either fails. No historic text is kept.
-export function activityStatement(db: D1Database, device: Pick<ActiveDevice, "id" | "space_id">, action: ActivityAction, resources: ActivityResource[]) {
+export function activityStatement(db: D1Database, device: Pick<ActiveDevice, "id" | "space_id">, action: ActivityAction, resources: ActivityResource[], eventId = crypto.randomUUID()) {
   return db.prepare(`INSERT INTO library_events(id,space_id,actor_id,action,resources,affected_count,created_at)
     SELECT ?,?,?,?,?,changes(),? WHERE changes()>0`)
-    .bind(crypto.randomUUID(), device.space_id, device.id, action, JSON.stringify(resources), Date.now());
+    .bind(eventId, device.space_id, device.id, action, JSON.stringify(resources), Date.now());
 }
 
 export function fileActivityResources(files: { id: string; expectedRevision: number }[]): ActivityResource[] {

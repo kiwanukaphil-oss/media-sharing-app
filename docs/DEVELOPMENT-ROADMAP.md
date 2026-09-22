@@ -232,7 +232,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Recipients receive an intentional selection, and users can export useful, complete collections.
 **Entry:** Phase 2 and role/access foundations; integrate Phase 4 scopes if released; D09 resolved.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** In progress. Owner: Codex under standing execution authority. Role/access foundations permit bounded portability work; delivery and deployment gates remain outstanding.
 
 - [ ] **P5-01 — Define immutable delivery selections.** Snapshot explicit asset versions by default; do not require the later creative lineage UI. Review audience, expiry, authentication/passcode and recipient capabilities before publishing.
 - [ ] **P5-02 — Build recipient and sender workflows.** Focused branded presentation, predictable downloads, revoke/update controls and a sender preview of exposed content. A live collection is a separately approved optional mode, never an implicit default.
@@ -1102,3 +1102,10 @@ Cloudflare case 02338622 was rechecked on 22 September during this work: the thr
 - [ ] Complete directory mapping and integration with original export packages before checking P5-04.
 
 [Portability contract and checked milestones](PORTABILITY-IMPLEMENTATION.md). Parent counts remain 19/47; this records implemented and tested work, not a completed phase.
+
+### 22 September - folder import and corrected hosted verification
+
+- [x] Corrected activity/metadata hosted run `35728740492` passed verification and browser jobs at source `6f2b970`.
+- [x] Implement bounded folder preview, editable flattened section labels, repeated-name disclosure and a plain-file fallback. New layouts and events commit atomically; stable preview IDs make lost-response retries idempotent.
+- [x] Verify real local browser preview/cancel, duplicate-name handling, one-layout retry and three exact-byte uploaded originals with the requested section mapping. Pure planning, role/creator/scope and database rollback tests pass.
+- [ ] Complete hosted folder-import verification and deploy after B06 clears. Original export package jobs, guest intake and restricted-scope enforcement remain outstanding; parent counts are unchanged.

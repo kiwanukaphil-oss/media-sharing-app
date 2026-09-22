@@ -32,6 +32,8 @@ jobs:
       - run: node tests/activity-migration.mjs
       - run: node tests/library-activity.mjs
       - run: node tests/metadata-export.mjs
+      - run: node tests/folder-import.mjs
+      - run: node tests/import-layout.mjs
       - run: node tests/invitation-role-migration.mjs
       - run: node tests/identity-migration.mjs
       - run: node tests/identity-runtime.mjs

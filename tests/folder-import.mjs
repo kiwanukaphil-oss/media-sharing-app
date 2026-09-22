@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+const bundle=await build({entryPoints:['lib/folder-import.ts'],bundle:true,write:false,platform:'node',format:'esm'});
+const {planFolderImport}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const file=path=>({name:path.split('/').at(-1),size:4,webkitRelativePath:path});
+const plan=planFolderImport([file('Shoot/top.jpg'),file('Shoot/Originals/image.jpg'),file('Shoot/Edits/Day 1/image.jpg')]);
+assert.equal(plan.albumName,'Shoot');assert.equal(plan.totalBytes,12);assert.equal(plan.duplicateNames,1);assert.equal(plan.flattened,true);
+assert.deepEqual(plan.sections.map(section=>section.name),['Originals','Edits / Day 1']);assert.equal(plan.files[0].sectionKey,null);
+assert.equal(planFolderImport([{name:'plain.jpg',size:4}]).albumName,'Imported files');
+for(const files of [[],Array(201).fill(file('Shoot/a.jpg')),[file('Shoot/../secret.jpg')],[file('/absolute.jpg')],[file('One/a.jpg'),file('Two/b.jpg')],Array.from({length:51},(_,i)=>file(`Shoot/${i}/a.jpg`)),[{name:'empty.jpg',size:0}]])assert.throws(()=>planFolderImport(files));
+console.log('PASS: folder mapping, plain-file fallback, duplicate disclosure, nested labels, traversal rejection and bounded import limits.');
