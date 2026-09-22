@@ -1006,3 +1006,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Verify signed-in pilot navigation and existing private/shared files. The publication dialog restored yesterday's completed operation; read-only D1 confirms no duplicate or new publication.
 - [x] Replace the transient new-publication form with a neutral loading state until history resolves. Distinguish Previously published from a just-completed copy. Delayed-response browser tests verify hidden controls, recovered status and no additional POST; TypeScript, lint and build pass.
 - [ ] Deploy and verify the refined dialog on the live pilot.
+
+
+## 22 September 2026 - Authenticated disposition statement boundary
+
+- [x] Implement and test independently pinned, domain-separated closure disposition statements: exact reviewed scope, generation, complete effect set and evidence digests. Missing/duplicate/extra records and expiry-only assertions fail. Hosted test step added.
+- [ ] Produce actual externally verified disposition evidence and integrate the protocol minimiser; authentication alone grants no execution, quiescence, erasure or cutover authority. [Contract](CLOSURE-DISPOSITION-EVIDENCE.md).

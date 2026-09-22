@@ -24,7 +24,8 @@ Restored databases retain the existing quarantine: active admissions/effects bec
 - [x] Distinguish positively linked account/legacy admissions, unbound legacy devices and global backup scope. Include completed effects because their storage references still matter.
 - [x] Preserve unresolved capability evidence after expiry; flag incomplete table families. Reports always state `quiescenceProven: false`, `minimisationReviewed: false` and `cutoverAllowed: false`.
 - [x] Verify actual migration-0019 snapshots, unchanged source rows, historical inventory integration and existing minimisation regressions.
-- [ ] Define and authenticate exact external disposition receipts and minimal retained evidence before adding a protocol-schema minimisation transform.
+- [x] Define and locally verify exact signed disposition-statement bindings and effect coverage; [contract and limitations](CLOSURE-DISPOSITION-EVIDENCE.md). No live receipt is signed.
+- [ ] Independently verify external disposition evidence, define minimal retained evidence and integrate the protocol-schema minimisation transform.
 - [ ] Prove every application/backup writer is covered and verify the generated-person full lifecycle rehearsal before activating production closure.
 
 The new inventory is evidence for review, not a deletion plan or a schema allowlist expansion.
