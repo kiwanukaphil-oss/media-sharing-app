@@ -10,6 +10,7 @@ Prioritise **Editor**: a trusted collaborator can organise albums, sections and 
 | --- | --- | --- | --- | --- |
 | Browse authorised library, preview and save originals | Yes | Yes | Yes | Yes |
 | Upload and deliberately publish into the space | Yes | Yes | Yes | No |
+| Finish own uploads and create their initial previews | Own contributions | Own contributions | Own contributions | No |
 | Rename, date or move files between albums/sections | All | All | Own contributions | No |
 | Create/rename/reorder/archive albums and sections | Yes | Yes | No | No |
 | Move to Trash and restore | All | All | Own contributions | No |
@@ -69,3 +70,5 @@ Release needs hosted representative-role checks, independent backup/restore of m
 - [ ] Build route-specific attribution adapters and transactional authority predicates, then integrate every API/UI path after the Phase 2 gate. This preflight function alone is never sufficient mutation authority.
 
 Actor `id` must be populated from a verified membership (account) or device (legacy), never a client-provided identity or email. `audienceAllowed` must come from server-side audience evaluation. Personal-space policy remains separate.
+
+The [route integration review](COLLABORATION-ROUTE-REVIEW.md) maps both web and compatibility paths, SQL authority, publication destinations, claimed devices and UI assumptions. Prepared `continue-upload` and `create-preview` decisions preserve exact contribution ownership even for Owner/Editor; these actions also require route-specific state, upload identity, checksum and quota checks. Demotion to Viewer denies further byte-producing operations. Hosted CI `35708556464` passed both jobs for the initial policy; the follow-up adds these transfer-specific adversarial cases.

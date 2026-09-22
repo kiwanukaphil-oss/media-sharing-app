@@ -2,7 +2,7 @@
 
 ## Account browser-session feedback - 22 September 2026
 
-Worker `dc3a0d93-4903-4075-a235-6c69be3af11f` is at **100%**, deployed 09:04 UTC from `390140a`. Account now distinguishes loading, sign-out progress, completed revocation and refresh failure; stale controls are hidden after failed refresh. Duplicate email subtitles are omitted. TypeScript, focused lint, build, dry run and delayed/error-response mobile browser tests pass; rendering inspected. Fresh signed-in account, personal/shared links and both retained browser sessions verified live without revoking either. No authentication, schema, quota or permission changes. Hosted CI is pending.
+Worker `dc3a0d93-4903-4075-a235-6c69be3af11f` is at **100%**, deployed 09:04 UTC from `390140a`. Account now distinguishes loading, sign-out progress, completed revocation and refresh failure; stale controls are hidden after failed refresh. Duplicate email subtitles are omitted. TypeScript, focused lint, build, dry run and delayed/error-response mobile browser tests pass; rendering inspected. Fresh signed-in account, personal/shared links and both retained browser sessions verified live without revoking either. No authentication, schema, quota or permission changes. Hosted CI `35708279076` passed both jobs. Subsequent preparation-only CI `35708556464` also passed both jobs; it changes no live permissions.
 
 ## Publication recovery clarity - 22 September 2026
 

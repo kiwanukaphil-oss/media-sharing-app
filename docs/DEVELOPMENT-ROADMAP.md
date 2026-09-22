@@ -1038,4 +1038,8 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 ## 22 September 2026 - Collaboration policy preparation
 
 - [x] Prepare a pure role/selection policy with adversarial tests for mixed ownership, rejoined membership, revoked/cross-space/narrower-audience access, Editor limits and compatibility Member behaviour.
+- [x] Review web and legacy permission routes, publication destinations, claimed-device propagation and UI capability assumptions. Separate own-upload continuation/preview creation from organisation authority; adversarial policy, TypeScript and focused lint pass. [Integration review](COLLABORATION-ROUTE-REVIEW.md).
+- [x] Verify hosted CI for restored-run reconciliation (`35707987081`), deployed account feedback (`35708279076`) and initial collaboration policy (`35708556464`): both jobs passed in each run.
 - [ ] Integrate current authority into database mutations and all UI/API paths after Phase 2. The prepared module is not used by production; no membership, invitation default or permission changed. Parent phase counts remain unchanged.
+
+Cloudflare case email checked 22 September at approximately 09:10 UTC: acknowledgement only, no technical answer. No reply is required and no additional message was sent.
