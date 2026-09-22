@@ -7,7 +7,13 @@
 
 ## Restricted-scope development checkpoint
 
-**22 September:** Isolated branch `work/restricted-scopes`, commit `b004bea`, is pushed. Local D1 checks pass for retained activity privacy, owner denial after scope revocation, album discovery, metadata/bookmark denial, explicit upload destinations and retry integrity; existing editor/contributor write-authority checks, TypeScript and focused lint pass. This is partial implementation, not a release: migration 0023 remains outside main and production. Capability issuance, publication/import, minimisation and export/restore rehearsal, management/navigation UI and complete browser/release checks are outstanding. Main remains the independently tested favourites/activity/portability candidate, held for backup download capacity. Parent counts remain unchanged.
+**22 September:** Isolated branch `work/restricted-scopes`, UI/runtime commit `62de840`, is pushed; hosted verification `35735781823` is queued. Main remains the separate release candidate held for independent backup download capacity. Migration 0023 is not in main or production, and no deployment configuration enables restricted creation.
+
+- [x] Current audience enforcement, retained activity privacy, explicit upload destinations and retry integrity pass local D1 tests.
+- [x] Private-export migration rehearsal preserves existing rows/columns in 25 tables; restored triggers and access quarantine pass. Restricted-scope minimisation retains shared originals and revokes grants.
+- [x] Flag-gated owner management, explicit audited self-access, general/restricted/combined navigation, album navigation and durable upload context pass local route and browser checks.
+- [x] Built-Worker account and closure-tracking integration pass; full browser regression exits 0, preserving existing Chrome/Edge/Firefox/WebKit workflows. TypeScript, production build and full web lint pass.
+- [ ] Independently verified cross-scope copying, final disclosure/lifecycle review, hosted acceptance and production release. No restricted-feature parent is marked complete by these local milestones.
 
 ## Current position
 
