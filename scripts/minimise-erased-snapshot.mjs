@@ -40,6 +40,10 @@ export function minimiseErasedSnapshot(sql, receipt, now = Date.now()) {
     // Newer schemas retain personal navigation separately; it must not survive person erasure.
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='personal_favorites'").get())
       database.prepare(`DELETE FROM personal_favorites WHERE person_id=? OR media_id IN(SELECT id FROM media WHERE space_id IN(${personal}))`).run(personId,personId);
+    // Revoke exact-membership grants explicitly as well as through the departure trigger. Shared
+    // scope labels and audit references follow the same retained-content policy as shared albums.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='scope_grants'").get())
+      database.prepare('UPDATE scope_grants SET revoked_at=COALESCE(revoked_at,?) WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)').run(now,personId);
     const sharedBefore = JSON.stringify(database.prepare(`SELECT * FROM media WHERE space_id NOT IN(${personal}) ORDER BY id`).all(personId));
     database.prepare(`DELETE FROM album_media WHERE album_id IN(SELECT id FROM albums WHERE space_id IN(${personal}))
       OR media_id IN(SELECT id FROM media WHERE space_id IN(${personal}))`).run(personId,personId);

@@ -235,11 +235,13 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
     if (action === "part" && method === "POST") {
       if (item.status !== "uploading") throw new ApiError(409, "This transfer is no longer accepting parts.");
       const { number } = await readJson(request, z.object({ number: z.number().int().min(1).max(Math.ceil(item.size / item.part_size)) }));
+      const partAuthority = mediaOperationAuthority(device, item.id);
+      if (!await database().prepare(`SELECT 1 WHERE ${partAuthority.sql}`).bind(...partAuthority.bindings).first()) throw new ApiError(403, "The upload audience changed. Review its destination.");
       const expectedBytes = Math.min(item.part_size, item.size - (number - 1) * item.part_size);
       const signedAt = Math.floor(Date.now() / 1000) * 1000;
       if (admissionId && storageMode(request) !== "local") {
         await reserveClosureUploadCapability(database(), admissionId, { objectKey: item.object_key,
-          uploadId: item.upload_id, partNumber: number, expiresAt: signedAt + 3600000 });
+          uploadId: item.upload_id, partNumber: number, expiresAt: signedAt + 3600000 }, Date.now(), partAuthority);
       }
       const url = storageMode(request) === "local" ? scopedTransferUrl(`/api/uploads/${id}/bytes/${number}`, device) : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) }, expectedBytes, signedAt);
       return Response.json({ url });

@@ -1,4 +1,4 @@
-import { resourceAudienceAuthority, browseAudienceAuthority, requestedBrowseAudience } from "./asset-scope-authority";
+import { newAssetAudienceAuthority, resourceAudienceAuthority, browseAudienceAuthority, requestedBrowseAudience } from "./asset-scope-authority";
 import { activityBatch, fileActivityResources } from "./library-activity";
 import { activityStatement } from "./library-activity-statements";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
@@ -49,11 +49,12 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
   }
   requireOrganiser(device);
   if (request.method === "POST" && !id) {
-    const input = await readJson(request, z.object(albumFields));
-    const albumId = crypto.randomUUID();
+    const input = await readJson(request, z.object({ ...albumFields, accessScopeId: z.string().uuid().nullable().optional() }));
+    const albumId = crypto.randomUUID(), scopeId = input.accessScopeId ?? null;
+    const audience = newAssetAudienceAuthority(device, scopeId);
     const authority = transferAuthority(device, Date.now(), "organiser");
-    const [inserted] = await activityBatch(device, "album.create", [{ kind: "album", id: albumId, revision: 0 }], [database().prepare(`INSERT INTO albums (id, space_id, name, description, created_at) SELECT ?, ?, ?, ?, ? WHERE ${authority.sql}`)
-      .bind(albumId, device.space_id, input.name, input.description, Date.now(), ...authority.bindings)]);
+    const [inserted] = await activityBatch(device, "album.create", [{ kind: "album", id: albumId, revision: 0 }], [database().prepare(`INSERT INTO albums (id, space_id, name, description, created_at, access_scope_id) SELECT ?, ?, ?, ?, ?, ? WHERE ${authority.sql} AND ${audience.sql}`)
+      .bind(albumId, device.space_id, input.name, input.description, Date.now(), scopeId, ...authority.bindings, ...audience.bindings)]);
     if (!inserted.meta.changes) throw new ApiError(409, "Library access changed. Refresh before creating an album.");
     return Response.json({ id: albumId });
   }

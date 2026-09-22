@@ -10,7 +10,8 @@ type PublicationRow = { id: string; source_id: string; source_space_id: string; 
   source_revision: number; album_id: string | null; section_id: string | null; phase: string; attempt_key: string | null; lease_expires_at: number };
 type OriginalRow = { id: string; name: string; mime: string; size: number; sha256: string; object_key: string; preview_ready: number; preview_size: number; revision: number };
 
-// This first publication boundary is strictly personal-owner to an authorised shared-space membership.
+// This first publication boundary is strictly personal-owner to general shared content. Restricted
+// destinations require the separate reviewed cross-scope workflow; never infer them from an album.
 const publicationAuthority = `EXISTS (SELECT 1 FROM account_sessions a JOIN people p ON p.id = a.person_id
   JOIN space_memberships own ON own.person_id = p.id JOIN personal_spaces ps ON ps.space_id = own.space_id AND ps.person_id = p.id
   JOIN space_memberships destination ON destination.person_id = p.id
@@ -19,7 +20,7 @@ const publicationAuthority = `EXISTS (SELECT 1 FROM account_sessions a JOIN peop
   AND own.space_id = ? AND own.role = 'owner' AND own.revoked_at IS NULL
   AND destination.space_id = ? AND destination.revoked_at IS NULL AND destination.role IN ('owner','member','editor','contributor')
   AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = destination.space_id))`;
-const destinationAvailable = `(? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL))
+const destinationAvailable = `(? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND access_scope_id IS NULL AND deleted_at IS NULL AND archived_at IS NULL))
   AND (? IS NULL OR EXISTS (SELECT 1 FROM album_sections WHERE id = ? AND album_id = ? AND deleted_at IS NULL))`;
 
 // A retry can only refer to the same person's exact source, revision and destination; cancelled IDs stay cancelled.

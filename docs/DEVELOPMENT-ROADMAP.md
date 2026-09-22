@@ -5,6 +5,13 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Restricted-scope recovery checkpoint
+
+- [x] Local private-export migration rehearsal preserves all existing rows/columns in 25 tables; restored triggers and access quarantine verified.
+- [x] Populated restricted-scope minimisation test preserves shared originals and revokes grants.
+- [x] Production-build account integration passes with schema 0023 in disposable storage, including publication and recovery checks.
+- [ ] Complete management/navigation, cross-scope copies, capability/browser coverage and deployed verification. No parent completion or remote migration is implied.
+
 ## Restricted-scope development branch
 
 **22 September:** `work/restricted-scopes` contains locally tested partial runtime integration and additive migration 0023. It is isolated from the main release candidate and is not approved for deployment. File/album/section reads and mutations, favourites, exports, retained activity and scoped upload retries now have local D1 coverage. Scope creation remains unavailable; capability races, publication/import, minimisation/recovery rehearsal, management UI and full browser/release checks are still outstanding. [Checked implementation milestones](RESTRICTED-ALBUMS-IMPLEMENTATION.md#isolated-runtime-integration--22-september-2026). Parent counts remain unchanged.

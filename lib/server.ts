@@ -134,6 +134,7 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
     if (!["ready", "uploading"].includes(existing.status) || existing.archived_at) throw new ApiError(409, "This original was removed from the feed.");
     return { id: existing.id, partSize: existing.part_size, status: existing.status, uploadId: existing.upload_id };
   }
+  if (await database().prepare("SELECT 1 FROM media WHERE id=?").bind(input.id).first()) throw new ApiError(409, "That transfer is unavailable. Review its original destination.");
   if (input.albumId) {
     const album = await database().prepare("SELECT id FROM albums WHERE id = ? AND space_id = ? AND access_scope_id IS ? AND deleted_at IS NULL AND archived_at IS NULL").bind(input.albumId, device.space_id, scopeId).first();
     if (!album) throw new ApiError(409, "The upload album is unavailable or archived. Choose an active album.");

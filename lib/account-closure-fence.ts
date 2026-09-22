@@ -70,7 +70,8 @@ type StorageEffect = { objectKey: string; operation: "put" | "multipart_create" 
 // proof that storage finished a previously admitted request. Keep uncertainty without an automatic
 // acknowledgement path; a separately reviewed reconciliation must establish multipart quiescence.
 export async function reserveClosureUploadCapability(database: D1Database, admissionId: string,
-  capability: { objectKey: string; uploadId: string; partNumber: number; expiresAt: number }, now = Date.now()) {
+  capability: { objectKey: string; uploadId: string; partNumber: number; expiresAt: number }, now = Date.now(),
+  resourceAuthority: { sql: string; bindings: (string | number)[] } = { sql: "1", bindings: [] }) {
   if (!capability.objectKey || capability.objectKey.length > 1024 || /[\x00-\x1f]/.test(capability.objectKey) ||
       !capability.uploadId || capability.uploadId.length > 2048 || /[\x00-\x1f]/.test(capability.uploadId) ||
       !Number.isSafeInteger(capability.partNumber) || capability.partNumber < 1 || capability.partNumber > 10000 ||
@@ -81,9 +82,9 @@ export async function reserveClosureUploadCapability(database: D1Database, admis
   const id = crypto.randomUUID(), authority = closureAdmissionAuthority(admissionId);
   const result = await database.prepare(`INSERT INTO closure_storage_effects
     (id,admission_id,object_key,operation,upload_id,part_number,capability_expires_at,state,started_at)
-    SELECT ?,?,?,'multipart_capability',?,?,?,'uncertain',? WHERE ${authority.sql}`)
+    SELECT ?,?,?,'multipart_capability',?,?,?,'uncertain',? WHERE ${authority.sql} AND ${resourceAuthority.sql}`)
     .bind(id, admissionId, capability.objectKey, capability.uploadId, capability.partNumber, capability.expiresAt, now,
-      ...authority.bindings).run();
+      ...authority.bindings, ...resourceAuthority.bindings).run();
   if (!result.meta.changes) throw new AccountError(409, "Closure prevents a new upload capability.");
   return { id };
 }

@@ -37,7 +37,7 @@ Scope never changes by adding/removing an album reference or renaming a section.
 ## Implementation sequence and acceptance
 
 - [x] Define asset/album compatibility, inherited sections, personal-space exclusion, administrator grants and offboarding rules.
-- [ ] Introduce additive scope/grant/audit records and central SQL predicates. Rehearse against a private export before any migration.
+- [x] Introduce additive scope/grant/audit records and central SQL predicates on the isolated development branch; private-export rehearsal passed. No remote migration.
 - [ ] Integrate every disclosure surface above, including current activity/portability work, before enabling scope creation.
 - [ ] Add explicit scope management, audience preview, restricted navigation and cross-scope copy.
 - [ ] Exercise owner-without-grant, Viewer, Contributor, Editor, legacy, private-space and multi-album adversarial cases; revocation races and restoration must preserve scope.
@@ -60,8 +60,11 @@ Branch `work/restricted-scopes` is an unfinished development branch, separate fr
 - [x] Activity scopes are captured atomically, validated and immutable. Missing resource attribution aborts the transaction. Permanent deletion retains the server-read scope without returning it in activity resources.
 - [x] Explicit upload scope is retained across reservation and retry; a general request cannot enter a restricted album. Preview commits, cancellation, deletion and upload-ready commits include current audience checks.
 - [x] Local D1 activity tests cover hidden album discovery, ungranted metadata/bookmarks, owner denial after revocation, scoped upload retry and destination mismatch, and activity privacy after deletion/revocation. Existing library write-authority tests pass, including denied storage dispatch and recovery after interrupted cleanup. TypeScript and focused lint pass.
-- [ ] Complete capability-issuance race review, publication/import integration, minimisation schema review and actual-export migration/restore rehearsal.
+- [x] Rehearse migration 0020 through 0023 against a private live export: all original columns/rows in 25 tables preserved, no invented grants, restored triggers identical and restored memberships quarantined. Source digest `fe005a714436264b1c0e07c4b22a652627db264389ece63fab93519877272f36`.
+- [x] Review minimisation schema `896bd38831c71628bab581dcd4e661273a23a9dbcf9bc9c5e7331c38e94063d2`: explicit exact-membership grant revocation, shared originals/scope records retained, identity minimised and restored grants quarantined. Local populated-scope fixture and existing erased-snapshot tests pass.
+- [x] Import/album creation captures an explicit scope. Existing personal publication accepts general destinations only; restricted destinations await the cross-scope workflow. Production-build account integration passes, including original bytes, roles, transfer races, publications, backup export and recovery repair.
+- [ ] Finish capability-issuance race coverage and restricted browser workflows. Direct multipart admission now includes resource authority; broader closure integration remains to verify.
 - [ ] Add scope management and navigation, audience previews, queue context and verified cross-scope copy.
 - [ ] Complete adversarial route/browser coverage, release verification and deployed checks before enabling restricted content.
 
-Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. UI wording for this exception remains outstanding. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.
+Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. Storage wording now identifies owner billing totals and audience-filtered lists; visual/browser verification remains outstanding. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.
