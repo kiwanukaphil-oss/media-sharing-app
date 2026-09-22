@@ -6,6 +6,7 @@ import { inventoryBackupVersions } from './inventory-backup-versions.mjs';
 import { authorizeBackupRole, downloadBackupFile, operationsDirectory, storageRequest } from './backup-storage.mjs';
 import { completedOriginals, importSnapshot } from './relay-backup.mjs';
 import { providerIdentityDigest } from './minimise-erased-snapshot.mjs';
+import { inspectClosureSnapshot } from './inspect-closure-snapshot.mjs';
 
 const reviewedSchemaDigest = 'b59ead9f977608a709cc1569f7fa90b6427f18b12908bb3babc57dad12902201';
 const snapshotName = /^relay\/snapshots\/\d{4}-\d{2}-\d{2}T[\d-]+Z-[a-f0-9-]{36}\/database\.sql$/;
@@ -38,6 +39,7 @@ export function inspectHistoricalSnapshot(sql) {
     }
     return {schemaDigest, minimisationSchemaReviewed:schemaDigest === reviewedSchemaDigest,
       identityTablesPresent:hasPeople, personalOwnershipTablePresent:hasPersonalSpaces,
+      closureProtocol:inspectClosureSnapshot(database),
       people, personalSpaces, completedOriginalReferences:completed.length,
       originals:completed,
       tableCounts:Object.fromEntries(['spaces','devices','invitations','media'].map(table =>

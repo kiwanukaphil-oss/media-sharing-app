@@ -867,4 +867,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Test the shared digest format, absent original profile, inconsistent old active profile, unchanged rejected fields and unrelated successful login against actual D1. TypeScript, focused lint and production build pass.
 - [x] Pass identity/claim and legacy API regressions, deploy source `05d1c30` as Worker `13b029f9-328b-467d-9c5e-99a7dfc63285` at 100%, verify both-origin health/anonymous denial/dormant coordinator 404 and retained personal-library access. No real identity is erased by this change.
 - [x] Hosted CI `35695052192` verification job passed for the deployed source.
-- [ ] Record its browser job completion; it is still running.
+- [x] Record browser job completion: hosted CI `35695052192` completed successfully in both jobs, confirmed 22 September.
+
+## 22 September 2026 - Closure protocol privacy inventory
+
+- [x] Review the protocol's retained identity, object, upload and snapshot references; record required treatment in [closure protocol privacy review](CLOSURE-PROTOCOL-PRIVACY.md).
+- [x] Extend private historical snapshot inventory with account/legacy attribution, global backup scope, unresolved effects and incomplete-schema reporting. Expiry and historical settlement do not grant erasure authority.
+- [x] Verify actual migration-plus-prototype fixtures, unchanged source rows, historical inventory and existing minimisation tests; focused lint passes. Add the new suite to hosted CI.
+- [ ] Authenticate external disposition evidence and implement the reviewed new-schema minimisation treatment before migration. The existing migration-0018 allowlist is unchanged; complete P2-06 remains open.

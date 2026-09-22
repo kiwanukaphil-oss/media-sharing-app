@@ -77,6 +77,8 @@ Restore sanitisation now recognises the complete protocol table family: fences r
 
 ### Remaining metadata review targets
 
+The [closure protocol privacy review](CLOSURE-PROTOCOL-PRIVACY.md) now inventories the new schema's personal/storage references. Historical snapshot reports include exact effects, positive identity links, unbound legacy admissions and global backup runs in private local evidence. This does not expand the minimiser's schema allowlist or establish current writer quiescence.
+
 The 22 September correction is implemented, tested and deployed in source `591d2ab`: compatibility attribution inserts recheck live membership/session/person/recovery authority inside the atomic D1 batch and use the current profile name. Claim preview insertion repeats live device/account checks; claim confirmation and people-management writes enforce the credential watermark. Actual-schema tests force recovery/revocation between the initial read and mutation and confirm that rejected effects are absent. Production deployment and passed fresh signed-in verification are recorded in `deploy/STATUS.md`. This closes these stale-authority gaps, but does not complete closure-generation admission or the full writer audit.
 
 ### Provider component rehearsal
