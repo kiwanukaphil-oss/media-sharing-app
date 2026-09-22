@@ -8,9 +8,9 @@ import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from '../s
 const database = new DatabaseSync(':memory:');
 try {
   const journal = JSON.parse(await readFile('drizzle/meta/_journal.json', 'utf8')).entries;
-  for (const migration of journal) database.exec(await readFile(`drizzle/${migration.tag}.sql`, 'utf8'));
+  for (const migration of journal.filter(entry => entry.idx <= 18)) database.exec(await readFile(`drizzle/${migration.tag}.sql`, 'utf8'));
   assert.equal(inspectClosureSnapshot(database).present, false);
-  database.exec(await readFile('deploy/closure-fence-prototype.sql', 'utf8'));
+  database.exec(await readFile('drizzle/0019_wild_nighthawk.sql', 'utf8'));
   database.exec(`INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at)
       VALUES ('person','fixture','subject','Name','fixture@example.invalid',1);
     INSERT INTO spaces VALUES ('shared','Shared',1);

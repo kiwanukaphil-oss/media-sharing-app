@@ -54,10 +54,7 @@ try {
       if (statement.trim()) await database.prepare(statement.trim()).run();
     }
   }
-  if (backupCoordinationChecks || closureTrackingChecks) {
-    for (const sql of (await readFile('deploy/closure-fence-prototype.sql','utf8')).split('--> statement-breakpoint'))
-      if (sql.trim()) await database.prepare(sql).run();
-  }
+  // The additive coordination schema is migration 0019; flags still select isolated activation.
   if (backupCoordinationChecks) {
     const {verifyBackupCoordinationRoute}=await import('../tests/backup-coordination-route.mjs');
     await verifyBackupCoordinationRoute(database,(url,options)=>emulator.dispatchFetch(url,options));

@@ -17,6 +17,8 @@ test('upload runner never receives the restore reader and verification never rec
   const copy = JSON.stringify(workflow.jobs.copy);
   const verify = JSON.stringify(workflow.jobs.verify);
   assert.doesNotMatch(copy, /B2_READER_KEY_JSON/);
+  assert.match(copy, /RELAY_BACKUP_COORDINATION_SECRET/);
+  assert.doesNotMatch(verify, /RELAY_BACKUP_COORDINATION_SECRET/);
   assert.doesNotMatch(verify, /B2_WRITER_KEY_JSON|CLOUDFLARE_D1_READ_TOKEN|R2_READ_SECRET_ACCESS_KEY/);
   assert.notEqual(workflow.jobs.copy.environment, workflow.jobs.verify.environment);
   assert.equal(workflow.jobs.verify.needs, 'copy');

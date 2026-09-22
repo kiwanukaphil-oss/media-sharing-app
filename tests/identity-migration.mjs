@@ -25,7 +25,7 @@ try {
   const before = Object.fromEntries(tables.map(table => [table, database.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
   for (const migration of journal.filter(entry => entry.idx > 6)) database.exec(await readFile(`drizzle/${migration.tag}.sql`, 'utf8'));
   for (const table of tables) assert.deepEqual(database.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(), before[table], `${table} must survive the identity migration unchanged.`);
-  for (const table of ['people', 'account_sessions', 'space_memberships', 'personal_spaces', 'legacy_owner_claims', 'person_invitations', 'publications', 'recovery_watermarks', 'account_deletion_requests']) {
+  for (const table of ['people', 'account_sessions', 'space_memberships', 'personal_spaces', 'legacy_owner_claims', 'person_invitations', 'publications', 'recovery_watermarks', 'account_deletion_requests', 'closure_fences', 'closure_write_admissions', 'closure_storage_effects', 'closure_backup_runs']) {
     assert.equal(database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count, 0, 'Schema migration cannot infer identities, grant access or create destructive intent.');
   }
   assert.equal(database.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');

@@ -62,6 +62,7 @@ jobs:
           R2_READ_ACCESS_KEY_ID: ${{ secrets.R2_READ_ACCESS_KEY_ID }}
           R2_READ_SECRET_ACCESS_KEY: ${{ secrets.R2_READ_SECRET_ACCESS_KEY }}
           B2_WRITER_KEY_JSON: ${{ secrets.B2_WRITER_KEY_JSON }}
+          RELAY_BACKUP_COORDINATION_SECRET: ${{ secrets.RELAY_BACKUP_COORDINATION_SECRET }}
           BACKUP_INDEX_ENCRYPTION_KEY: ${{ secrets.BACKUP_INDEX_ENCRYPTION_KEY }}
           RELAY_BACKUP_INDEX_FILE: work/backup-index.enc
         run: node --disable-warning=ExperimentalWarning scripts/relay-backup.mjs create

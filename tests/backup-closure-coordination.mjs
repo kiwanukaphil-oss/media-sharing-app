@@ -18,7 +18,7 @@ function signed(command,alter={}) {
 try {
   const database=await runtime.getD1Database('DB');
   const migrations=JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries;
-  for(const path of [...migrations.map(row=>`drizzle/${row.tag}.sql`),'deploy/closure-fence-prototype.sql'])
+  for(const path of migrations.map(row=>`drizzle/${row.tag}.sql`))
     for(const sql of (await readFile(path,'utf8')).split('--> statement-breakpoint'))if(sql.trim())await database.prepare(sql).run();
   const begin={action:'begin',id,snapshotId};
   let stalledCancelled=false;

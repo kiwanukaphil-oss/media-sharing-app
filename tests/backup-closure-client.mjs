@@ -3,6 +3,7 @@ import { randomUUID,createHmac } from 'node:crypto';
 import { mkdir,readFile } from 'node:fs/promises';
 import { resolve,join } from 'node:path';
 import { backupCoordinationTransport,runCoordinatedBackup } from '../scripts/backup-closure-client.mjs';
+import { backupCoordinationVariables } from '../scripts/backup-coordination-config.mjs';
 
 const root=resolve('.sites-runtime/backup-coordination-tests',randomUUID());await mkdir(root,{recursive:true});
 const secret='b'.repeat(64),commands=[],snapshotId=`${new Date().toISOString().replace(/[:.]/g,'-')}-${randomUUID()}`;
@@ -15,6 +16,11 @@ const transport=backupCoordinationTransport({RELAY_BACKUP_COORDINATION_ENABLED:'
   return Response.json({...command,state:command.action==='begin'?'active':command.outcome});
 });
 assert.equal(backupCoordinationTransport({}),null);
+assert.deepEqual(backupCoordinationVariables({enabled:false}),{});
+assert.deepEqual(backupCoordinationVariables({enabled:true}),{RELAY_BACKUP_COORDINATION_ENABLED:'true'});
+for(const configuration of [null,{}, {enabled:'true'}, {enabled:true,secret:'forbidden'}, {enabled:true,closureTracking:true}])
+  assert.throws(()=>backupCoordinationVariables(configuration),/public backup/);
+assert.throws(()=>backupCoordinationTransport(backupCoordinationVariables({enabled:true})),/incomplete/);
 for(const environment of [{RELAY_BACKUP_COORDINATION_ENABLED:'true'},{RELAY_BACKUP_COORDINATION_SECRET:secret},{RELAY_BACKUP_COORDINATION_ENABLED:'false',RELAY_BACKUP_COORDINATION_SECRET:secret}])
   assert.throws(()=>backupCoordinationTransport(environment),/incomplete/);
 let started=false,release;

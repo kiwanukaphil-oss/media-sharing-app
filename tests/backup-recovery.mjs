@@ -126,9 +126,9 @@ test('restoration prevents unfinished publication from resuming and preserves co
 test('restoration quarantines closure and interrupted backup/storage work without inventing completion', () => {
   const database=new DatabaseSync(':memory:');
   try {
-    // Apply actual reviewed migrations plus the isolated protocol, not a simplified schema imitation.
+    // Apply actual reviewed migrations, including the additive coordination schema.
     const migrations=JSON.parse(readFileSync('drizzle/meta/_journal.json','utf8')).entries;
-    for(const path of [...migrations.map(row=>`drizzle/${row.tag}.sql`),'deploy/closure-fence-prototype.sql'])database.exec(readFileSync(path,'utf8'));
+    for(const path of migrations.map(row=>`drizzle/${row.tag}.sql`))database.exec(readFileSync(path,'utf8'));
     database.exec(`INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES('person','https://fixture.invalid/','fixture','Fixture','fixture@example.invalid',1);
       INSERT INTO account_deletion_requests VALUES('request','person',1,'review_required',2);
       INSERT INTO closure_fences VALUES('fence','person','request',1,1,'draining','plan','decision','approval',2);

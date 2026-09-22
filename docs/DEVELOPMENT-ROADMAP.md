@@ -955,3 +955,12 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Review the exact protocol schema only for global backup bookkeeping: require no fences, account/device admissions or storage effects, validate every global run and reject orphan links/private free text. The full closure schema is not generally approved.
 - [x] Verify actual-schema minimisation preserves shared originals and completed receipt evidence, quarantines an exported active run, and remains repeat-safe. Unsupported account/legacy/storage/fence references still block transformation. Historical inventory reports the precise review scope.
 - [ ] Promote the reviewed additive schema into migrations, rehearse upgrade/recovery, configure the dedicated coordinator secret, then observe a hosted coordinated backup and independent completion readback. Account closure tracking remains disabled throughout this stage.
+
+
+## 22 September 2026 - Backup coordination migration preparation
+
+- [x] Generate additive migration 0019 and use it in real D1/R2, API, recovery and privacy tests. Keep the prototype as a documented retirement candidate.
+- [x] Rehearse a fresh production export in isolation: all 21 existing application tables unchanged, four new tables empty, recovery quarantine/integrity verified. No remote migration yet.
+- [x] Complete pre-change backup/restore run `35702440856`: all 25 originals (321,680,743 bytes) independently restored at 08:01 UTC.
+- [x] Add one public coordination switch for the Worker and writer, protected-copy-job-only secret binding, and an independent live D1/B2 receipt review command. Switch remains off; no secret installed yet.
+- [ ] Complete hosted CI, apply/verify the additive migration, install the dedicated secret and observe the first coordinated backup. [Activation record](COORDINATED-BACKUP-ACTIVATION.md) tracks each gate.

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, index, primaryKey, foreignKey, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, primaryKey, foreignKey, uniqueIndex, check } from "drizzle-orm/sqlite-core";
 
 export const spaces = sqliteTable("spaces", {
   id: text("id").primaryKey(),
@@ -214,3 +214,59 @@ export const albumMedia = sqliteTable("album_media", {
   mediaId: text("media_id").notNull().references(() => media.id, { onDelete: "cascade" }),
   sectionId: text("section_id"),
 }, table => [primaryKey({ columns: [table.albumId, table.mediaId] }), index("idx_album_media_file").on(table.mediaId), foreignKey({ columns: [table.albumId, table.sectionId], foreignColumns: [albumSections.albumId, albumSections.id] })]);
+
+// Initial activation permits global backup coordination only. Application closure tracking stays off
+// until account/device/storage disposition and minimisation have their separate execution review.
+export const closureFences = sqliteTable("closure_fences", {
+  id: text("id").primaryKey().notNull(),
+  personId: text("person_id").notNull().unique().references(() => people.id),
+  requestId: text("request_id").notNull().unique().references(() => accountDeletionRequests.id),
+  sourceRevision: integer("source_revision").notNull(),
+  generation: integer("generation").notNull(),
+  phase: text("phase", { enum: ["draining", "review_required"] }).notNull(),
+  planDigest: text("plan_digest").notNull(),
+  decisionDigest: text("decision_digest").notNull(),
+  approvalDigest: text("approval_digest").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [check("closure_fence_generation", sql`${table.generation} > 0`),
+  check("closure_fence_phase", sql`${table.phase} IN ('draining','review_required')`)]);
+
+export const closureWriteAdmissions = sqliteTable("closure_write_admissions", {
+  id: text("id").primaryKey().notNull(),
+  kind: text("kind", { enum: ["account", "legacy", "backup"] }).notNull(),
+  personId: text("person_id").references(() => people.id),
+  deviceId: text("device_id").references(() => devices.id),
+  generation: integer("generation").notNull(),
+  state: text("state", { enum: ["active", "settled", "uncertain"] }).notNull(),
+  startedAt: integer("started_at").notNull(),
+  settledAt: integer("settled_at"),
+}, table => [index("idx_closure_admissions_state").on(table.state, table.kind, table.personId, table.deviceId),
+  check("closure_admission_generation", sql`${table.generation} >= 0`),
+  check("closure_admission_state", sql`${table.state} IN ('active','settled','uncertain')`),
+  check("closure_admission_actor", sql`(${table.kind}='account' AND ${table.personId} IS NOT NULL AND ${table.deviceId} IS NULL) OR
+    (${table.kind}='legacy' AND ${table.personId} IS NULL AND ${table.deviceId} IS NOT NULL) OR
+    (${table.kind}='backup' AND ${table.personId} IS NULL AND ${table.deviceId} IS NULL)`)]);
+
+export const closureStorageEffects = sqliteTable("closure_storage_effects", {
+  id: text("id").primaryKey().notNull(),
+  admissionId: text("admission_id").notNull().references(() => closureWriteAdmissions.id),
+  objectKey: text("object_key").notNull(),
+  operation: text("operation").notNull(),
+  uploadId: text("upload_id"),
+  partNumber: integer("part_number"),
+  capabilityExpiresAt: integer("capability_expires_at"),
+  state: text("state", { enum: ["active", "acknowledged", "uncertain"] }).notNull(),
+  startedAt: integer("started_at").notNull(),
+  acknowledgedAt: integer("acknowledged_at"),
+}, table => [index("idx_closure_storage_effects_admission").on(table.admissionId, table.state),
+  check("closure_effect_state", sql`${table.state} IN ('active','acknowledged','uncertain')`),
+  check("closure_effect_operation", sql`${table.operation} IN ('put','multipart_create','multipart_part','multipart_complete','delete','multipart_abort','multipart_capability')`),
+  check("closure_effect_capability", sql`${table.operation}<>'multipart_capability' OR
+    (${table.uploadId} IS NOT NULL AND ${table.partNumber} IS NOT NULL AND ${table.partNumber} BETWEEN 1 AND 10000 AND ${table.capabilityExpiresAt} IS NOT NULL)`)]);
+
+export const closureBackupRuns = sqliteTable("closure_backup_runs", {
+  id: text("id").primaryKey().notNull().references(() => closureWriteAdmissions.id),
+  snapshotId: text("snapshot_id").notNull().unique(),
+  receiptDigest: text("receipt_digest"),
+  createdAt: integer("created_at").notNull(),
+});

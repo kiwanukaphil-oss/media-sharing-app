@@ -102,7 +102,7 @@ try {
   assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM account_sessions WHERE person_id=?').bind(inconsistentId).first()).n,0);
   assert.ok((await accounts.createAccountSession(database,settings,{...erasedIdentity,subject:'unrelated-current'},null,now)).token);
   // Library-management requests cannot borrow another actor's admission or reuse one after settlement.
-  for(const sql of (await readFile('deploy/closure-fence-prototype.sql','utf8')).split('--> statement-breakpoint'))if(sql.trim())await database.prepare(sql).run();
+  // Coordination tables now arrive through migration 0019; account tracking is enabled only in this fixture.
   const scoped=await fixture(),foreign=await fixture(),admissionId=crypto.randomUUID();
   await database.prepare("INSERT INTO closure_write_admissions VALUES(?,'account',?,NULL,0,'active',?,NULL)").bind(admissionId,scoped.personId,now).run();
   const tracked={...scoped,closureAdmissionId:admissionId};

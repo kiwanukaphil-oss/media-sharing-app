@@ -17,7 +17,7 @@ const now=Date.now(),issuer='https://closure.fixture/';
 try {
   const database=await runtime.getD1Database('DB');
   const migrations=JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries;
-  for(const path of [...migrations.map(row=>`drizzle/${row.tag}.sql`),'deploy/closure-fence-prototype.sql'])
+  for(const path of migrations.map(row=>`drizzle/${row.tag}.sql`))
     for(const sql of (await readFile(path,'utf8')).split('--> statement-breakpoint'))if(sql.trim())await database.prepare(sql).run();
   // Seed only disposable identities in this isolated actual-schema D1; no live key or account is used.
   async function createPerson(label) {

@@ -1,4 +1,5 @@
--- Isolated protocol rehearsal only. Not in the migration journal; do not apply to production yet.
+-- Historical prototype retained for comparison; removal candidate after migration 0019 rollout.
+-- New environments must use journal migration 0019, never apply this file on top of it.
 CREATE TABLE closure_fences (
   id TEXT PRIMARY KEY NOT NULL,
   person_id TEXT NOT NULL UNIQUE REFERENCES people(id),

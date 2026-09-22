@@ -11,7 +11,8 @@ import { authorizeBackupRole, downloadBackupFile, hashFile, operationsDirectory,
   runPrivateCommand, storageRequest, uploadBackupFile, validateFileDigest, backupBucketId } from './backup-storage.mjs';
 import { readEncryptedBackupIndex } from './backup-index.mjs';
 import { exportReadOnlyDatabase } from './backup-d1-readonly.mjs';
-import { runCoordinatedBackup } from './backup-closure-client.mjs';
+import { backupCoordinationTransport, runCoordinatedBackup } from './backup-closure-client.mjs';
+import { backupCoordinationVariables } from './backup-coordination-config.mjs';
 import { persistBackupCompletionReceipt } from './backup-completion-receipt.mjs';
 
 const backupRoot = resolve(operationsDirectory, 'backups');
@@ -161,12 +162,15 @@ async function downloadSourceOriginal(objectKey, destination) {
 
 // Export metadata first, copy every referenced ready original including Trash, and publish the manifest last.
 async function createRecoverySnapshot() {
+  const coordinationVariables = backupCoordinationVariables(JSON.parse(await readFile('deploy/backup-coordination.json', 'utf8')));
+  const transport = coordinationVariables.RELAY_BACKUP_COORDINATION_ENABLED
+    ? backupCoordinationTransport({ ...process.env, ...coordinationVariables }) : null;
   if (process.env.GITHUB_ACTIONS === 'true' && !process.env.CLOUDFLARE_API_TOKEN) throw new Error('Database export credential is missing.');
   await mkdir(backupRoot, { recursive: true });
   const snapshotId = `${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}`;
   const directory = join(backupRoot, snapshotId);
   await mkdir(join(directory, 'source'), { recursive: true });
-  return runCoordinatedBackup(snapshotId,directory,coordination=>copyRecoverySnapshot(snapshotId,directory,coordination));
+  return runCoordinatedBackup(snapshotId,directory,coordination=>copyRecoverySnapshot(snapshotId,directory,coordination),transport);
 }
 
 // Every storage promise completes before returning the receipt digest to the closure coordinator.

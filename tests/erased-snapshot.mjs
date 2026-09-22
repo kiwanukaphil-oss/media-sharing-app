@@ -12,7 +12,7 @@ import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from '../s
 const database = new DatabaseSync(':memory:');
 try {
   const journal = JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries;
-  for (const migration of journal) database.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
+  for (const migration of journal.filter(entry => entry.idx <= 18)) database.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
   database.exec(`INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES
     ('gone','https://fixture/','private-subject','Private name','private@example.test',1),
     ('kept','https://fixture/','kept','Kept','kept@example.test',1);
@@ -108,7 +108,7 @@ try {
   assert.throws(()=>minimiseErasedSnapshot(sql+'\nCREATE TABLE future_identity(value TEXT);',receipt),/schema/);
   assert.throws(()=>minimiseErasedSnapshot(sql+'\nALTER TABLE people ADD private_note TEXT;',receipt),/schema/);
   // The first activation stage has only global backup bookkeeping, never account/device/storage references.
-  const protocolSql = sql + '\n' + await readFile('deploy/closure-fence-prototype.sql','utf8');
+  const protocolSql = sql + '\n' + await readFile('drizzle/0019_wild_nighthawk.sql','utf8');
   const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const backupSql = protocolSql + `
     INSERT INTO closure_write_admissions(id,kind,generation,state,started_at) VALUES('${runId}','backup',0,'active',1);
