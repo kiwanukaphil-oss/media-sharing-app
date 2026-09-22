@@ -2,7 +2,7 @@
 
 ## Current release position - 22 September 2026
 
-The current production baseline is Worker `b7e1565a-3aa7-402c-acd2-5703cfe57ad4`, schema 0020, with designated-account access, a 1 GiB personal allocation and coordinated backups. General onboarding, account closure, restricted audiences, intake and deliveries are not activated. Repository publication and routine phase progression are already authorised by [AGENTS.md](../AGENTS.md); no new routine approval is needed.
+The current production baseline is Worker `29137605-6bf6-4c2b-8631-5725b9d0d7c1`, schema 0020, with designated-account access, a 1 GiB personal allocation and coordinated backups. General onboarding, account closure, restricted audiences, intake and deliveries are not activated. Repository publication and routine phase progression are already authorised by [AGENTS.md](../AGENTS.md); no new routine approval is needed.
 
 | Candidate area | Development evidence | Remaining release acceptance |
 | --- | --- | --- |

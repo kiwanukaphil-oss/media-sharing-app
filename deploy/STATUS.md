@@ -1,5 +1,10 @@
 ## Pending collaboration release - 22 September, 12:35 UTC
 
+## 22 September 2026 - persistent workspace navigation hotfix
+
+Worker `29137605-6bf6-4c2b-8631-5725b9d0d7c1` is at 100%, independently read back after deployment at 20:04 UTC. Runtime `4aaa73a` branches from verified live `9d81a1c`; schema remains 0020. Both-origin health/security/access probes pass. The signed-in plain homepage now exposes personal/shared choices and persistent account links. [Evidence](../docs/WORKSPACE-NAVIGATION-HOTFIX.md). Earlier records below retain their historical versions.
+
+
 Favourites source `99ddc0f` passed hosted CI `35726758741` in both jobs. Activity is locally implemented and being verified. Migrations 0021/0022 are not remote; the live Worker remains `b7e1565a-3aa7-402c-acd2-5703cfe57ad4` on schema 0020.
 
 Fresh backup `35726687872` copied 25 originals (321,680,743 bytes) to snapshot `2026-09-22T12-22-13-217Z-89d8fb98-3d1c-4bc8-ba67-6cd3661d24f9`; its independent restore failed with confirmed HTTP 403 `download_cap_exceeded`. Do not describe this snapshot as verified. Hold migration/deployment until a successful independent verification; no spending limits changed. Private live export and combined additive migration rehearsal preserve all 25 current tables and restore quarantine.
