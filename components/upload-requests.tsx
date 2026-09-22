@@ -17,6 +17,7 @@ const MiB=1024*1024;
 export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{spaceId:string;spaceName:string;restricted:boolean;onClose:()=>void}) {
   const api=useMemo(()=>createLibraryApi(spaceId),[spaceId]),dialog=useRef<HTMLDialogElement>(null),heading=useId();
   const {confirm,confirmation}=useActionConfirmation();
+  const loadVersion=useRef(0),serverClock=useRef<{time:number;readAt:number}|null>(null);
   const [requests,setRequests]=useState<RequestEntry[]>([]),[selected,setSelected]=useState(""),[submissions,setSubmissions]=useState<Submission[]>([]);
   const [creating,setCreating]=useState(false),[scopes,setScopes]=useState<{id:string;name:string}[]>([]),[audience,setAudience]=useState("general");
   const [albums,setAlbums]=useState<Album[]>([]),[sections,setSections]=useState<AlbumSection[]>([]),[albumId,setAlbumId]=useState(""),[sectionId,setSectionId]=useState("");
@@ -24,15 +25,19 @@ export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{s
   const [intent,setIntent]=useState<Draft|null>(null),[createdLink,setCreatedLink]=useState(""),[copied,setCopied]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[loaded,setLoaded]=useState(false);
   const current=requests.find(request=>request.id===selected),audienceName=audience==="general"?"General library":scopes.find(scope=>scope.id===audience)?.name??"Unavailable audience";
   const load=useCallback(async()=>{
+    const version=++loadVersion.current;
     try{
-      const list=await api.requestJson<{requests:RequestEntry[]}>("upload-requests");setRequests(list.requests);
-      if(selected){const detail=await api.requestJson<{submissions:Submission[]}>(`upload-requests/${selected}`);setSubmissions(detail.submissions);}
+      const list=await api.requestJson<{requests:RequestEntry[];serverTime:number}>("upload-requests");
+      if(version!==loadVersion.current)return;
+      if(Number.isSafeInteger(list.serverTime))serverClock.current={time:list.serverTime,readAt:performance.now()};
+      setRequests(list.requests);
+      if(selected){const detail=await api.requestJson<{submissions:Submission[]}>(`upload-requests/${selected}`);if(version!==loadVersion.current)return;setSubmissions(detail.submissions);}
       setLoaded(true);
-    }catch(failure){setRequests([]);setSubmissions([]);setError(failure instanceof Error?failure.message:"Requests could not be loaded.");}
+    }catch(failure){if(version!==loadVersion.current)return;setRequests([]);setSubmissions([]);setError(failure instanceof Error?failure.message:"Requests could not be loaded.");}
   },[api,selected]);
   useEffect(()=>{const element=dialog.current;element?.showModal();return()=>element?.close();},[]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- Refresh external request state; updates follow awaited network responses.
-  useEffect(()=>{void load();const timer=setInterval(()=>{if(document.visibilityState==="visible")void load();},10000);return()=>clearInterval(timer);},[load]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- Await server reads; cleanup intentionally advances the current request generation, not a DOM ref.
+  useEffect(()=>{void load();const timer=setInterval(()=>{if(document.visibilityState==="visible")void load();},10000);return()=>{clearInterval(timer);loadVersion.current++;};},[load]);
   useEffect(()=>{
     if(!restricted)return;
     const controller=new AbortController();void api.requestJson<{scopes:{id:string;name:string}[]}>("access-scopes",{signal:controller.signal}).then(result=>{if(!controller.signal.aborted)setScopes(result.scopes);}).catch(failure=>{if(!controller.signal.aborted)setError(failure.message);});
@@ -51,7 +56,7 @@ export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{s
   // Capture exact reviewed limits and a stable cryptographic invitation before the first network call.
   // A failed response keeps the same intent; retry cannot reserve another allowance or redirect it.
   async function createRequest(){
-    const draft=intent??{id:crypto.randomUUID(),token:Array.from(crypto.getRandomValues(new Uint8Array(32)),byte=>byte.toString(16).padStart(2,"0")).join(""),title:title.trim(),recipientEmail:email.trim(),albumId,sectionId:sectionId||null,accessScopeId:audience==="general"?null:audience,expiresAt:Date.now()+Number(hours)*3600000,maxFiles,maxFileBytes:fileBytes,maxBytes:totalBytes,confirmed:true as const};
+    const draft=intent??{id:crypto.randomUUID(),token:Array.from(crypto.getRandomValues(new Uint8Array(32)),byte=>byte.toString(16).padStart(2,"0")).join(""),title:title.trim(),recipientEmail:email.trim(),albumId,sectionId:sectionId||null,accessScopeId:audience==="general"?null:audience,expiresAt:Math.floor((serverClock.current?serverClock.current.time+performance.now()-serverClock.current.readAt:Date.now()-60000)+Number(hours)*3600000),maxFiles,maxFileBytes:fileBytes,maxBytes:totalBytes,confirmed:true as const};
     if(!intent&&!await confirm({title:"Create upload request?",description:`${draft.recipientEmail} can send up to ${draft.maxFiles} files (${formatBytes(draft.maxFileBytes)} each, ${formatBytes(draft.maxBytes)} total) before ${new Date(draft.expiresAt).toLocaleString()}. You will review originals before they enter ${audienceName} / ${albums.find(album=>album.id===albumId)?.name}. The recipient sees "${draft.title}" and ${spaceName}, with no library access.`,action:"Create request"}))return;
     setIntent(draft);setBusy(true);setError("");
     try{await api.requestJson("upload-requests",{method:"POST",body:JSON.stringify(draft)});setCreatedLink(`${window.location.origin}/collect#request=${draft.token}`);setSelected(draft.id);await load();}

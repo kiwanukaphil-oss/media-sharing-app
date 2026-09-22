@@ -22,7 +22,7 @@ export async function uploadRequestAction(request:Request,owner:AccountSpaceAcce
     if(id&&!requests.results.length)throw new ApiError(404,"This upload request is unavailable.");
     const submissions=id?await db.prepare(`SELECT i.id,m.name,i.size,i.phase,i.verified_at AS verifiedAt FROM intake_submissions i LEFT JOIN media m ON m.id=i.id
       JOIN upload_requests ON upload_requests.id=i.request_id WHERE i.request_id=? AND ${guard} ORDER BY i.created_at,i.id LIMIT 100`).bind(id,...values).all():null;
-    return Response.json({requests:requests.results,...(submissions?{submissions:submissions.results}:{})});
+    return Response.json({serverTime:Date.now(),requests:requests.results,...(submissions?{submissions:submissions.results}:{})});
   }
   if(request.method==="POST"&&!id){
     const input=await readJson(request,z.object({id:z.string().uuid(),token:z.string().regex(/^[a-f0-9]{64}$/),title:z.string().min(1).max(120),recipientEmail:z.string().email().max(320),

@@ -34,8 +34,8 @@ await page.route('**/api/**',async route=>{
   if(path==='/api/feed')return route.fulfill({json:{items:[],total:0,nextCursor:null,role:'owner',counts:{all:0,original:0,final:0,trash:0}}});
   if(path==='/api/albums')return route.fulfill({json:{albums:[{id:album,name:'Wedding',description:'',count:0,revision:0}],sections:[]}});
   if(path==='/api/sections')return route.fulfill({json:{sections:[]}});
-  if(path==='/api/upload-requests'&&call.method()==='POST'){ownerRequest=call.postDataJSON();assert.equal(ownerRequest.confirmed,true);assert.equal(ownerRequest.albumId,album);assert.equal(ownerRequest.accessScopeId,null);return route.fulfill({json:{id:ownerRequest.id}});}
-  if(path==='/api/upload-requests')return route.fulfill({json:{requests:ownerRequest?[{...ownerRequest,state:'open',revision:0}]:[]}});
+  if(path==='/api/upload-requests'&&call.method()==='POST'){ownerRequest=call.postDataJSON();assert.equal(ownerRequest.confirmed,true);assert.equal(ownerRequest.albumId,album);assert.equal(ownerRequest.accessScopeId,null);assert.ok(ownerRequest.expiresAt<=Date.now()-300000+604800000+1000,'Use the server clock for the seven-day ceiling');return route.fulfill({json:{id:ownerRequest.id}});}
+  if(path==='/api/upload-requests')return route.fulfill({json:{serverTime:Date.now()-300000,requests:ownerRequest?[{...ownerRequest,state:'open',revision:0}]:[]}});
   if(path.startsWith('/api/upload-requests/')&&call.method()==='POST'){receipt.phase=path.endsWith('/decline')?'rejected':path.endsWith('/restore')?'received':'accepted';return route.fulfill({json:{}});}
   if(path.startsWith('/api/upload-requests/'))return route.fulfill({json:{submissions:receipt?[receipt]:[]}});
   if(path==='/api/storage')return route.fulfill({json:{usedBytes:0,limitBytes:1073741824,reservedBytes:0}});
@@ -68,6 +68,8 @@ try{
   await page.getByLabel('Recipient email',{exact:true}).fill('recipient@example.test');
   await page.getByRole('combobox',{name:'Collection album',exact:true}).click();
   await page.getByRole('option',{name:'Wedding',exact:true}).click();
+  await page.getByRole('combobox',{name:'Request duration',exact:true}).click();
+  await page.getByRole('option',{name:'7 days',exact:true}).click();
   await page.getByRole('button',{name:'Review request',exact:true}).click();
   await expect(page.getByRole('dialog',{name:'Create upload request?'})).toContainText('recipient@example.test');
   await page.getByRole('button',{name:'Create request',exact:true}).click();
