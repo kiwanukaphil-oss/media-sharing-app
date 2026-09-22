@@ -5,9 +5,18 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Upload-request development checkpoint
+
+Work continues on isolated branch `work/upload-requests`, latest source `cd01dcd`. The feature remains disabled; prototype tables are outside the active migration journal. Parent counts are unchanged.
+
+- [x] Named-account invitation authority, atomic shared quota, bounded multipart custody, independent streamed verification and closure-race tests pass locally. Core hosted run 35741321353 passed.
+- [x] Actual built-Worker routes pass with account-closure tracking: recipients gain no membership or file downloads; only owner-verified originals enter the library.
+- [x] Mobile/desktop owner creation and recipient sign-in, explicit acceptance, receipts and exact interrupted-file retry pass browser checks.
+- [ ] Lifecycle/minimisation/inventory review, rejection/custody reconciliation and release acceptance. Full hosted route/UI run [35744040823](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35744040823) is pending.
+
 ## Restricted-audience development acceptance
 
-**22 September:** Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0024 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
+**22 September:** Main merge `d32e7cc` also passed hosted run 35739071750. Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0024 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
 
 - [x] Current audience enforcement, retained activity privacy, same-scope album references, explicit upload destinations and retry integrity pass local D1/route tests.
 - [x] Private-export rehearsal preserves all original fields/rows in 25 tables through schema 0024, invents no grants, and retains restored triggers/quarantine. Populated-scope minimisation retains shared originals and revokes grants.
