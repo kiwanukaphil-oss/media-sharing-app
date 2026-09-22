@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { chromium, firefox, webkit, expect } from '@playwright/test';
+const origin = process.env.RELAY_TEST_ORIGIN || 'http://127.0.0.1:8801';
+assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname));
+const shared = '11111111-1111-4111-8111-111111111111';
+const personal = '22222222-2222-4222-8222-222222222222';
+// Reproduce plain-home and account-return paths with separate device/account access, including failure recovery.
+for (const engine of [chromium, firefox, webkit]) {
+  const browser = await engine.launch();
+  const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
+  let failure = false, signedIn = true;
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/api/**', async route => {
+    const url = new URL(route.request().url());
+    const space = url.searchParams.get('space');
+    if (url.pathname === '/api/auth/spaces') return route.fulfill({ status: failure ? 503 : signedIn ? 200 : 401, json: failure || !signedIn ? { error: 'Unavailable' } : { spaces: [{ id: shared, name: 'Shared archive', kind: 'shared' }, { id: personal, name: 'My space', kind: 'personal' }] } });
+    if (url.pathname === '/api/auth/session') return route.fulfill({ json: { enabled: true, account: null } });
+    if (url.pathname === '/api/session') return route.fulfill({ json: { deviceId: 'fixture-actor', role: 'owner', transport: 'local', space: { id: space || shared, name: space === personal ? 'My space' : 'Shared archive', kind: space === personal ? 'personal' : 'shared' } } });
+    if (url.pathname === '/api/feed') return route.fulfill({ json: { items: [], total: 0, counts: { all: 0, original: 0, final: 0, trash: 0 } } });
+    if (url.pathname === '/api/albums') return route.fulfill({ json: { albums: [], sections: [] } });
+    if (url.pathname === '/api/devices') return route.fulfill({ json: { devices: [] } });
+    if (url.pathname === '/api/storage') return route.fulfill({ json: { used: 0, limit: 1000, uploads: [] } });
+    return route.fulfill({ status: 404, json: {} });
+  });
+  try {
+    await page.goto(origin);
+    await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
+    await page.getByRole('combobox', { name: 'Switch library' }).click();
+    await page.getByRole('option', { name: 'My space', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'My space.', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Relay home', exact: true }).click();
+    await expect(page.getByRole('combobox', { name: 'Switch library' })).toHaveText(/My space/);
+    await page.getByRole('link', { name: 'Account', exact: true }).click();
+    await page.getByRole('link', { name: 'Back to library' }).click();
+    await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
+    await page.getByRole('combobox', { name: 'Switch library' }).click();
+    await page.getByRole('option', { name: 'Shared archive', exact: true }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('space')).toBe(shared);
+    await page.reload();
+    await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Switch library' }).click();
+    await page.getByRole('option', { name: 'My space', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'My space.', exact: true })).toBeVisible();
+    await page.setViewportSize({ width: 1360, height: 900 });
+    failure = true;
+    await page.goto(origin);
+    await expect(page.getByRole('button', { name: 'Retry libraries' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Account & libraries', exact: true })).toBeVisible();
+    failure = false;
+    await page.getByRole('button', { name: 'Retry libraries' }).click();
+    await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
+    signedIn = false;
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Shared library.', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Account & libraries', exact: true })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Switch library' })).toHaveCount(0);
+    assert.deepEqual(errors, []);
+    console.log(`PASS ${engine.name()}: home/account return, personal/shared, reload, mobile, retry and signed-out paired access.`);
+  } finally { await browser.close(); }
+}
