@@ -1,5 +1,11 @@
 # Direct Cloudflare deployment
 
+## Navigation and account authority - 22 September 2026
+
+Worker `5cb25ea3-e4c8-438c-b84c-36f34764c905` is at **100%**, deployed at 07:34:48 UTC. Runtime source `49f1195`; subsequent `b5be10d` adds identity-entry-point tests and documentation only. Both hosted CI runs `35699723145` and `35700251894` passed verification and browser jobs, resolving the earlier WebKit navigation failure. Local Chrome/Edge/Firefox/WebKit, enabled tracking/account suites, build and deployment dry run passed.
+
+Both origins return health/operations 200, anonymous feed 401 and dormant coordinator 404. Retained signed-in My space loads its one existing file. Closure tracking and backup coordination flags remain absent; schema remains through 0018, pilot access and 1 GiB allocation unchanged. No user-original removal. Historical release notes below retain their original verification context.
+
 ## Current-authority cleanup - 22 September 2026
 
 Worker `1ea256df-3729-46ce-b1b3-9671647cf24b` is at **100%**, read back at 07:18 UTC. Source `b2ec3e1` checks authority before and after destructive cleanup and extends request-bound metadata checks behind disabled closure tracking. Previous version: `d2878ef1-7faa-4220-88bf-7fce19b63320`. Both origins pass health/operations 200, anonymous feed 401 and coordinator 404; retained signed-in My space displays its existing fixture. No schema or flag activation, quota change or user-original removal.
