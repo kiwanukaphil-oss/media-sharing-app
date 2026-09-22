@@ -44,8 +44,9 @@ assert.throws(()=>validatePackageManifest({files:[{...files[0],size:packageMemor
 assert.throws(()=>validatePackageManifest({files:[{...files[0],size:2*1024**3+1}]}),/2 GiB/);
 // Stream beyond the fallback limit without retaining output. Peak write size stays at one
 // source chunk, demonstrating that large packages do not accumulate original bytes in memory.
-const chunk=Buffer.alloc(1024*1024,7),largeHash=createHash('sha256');for(let n=0;n<80;n++)largeHash.update(chunk);
-const large={files:[{...files[0],size:80*1024**2,sha256:largeHash.digest('hex')}]};let largestWrite=0,committed=false;
-await writeOriginalPackage(large,{write:async value=>{largestWrite=Math.max(largestWrite,value.length);},close:async()=>{committed=true;},abort:async()=>{committed=false;}},{signal:new AbortController().signal,revalidate:async()=>{},read:async()=>{let count=0;return new Response(new ReadableStream({pull(controller){if(count++<80)controller.enqueue(chunk);else controller.close();}}));}});
-assert.equal(committed,true);assert.equal(largestWrite,1024*1024);
+const streamMiB=Number(process.env.RELAY_PACKAGE_STREAM_MIB||80);assert.ok([80,2048].includes(streamMiB));
+const chunk=Buffer.alloc(1024*1024,7),largeHash=createHash('sha256');for(let n=0;n<streamMiB;n++)largeHash.update(chunk);
+const large={files:[{...files[0],size:streamMiB*1024**2,sha256:largeHash.digest('hex')}]};let largestWrite=0,committed=false;
+await writeOriginalPackage(large,{write:async value=>{largestWrite=Math.max(largestWrite,value.length);},close:async()=>{committed=true;},abort:async()=>{committed=false;}},{signal:new AbortController().signal,revalidate:async()=>{},read:async()=>{let count=0;return new Response(new ReadableStream({pull(controller){if(count++<streamMiB)controller.enqueue(chunk);else controller.close();}}));}});
+assert.equal(committed,true);assert.equal(largestWrite,1024*1024);console.log(`PASS ${streamMiB} MiB streamed package; maximum output chunk ${largestWrite} bytes`);
 console.log('PASS original packages: independent ZIP extraction/CRC/manifest, identical names, SHA-256, bounds, corrupt/truncated/denied originals, final revocation and cancellation without sink commit');

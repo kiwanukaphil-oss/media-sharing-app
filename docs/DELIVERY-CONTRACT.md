@@ -106,7 +106,7 @@ This replaces the initial server-artifact implementation proposal for the bounde
 - [x] Support progress, cancellation, fresh retry and capability fallbacks. A native file writer commits only after verification; the small browser-download fallback reports a request, never a verified local save.
 - [x] Independently extract the generated ZIP with Python's standard reader, checking CRCs, manifest and original bytes. Verify an 80 MiB streamed fixture uses at most 1 MiB output chunks, without retaining output; test bounds, traversal, duplicate IDs, corrupt/truncated/oversized responses, final access loss and cancellation.
 - [x] Verify actual library Viewer and delivery-recipient browser package downloads, scoped calls, source-organisation separation and access-denial retry.
-- [ ] Complete hosted package verification and production/browser operational acceptance. Full-sized 2 GiB device performance and live provider retry evidence remain release checks.
+- [ ] Complete hosted package verification and production/browser operational acceptance. A full 2 GiB generated stream also passes locally with at most 1 MiB output chunks. This checks the writer limit, not real-device disk performance; device performance and live provider retry evidence remain release checks.
 
 Format and save semantics reviewed against [PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) and [FileSystemWritableFileStream](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream). No sanitised derivative is offered: it could otherwise imply removal of sensitive metadata without a tested format-specific implementation.
 
