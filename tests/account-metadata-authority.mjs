@@ -4,11 +4,12 @@ import { build } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
 
-const bundle = await build({entryPoints:['lib/account-sessions.ts','lib/account-space-access.ts','lib/space-memberships.ts','lib/space-people.ts','lib/legacy-reconciliation.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+const bundle = await build({entryPoints:['lib/account-sessions.ts','lib/account-space-access.ts','lib/space-memberships.ts','lib/space-people.ts','lib/legacy-reconciliation.ts','lib/personal-spaces.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
 const modules = await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
 const accounts=modules.find(value=>value.createAccountSession), access=modules.find(value=>value.requireAccountSpaceAccess);
 const claims=modules.find(value=>value.prepareOwnerClaim), people=modules.find(value=>value.createPersonInvitation);
 const legacy=modules.find(value=>value.revokeLegacyAccess);
+const personal=modules.find(value=>value.createPersonalSpace);
 const settings={issuer:'https://metadata.fixture/',clientId:'fixture',clientSecret:'fixture',appOrigin:'https://relay.example'};
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'metadata-authority',modules:true,
   script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB']}]}));
@@ -105,12 +106,20 @@ try {
   await database.prepare("INSERT INTO closure_write_admissions VALUES(?,'account',?,NULL,0,'active',?,NULL)").bind(admissionId,scoped.personId,now).run();
   const tracked={...scoped,closureAdmissionId:admissionId};
   const trackedInvite=await people.createPersonInvitation(database,tracked,scoped.space,'tracked@example.test',now);
+  const trackedClaim=await claims.prepareOwnerClaim(database,tracked,foreign.credential,now);
   for(const [state,boundPerson] of [['settled',scoped.personId],['uncertain',scoped.personId],['active',foreign.personId]]) {
     await database.prepare('UPDATE closure_write_admissions SET state=?,person_id=? WHERE id=?').bind(state,boundPerson,admissionId).run();
     await assert.rejects(people.createPersonInvitation(database,tracked,scoped.space,'blocked@example.test',now));
     await assert.rejects(people.changeSpacePerson(database,tracked,scoped.space,scoped.membership,'owner',0,now));
     await people.revokePersonInvitation(database,tracked,scoped.space,trackedInvite.id,now);
     await assert.rejects(legacy.revokeLegacyAccess(database,tracked,scoped.space,scoped.device,now));
+    await assert.rejects(personal.createPersonalSpace(database,tracked,1073741824,now));
+    await assert.rejects(claims.prepareOwnerClaim(database,tracked,foreign.credential,now));
+    await assert.rejects(claims.confirmOwnerClaim(database,tracked,foreign.credential,trackedClaim.token,now));
+    await accounts.revokeAccountSession(database,tracked,scoped.sessionId,now);
+    assert.equal((await database.prepare('SELECT revoked_at FROM account_sessions WHERE id=?').bind(scoped.sessionId).first()).revoked_at,null);
+    assert.equal(await database.prepare('SELECT space_id FROM personal_spaces WHERE person_id=?').bind(scoped.personId).first(),null);
+    assert.equal(await database.prepare('SELECT id FROM space_memberships WHERE person_id=? AND space_id=?').bind(scoped.personId,foreign.space).first(),null);
     assert.equal((await database.prepare('SELECT revision FROM space_memberships WHERE id=?').bind(scoped.membership).first()).revision,0);
     assert.equal((await database.prepare('SELECT revoked_at FROM person_invitations WHERE id=?').bind(trackedInvite.id).first()).revoked_at,null);
     assert.equal((await database.prepare('SELECT revoked_at FROM devices WHERE id=?').bind(scoped.device).first()).revoked_at,null);
@@ -122,5 +131,7 @@ try {
   await database.prepare('UPDATE people SET credentials_changed_at=0 WHERE id=?').bind(scoped.personId).run();
   assert.equal((await people.changeSpacePerson(database,tracked,scoped.space,scoped.membership,'owner',0,now)).changed,true);
   assert.equal((await legacy.revokeLegacyAccess(database,tracked,scoped.space,scoped.device,now)).revoked,1);
+  assert.ok((await personal.createPersonalSpace(database,tracked,1073741824,now)).space.id);
+  assert.equal((await claims.confirmOwnerClaim(database,tracked,foreign.credential,trackedClaim.token,now)).connected,true);
   console.log('PASS: actual D1 attribution/claim races, current profile attribution, recovery-bound people writes and unchanged rejected effects.');
 } finally {await runtime.dispose();}

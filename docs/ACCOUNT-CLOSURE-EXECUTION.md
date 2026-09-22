@@ -1,6 +1,6 @@
 # Account closure execution contract
 
-Status: implementation contract, 21 September 2026. No closure executor or production freeze is enabled. This refines P2-06; request submission still only records revocable intent.
+Status: implementation contract and verified preparation, updated 22 September 2026. No closure executor or production freeze is enabled. This refines P2-06; request submission still only records revocable intent.
 
 ## User-facing boundary
 
@@ -108,3 +108,9 @@ The built-Worker account suite now also runs with the prototype schema and track
 Library transfer/metadata and publication mutations now carry the exact server-assigned admission into their live-authority SQL. The predicate checks actor identity, active state and generation. Library people/invitation management and legacy/native access changes also check their admission. Actual-D1 tests deny settled, uncertain and foreign admissions without changing rows. These guards preserve default operation without the prototype tables.
 
 Permanent media removal and unfinished-upload cancellation recheck current authority before storage dispatch and before final metadata removal. Losing authority during cleanup keeps a reviewable deleting/cancelling row. Publication cancellation and retry transitions use the same rule. This is not automatic erasure reconciliation; an operator still needs exact storage outcomes and independent receipts.
+
+### Account mutation custody (disabled)
+
+Authenticated account mutations now share admission and settlement with library requests without requiring a bucket binding. Personal-space allocation, owner-claim preview/confirmation, invitation acceptance, deletion intent/withdrawal and account-session revocation carry the admission through their atomic SQL. Tests prove settled/uncertain/foreign admissions cannot allocate a personal space, claim a library or revoke sessions, and valid requests still succeed. Session revocation also rechecks live session, disabled state and recovery watermark.
+
+Provider login/callback, compatibility attribution creation and anonymous/native invitation redemption still require their final writer-coverage review. Their existing live-authority checks remain in place. This extension is tested locally but not yet deployed or activated; it does not complete the full freeze proof.

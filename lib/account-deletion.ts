@@ -1,4 +1,5 @@
 import { AccountError, type AccountSession } from "./account-sessions";
+import { accountClosureCommitAuthority } from "./account-closure-fence";
 
 const liveAccount = `EXISTS (SELECT 1 FROM account_sessions a JOIN people p ON p.id = a.person_id
   WHERE a.id = ? AND a.person_id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
@@ -26,11 +27,12 @@ export async function previewAccountDeletion(database: D1Database, session: Acco
 // Operators must recheck current authority, shared-content policy and live/backup inventories before any execution.
 export async function requestAccountDeletion(database: D1Database, session: AccountSession, now = Date.now()) {
   const id = crypto.randomUUID();
+  const admission = accountClosureCommitAuthority(session);
   await database.prepare(`INSERT INTO account_deletion_requests (id, person_id, requested_at, updated_at, status)
     SELECT ?, ?, ?, ?, 'pending' WHERE ${liveAccount} AND EXISTS
       (SELECT 1 FROM account_sessions WHERE id = ? AND authenticated_at >= ?)
-    AND NOT EXISTS (${soleOwnership}) ON CONFLICT DO NOTHING`)
-    .bind(id, session.personId, now, now, session.sessionId, session.personId, now, session.sessionId, now - 300_000, session.personId).run();
+    AND NOT EXISTS (${soleOwnership}) AND ${admission.sql} ON CONFLICT DO NOTHING`)
+    .bind(id, session.personId, now, now, session.sessionId, session.personId, now, session.sessionId, now - 300_000, session.personId, ...admission.bindings).run();
   const result = await previewAccountDeletion(database, session, now);
   if (!result.request || !["pending", "review_required"].includes(String(result.request.status))) {
     throw new AccountError(409, "Sign in again and hand over any library where you are the only owner before requesting deletion.");
@@ -40,9 +42,10 @@ export async function requestAccountDeletion(database: D1Database, session: Acco
 
 // Withdrawal is account-scoped and preserves the request record for restore reconciliation.
 export async function withdrawAccountDeletion(database: D1Database, session: AccountSession, id: string, now = Date.now()) {
+  const admission = accountClosureCommitAuthority(session);
   const result = await database.prepare(`UPDATE account_deletion_requests SET status = 'withdrawn', updated_at = MAX(updated_at + 1, ?)
-    WHERE id = ? AND person_id = ? AND status IN ('pending','review_required') AND ${liveAccount}`)
-    .bind(now, id, session.personId, session.sessionId, session.personId, now).run();
+    WHERE id = ? AND person_id = ? AND status IN ('pending','review_required') AND ${liveAccount} AND ${admission.sql}`)
+    .bind(now, id, session.personId, session.sessionId, session.personId, now, ...admission.bindings).run();
   if (!result.meta.changes) throw new AccountError(409, "This request changed. Refresh its status.");
   return previewAccountDeletion(database, session, now);
 }

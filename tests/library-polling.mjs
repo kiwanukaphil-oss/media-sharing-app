@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 const bundle=await build({entryPoints:['lib/library-polling.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const {startLibraryPolling}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const saved=Object.fromEntries(['window','document','navigator','setInterval','clearInterval'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
-const target=new EventTarget(), document={visibilityState:'visible'}, navigator={onLine:true};
+const target=new EventTarget(), document=Object.assign(new EventTarget(),{visibilityState:'visible'}), navigator={onLine:true};
 const timers=new Map(); let sequence=0;
 Object.defineProperties(globalThis,{
   window:{configurable:true,value:target},document:{configurable:true,value:document},navigator:{configurable:true,value:navigator},
@@ -38,6 +38,16 @@ try {
   dispose(); assert.equal(calls[3].signal.aborted,true); assert.equal(timers.size,0);
   show(true); tick(); assert.equal(calls.length,4,'Unmount removes lifecycle listeners');
   calls[3].resolve(); await settle();
+  const resumedCalls=[];
+  dispose=startLibraryPolling(async signal=>{resumedCalls.push(signal);},failure=>failures.push(failure));
+  const queuedBeforeUnload=[...timers.values()][0];
+  target.dispatchEvent(new Event('beforeunload'));
+  queuedBeforeUnload();await settle();assert.equal(resumedCalls.length,0,'Visible but unloading documents must not start polling');
+  target.dispatchEvent(new Event('focus'));await settle();assert.equal(resumedCalls.length,1,'Cancelled navigation resumes when focus returns');
+  document.visibilityState='hidden';document.dispatchEvent(new Event('visibilitychange'));assert.equal(timers.size,0);
+  document.visibilityState='visible';document.dispatchEvent(new Event('visibilitychange'));await settle();assert.equal(resumedCalls.length,2);
+  target.dispatchEvent(new Event('beforeunload'));target.dispatchEvent(new Event('pointerdown'));await settle();assert.equal(resumedCalls.length,3);
+  dispose();target.dispatchEvent(new Event('focus'));target.dispatchEvent(new Event('keydown'));await settle();assert.equal(resumedCalls.length,3);
   console.log('PASS: navigation cancels polling, queued callbacks stay paused, bfcache resumes once, slow polls do not overlap, hidden/offline pages skip reads and genuine failures remain visible.');
 } finally {
   dispose?.();

@@ -113,11 +113,12 @@ export async function acceptPersonInvitation(database: D1Database, session: Spac
   if (!credentialPattern.test(token)) throw new AccountError(404, "This invitation is not available to this account.");
   const hash = await digest(token);
   const operation = crypto.randomUUID();
+  const admission = accountClosureCommitAuthority(session);
   const results = await database.batch([
     database.prepare(`UPDATE person_invitations SET accepted_at = ?, accepted_by = ?, accepted_operation = ? WHERE id IN
       (SELECT i.id FROM person_invitations i JOIN space_memberships m ON m.id = i.created_by JOIN people issuer ON issuer.id = m.person_id
-        WHERE i.token_hash = ? AND ${eligibleInvitation}) RETURNING space_id AS spaceId`)
-      .bind(now, session.personId, operation, hash, now, session.sessionId, session.personId, now, session.personId, session.personId),
+        WHERE i.token_hash = ? AND ${eligibleInvitation}) AND ${admission.sql} RETURNING space_id AS spaceId`)
+      .bind(now, session.personId, operation, hash, now, session.sessionId, session.personId, now, session.personId, session.personId, ...admission.bindings),
     database.prepare(`INSERT INTO space_memberships (id, person_id, space_id, role, created_at)
       SELECT ?, ?, space_id, 'member', ? FROM person_invitations WHERE token_hash = ? AND accepted_by = ? AND accepted_operation = ?
       ON CONFLICT(person_id, space_id) DO UPDATE SET role = 'member', revoked_at = NULL, revision = space_memberships.revision + 1`)

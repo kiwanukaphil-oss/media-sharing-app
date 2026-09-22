@@ -6,6 +6,8 @@ import { confirmOwnerClaim, listPersonSpaces, prepareOwnerClaim, readLegacyClaim
 import { createPersonalSpace, personalStorageBudget, PERSONAL_SPACE_BYTES } from "./personal-spaces";
 import { acceptPersonInvitation, previewPersonInvitation } from "./space-people";
 import { previewAccountDeletion, requestAccountDeletion, withdrawAccountDeletion } from "./account-deletion";
+import { runClosureTrackedMetadataRequest } from "./closure-tracked-request";
+import type { AccountSession } from "./account-sessions";
 
 type LoginProvider = {
   prepare(settings: Auth0Settings): Promise<{ url: string; transaction: Auth0LoginTransaction }>;
@@ -86,6 +88,17 @@ export async function accountAction(request: Request, database: D1Database, sett
     return Response.json({ enabled: true, account: session }, { headers: privateHeaders });
   }
   if (!session) throw new AccountError(401, "Sign in to your account to continue.");
+  if (process.env.RELAY_CLOSURE_TRACKING_ENABLED === "true" && request.method !== "GET") {
+    return runClosureTrackedMetadataRequest(database, { kind: "account", session }, admissionId =>
+      authenticatedAccountAction(request, database, settings, { ...session, closureAdmissionId: admissionId }, action));
+  }
+  return authenticatedAccountAction(request, database, settings, session, action);
+}
+
+// Account mutations retain a server-assigned admission through their own atomic authority checks.
+// Provider login/callback and read-only session discovery remain outside this authenticated boundary.
+async function authenticatedAccountAction(request: Request, database: D1Database, settings: Auth0Settings,
+  session: AccountSession, action: string): Promise<Response> {
   if (action === "deletion" && request.method === "GET") return Response.json(await previewAccountDeletion(database, session), { headers: privateHeaders });
   if (action === "deletion" && request.method === "POST") {
     if (request.headers.get("X-Relay-Confirm") !== "request-account-deletion") throw new AccountError(400, "Confirm the account deletion request.");

@@ -1,5 +1,11 @@
 # Direct Cloudflare deployment
 
+## Current-authority cleanup - 22 September 2026
+
+Worker `1ea256df-3729-46ce-b1b3-9671647cf24b` is at **100%**, read back at 07:18 UTC. Source `b2ec3e1` checks authority before and after destructive cleanup and extends request-bound metadata checks behind disabled closure tracking. Previous version: `d2878ef1-7faa-4220-88bf-7fce19b63320`. Both origins pass health/operations 200, anonymous feed 401 and coordinator 404; retained signed-in My space displays its existing fixture. No schema or flag activation, quota change or user-original removal.
+
+Local built-Worker account/tracking and legacy/API suites, actual-D1 race tests, TypeScript, lint, build and deployment dry run passed. Hosted CI `35698859429` verification passed, but its browser job failed in WebKit on background polling access-control errors during navigation. Chromium/Firefox passed. The navigation failure is under active investigation and is not marked verified.
+
 ## Publication recovery authority - 22 September 2026
 
 Worker `d2878ef1-7faa-4220-88bf-7fce19b63320` is at **100%**, read back at 06:57 UTC. Source `6c57684` adds password-recovery checks to publication reservation/copy/visibility commits and current account/device authority before cancellation cleanup. Authorised repeated cleanup is preserved. Previous version: `13b029f9-328b-467d-9c5e-99a7dfc63285`.

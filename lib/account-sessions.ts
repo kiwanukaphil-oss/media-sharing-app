@@ -1,5 +1,6 @@
 import type { VerifiedAuth0Identity } from "./auth0-client";
 import type { Auth0Settings } from "./auth0-config";
+import { accountClosureCommitAuthority } from "./account-closure-fence";
 import { auth0AudienceBinding, permitsAuth0Subject } from "./auth0-config";
 
 import { accountSessionLifetime, type AccountSessionMode } from "./account-session-policy";
@@ -15,6 +16,7 @@ export class AccountError extends Error {
 }
 export type AccountSession = {
   sessionId: string; personId: string; displayName: string; verifiedEmail: string; createdAt: number; expiresAt: number; sessionMode: AccountSessionMode;
+  closureAdmissionId?: string;
 };
 
 // Reject duplicate cookies rather than letting cookie order select the authenticated account.
@@ -91,6 +93,10 @@ export async function readAccountSession(database: D1Database, settings: Auth0Se
 
 // Revocation is scoped to the authenticated person and is safe to retry without revealing other accounts.
 export async function revokeAccountSession(database: D1Database, session: AccountSession, targetId: string, now = Date.now()) {
-  await database.prepare("UPDATE account_sessions SET revoked_at = ? WHERE id = ? AND person_id = ? AND revoked_at IS NULL")
-    .bind(now, targetId, session.personId).run();
+  const admission = accountClosureCommitAuthority(session);
+  await database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE id = ? AND person_id = ? AND revoked_at IS NULL
+    AND EXISTS (SELECT 1 FROM account_sessions actor JOIN people p ON p.id=actor.person_id
+      WHERE actor.id=? AND actor.person_id=? AND actor.revoked_at IS NULL AND actor.expires_at>?
+      AND p.disabled_at IS NULL AND actor.authenticated_at>=p.credentials_changed_at) AND ${admission.sql}`)
+    .bind(now, targetId, session.personId, session.sessionId, session.personId, now, ...admission.bindings).run();
 }
