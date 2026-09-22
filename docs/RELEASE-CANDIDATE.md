@@ -10,8 +10,8 @@ The current production baseline is Worker `b7e1565a-3aa7-402c-acd2-5703cfe57ad4`
 | Restricted audiences and explicit copies | Hosted run 35739071750 passed; private-export rehearsal preserved all 25 existing tables without inventing grants | Safe migration, live scope/compatibility checks and controlled activation |
 | Named-account upload requests | Hosted main run 35746222158 passed; admission pause run 35752698764 passed | Provider disposition guarantees, live quota/transfer verification and operational activation |
 | Snapshot deliveries | Hosted run 35749765799 passed; immutable selections, named-recipient authority, source suspension and restored-link quarantine tested | Live recipient, revocation, expiry and operational acceptance |
-| Original ZIP packages | Hosted run 35751118759 passed; independent ZIP extraction and 2 GiB bounded stream checked | Final cross-browser/file-writer acceptance and physical-device/live transfer checks |
-| Exact duplicate assistance | Hosted run 35752042399 passed; same-space/same-audience matching, streamed verification and deliberate reuse/Undo | Final cross-browser acceptance and deployed verification |
+| Original ZIP packages | Hosted run 35751118759 passed; independent ZIP extraction and 2 GiB bounded stream checked | Physical-device/live transfer checks; final hosted cross-browser/file-writer run 35754168633 passed |
+| Exact duplicate assistance | Hosted run 35752042399 passed; same-space/same-audience matching, streamed verification and deliberate reuse/Undo | Deployed verification; final hosted cross-browser run 35754168633 passed |
 
 Development completion does not mean production activation. Parent roadmap counts remain **22/47**; [the roadmap](DEVELOPMENT-ROADMAP.md) is the authoritative checked status.
 
@@ -19,7 +19,7 @@ Development completion does not mean production activation. Parent roadmap count
 
 - [x] Prepare migrations 0021-0027 and isolated upgrade/restore rehearsals preserving existing rows, indexes and protective triggers.
 - [x] Document intake limits and incident pause/restart in [intake operations](INTAKE-OPERATIONS.md), and package/access limits in [delivery contract](DELIVERY-CONTRACT.md).
-- [ ] Finish final hosted regression and record the exact source commit before release.
+- [x] Final hosted regression `35754168633` passed verification and browser jobs at `a0e6306`, including repeated folder reselection and disk-backed package writing.
 - [ ] Clear B06: obtain a fresh independently restored backup. Run `35726687872` copied all 25 originals but restore failed with `download_cap_exceeded`; it is **not** a verified recovery point. The documented reset is 23 September at 03:00 EAT. No cap increase is approved.
 - [ ] Refresh the private D1 export/recovery bookmark and rehearse the exact intended migration subset against that export. Check current writes, custody and actual schema before applying only missing migrations.
 - [ ] Release independent favourites/activity/portability increments first when their backup gate clears. Do not make ordinary releases depend on optional creative-review demand.

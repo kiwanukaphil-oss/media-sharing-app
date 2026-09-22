@@ -1183,7 +1183,7 @@ Corrected folder-import CI at `f588c68` includes successful hosted run `35729947
 - [x] Verify actual built-Worker recipient boundaries, native original downloads, captured filenames, sticky suspension and explicit reactivation. Client checksum-verified saving remains distinct from a normal download request.
 - [x] Complete hosted delivery lifecycle/minimisation, prepared migration 0026 and bounded original package implementation. Live release acceptance remains outstanding.
 
-[Delivery contract and checked evidence](DELIVERY-CONTRACT.md). Delivery preparation remains feature-gated and outside the active schema journal. No live audience or file changes; parent completion counts remain 22/47.
+[Delivery contract and checked evidence](DELIVERY-CONTRACT.md). Delivery activation remains feature-gated; migration 0026 is journalled but not deployed. No live audience or file changes; parent completion counts remain 22/47.
 
 
 ### 22 September - delivery lifecycle and schema preparation
@@ -1193,7 +1193,7 @@ Corrected folder-import CI at `f588c68` includes successful hosted run `35729947
 - [x] Rehearse against the private current-production export with all 25 existing tables preserved and no new grants. Type checks, lint and account/intake lifecycle regression checks pass.
 - [ ] Complete hosted verification, original packages and live release acceptance. Delivery remains disabled in production; phase parents remain 22/47.
 
-[Detailed delivery evidence](DELIVERY-CONTRACT.md). Hosted sender/recipient workflow run `35749339230` is in progress; migration/lifecycle changes require a fresh run.
+[Detailed delivery evidence](DELIVERY-CONTRACT.md). Hosted migration/lifecycle run `35749765799` and final expanded regression `35754168633` passed both jobs.
 
 
 ### 22 September - bounded original packages
@@ -1236,3 +1236,12 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 
 - [x] Update [release candidate](RELEASE-CANDIDATE.md) with current schema 0020 baseline, candidate migrations 0021-0027, feature-specific development/live acceptance, safe rollout order and rollback restrictions. Preserve the old release record as explicitly historical.
 - [ ] Independent backup, provider disposition, live acceptance and demand-dependent expansion remain open; parent counts stay 22/47.
+
+### 22 September - browser compatibility and file-writer acceptance
+
+- [x] Verify actual disk-backed browser package commit and aborted-replacement preservation at 80 MiB and 2 GiB, using generated originals and a separate temporary profile.
+- [x] Verify package and duplicate workflows in Chromium, Firefox and WebKit; fix explicit focus return and fallback download anchoring.
+- [x] Strengthen folder Cancel/reselect with a fresh native input and repeated-selection browser coverage; local exact-byte import/retry checks pass.
+- [x] Final hosted run `35754168633` passes both verification and browser jobs at `a0e6306`; merged into main.
+- [ ] Live release remains gated on independently verified backup and feature-specific operational conditions.
+

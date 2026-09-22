@@ -23,3 +23,5 @@ While the dialog is open, current access is checked every 15 seconds in a visibl
 - [ ] Live migration/activation and deployed multi-person acceptance.
 
 The 50-result limit is disclosed; this is a focused assistance tool, not a whole-library duplicate-cleaning service. No new service, email, AI processing or purchase is required.
+
+Additional local Chromium, Firefox and WebKit checks pass verification, album reuse/Undo, focus return and revoked-name clearing. The dialog now restores its initiating button explicitly, including WebKit.

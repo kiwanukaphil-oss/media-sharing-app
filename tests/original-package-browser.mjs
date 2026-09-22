@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {mkdir} from 'node:fs/promises';
-import {chromium,expect} from '@playwright/test';
+import {chromium,firefox,webkit,expect} from '@playwright/test';
 const origin=process.env.RELAY_TEST_ORIGIN||'http://127.0.0.1:8795';
 assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
-const browser=await chromium.launch(process.env.CI?{}:{channel:'chrome'});
+for(const engineName of ['chromium','firefox','webkit']){
+const browser=await ({chromium,firefox,webkit}[engineName]).launch(engineName==='chromium'&&!process.env.CI?{channel:'chrome'}:{});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const space=crypto.randomUUID(),actor=crypto.randomUUID();
 const item={id:crypto.randomUUID(),name:'Shared original.jpg',mime:'image/jpeg',size:4,sha256:createHash('sha256').update('tiny').digest('hex'),category:'original',createdAt:Date.now(),deviceName:'Another member',hasPreview:false,revision:0};
@@ -44,7 +45,9 @@ try {
   denied=true;await dialog.getByRole('button',{name:'Create ZIP',exact:true}).click();
   await expect(dialog.getByRole('alert')).toContainText('access changed');await expect(dialog.getByRole('status')).toHaveCount(0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await mkdir('outputs/packages',{recursive:true});await page.screenshot({path:'outputs/packages/viewer-mobile.png',fullPage:true});
+  await mkdir('outputs/packages',{recursive:true});await page.screenshot({path:`outputs/packages/${engineName}-viewer-mobile.png`,fullPage:true});
   await page.keyboard.press('Escape');await expect(opener).toBeFocused();
-  console.log('PASS library packages: Viewer export, scoped authority, manifest organisation, complete-selection revalidation, actual ZIP download, honest status and denied-access retry');
+  console.log('PASS '+engineName+' library packages: Viewer export, scoped authority, manifest organisation, complete-selection revalidation, actual ZIP download, honest status and denied-access retry');
 } finally {await browser.close();}
+
+}
