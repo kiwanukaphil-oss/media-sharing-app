@@ -111,3 +111,14 @@
 .category-navigation { margin-top: 4px; }
 .category-filter-disclosure { min-width: 160px; }
 .category-filter-disclosure[open] { flex: 1; }
+
+/* Keep the saved-view control in the mobile command row without stranding New album. */
+@media (max-width: 600px) {
+  .library-command-row { gap: 4px; }
+  .library-command-row .library-sort { min-width: 108px; }
+  .library-sort .workspace-select { padding-inline: 4px; gap: 4px; font-size: 11px; }
+}
+@media (max-width: 380px) {
+  .library-command-row .library-sort { order: 5; flex-basis: 100%; }
+  .library-command-row .new-album-button { margin-left: auto; }
+}
