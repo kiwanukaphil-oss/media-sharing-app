@@ -12,7 +12,7 @@ function liveTransferAuthority(device: ActiveDevice, now = Date.now(), ownerOnly
       JOIN people p ON p.id=m.person_id JOIN account_sessions a ON a.person_id=p.id
       LEFT JOIN personal_spaces ps ON ps.space_id=m.space_id
       WHERE d.id=? AND d.space_id=? AND m.space_id=d.space_id AND p.id=? AND a.id=?
-      AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor') AND p.disabled_at IS NULL AND a.revoked_at IS NULL AND a.expires_at>?
+      AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','contributor') AND p.disabled_at IS NULL AND a.revoked_at IS NULL AND a.expires_at>?
       ${ownerOnly === "organiser" ? "AND m.role IN ('owner','editor')" : ownerOnly ? "AND m.role='owner'" : ""}
       AND a.authenticated_at>=p.credentials_changed_at
       AND d.expires_at=0 AND d.token_hash='account-attribution:' || m.id

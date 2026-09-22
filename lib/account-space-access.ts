@@ -34,7 +34,7 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
   if (!session) throw new AccountError(401, "Sign in to your account to open this library.");
   const membership = await database.prepare(`SELECT m.id FROM space_memberships m
     LEFT JOIN personal_spaces ps ON ps.space_id = m.space_id
-    WHERE m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','viewer')
+    WHERE m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','contributor','viewer')
     AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))`)
     .bind(session.personId, spaceId).first<{ id: string }>();
   if (!membership) throw new AccountError(403, "This library is not available to your account.");
@@ -42,7 +42,7 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
   // recovery or closure. Read the current name here rather than copying the cached session profile.
   const actorAuthority = `FROM space_memberships m JOIN people p ON p.id=m.person_id
     JOIN account_sessions a ON a.person_id=p.id LEFT JOIN personal_spaces ps ON ps.space_id=m.space_id
-    WHERE m.id=? AND m.person_id=? AND m.space_id=? AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','viewer')
+    WHERE m.id=? AND m.person_id=? AND m.space_id=? AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','contributor','viewer')
     AND a.id=? AND a.revoked_at IS NULL AND a.expires_at>? AND p.disabled_at IS NULL
     AND a.authenticated_at>=p.credentials_changed_at
     AND (ps.space_id IS NULL OR (ps.person_id=p.id AND m.role='owner'))`;
@@ -66,7 +66,7 @@ export async function requireAccountSpaceAccess(request: Request, database: D1Da
     JOIN spaces s ON s.id = m.space_id JOIN people p ON p.id = m.person_id
     LEFT JOIN personal_spaces ps ON ps.space_id = s.id
     JOIN account_sessions a ON a.person_id = p.id
-    WHERE m.id = ? AND m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','viewer')
+    WHERE m.id = ? AND m.person_id = ? AND m.space_id = ? AND m.revoked_at IS NULL AND m.role IN ('owner','member','editor','contributor','viewer')
     AND a.id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
     AND a.authenticated_at >= p.credentials_changed_at
     AND (ps.space_id IS NULL OR (ps.person_id = m.person_id AND m.role = 'owner'))

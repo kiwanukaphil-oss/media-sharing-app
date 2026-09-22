@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Copy, UserPlus, Users } from "lucide-react";
 import { createLibraryApi, RequestError } from "@/lib/api-client";
 import { useActionConfirmation } from "./action-confirmation";
+import { WorkspaceSelect } from "./workspace-select";
 import LegacyAccessReview from "./legacy-access-review";
 
 import { libraryRoleLabel, type LibraryRole } from "@/lib/contracts";
@@ -32,12 +33,12 @@ export default function SpacePeople({ spaceId }: { spaceId: string }) {
   useEffect(() => { const controller = new AbortController(); void refreshPeople(controller.signal); return () => controller.abort(); }, [refreshPeople]);
 
   // Audience changes require a named confirmation; failed requests remain retryable with a refreshed revision.
-  async function changeMember(member: Member, action: "owner" | "member" | "editor" | "viewer" | "remove" | "leave") {
+  async function changeMember(member: Member, action: "owner" | "member" | "editor" | "viewer" | "contributor" | "remove" | "leave") {
     const removing = action === "remove" || action === "leave";
-    const title = action === "leave" ? `Leave ${people?.space.name}?` : action === "remove" ? `Remove ${member.name}?` : `Make ${member.name} ${action === "owner" ? "an owner" : action === "editor" ? "an editor" : action === "viewer" ? "a viewer" : "a member"}?`;
+    const title = action === "leave" ? `Leave ${people?.space.name}?` : action === "remove" ? `Remove ${member.name}?` : `Make ${member.name} ${action === "owner" ? "an owner" : action === "editor" ? "an editor" : action === "viewer" ? "a viewer" : action === "contributor" ? "a contributor" : "a member"}?`;
     if (!await confirm({ title, action: action === "leave" ? "Leave library" : action === "remove" ? "Remove access" : "Change role", destructive: removing,
       description: removing ? "Their shared files stay in this library. Account access and explicitly linked legacy device access end. Previously downloaded copies and already issued file links cannot be recalled; other legacy devices must be reviewed separately."
-        : action === "viewer" ? "A viewer can browse and save originals. Uploading and changes end, including unfinished transfers. Linked paired-device credentials are revoked because they allow uploading; sign in with the account instead. Existing downloaded copies and issued links cannot be recalled." : action === "editor" ? "An editor can organise albums, edit shared files, restore or move them to Trash and cancel transfers. They cannot manage access or permanently delete files. Linked paired devices have Member access; they do not become editors." : action === "owner" ? "An owner can manage people, invite others and organise or delete shared content. Your own access remains in place." : "Member access allows viewing, downloading and uploading. Owners and editors organise shared files. Organisation and administration rights end; linked legacy devices follow this change." })) return;
+        : action === "contributor" ? "A contributor can view, save and upload files, and edit, organise, restore or move their own contributions to Trash. This includes earlier contributions attributed to this same membership and explicitly claimed devices, including after rejoining. They cannot manage albums, access or permanently delete originals." : action === "viewer" ? "A viewer can browse and save originals. Uploading and changes end, including unfinished transfers. Linked paired-device credentials are revoked because they allow uploading; sign in with the account instead. Existing downloaded copies and issued links cannot be recalled." : action === "editor" ? "An editor can organise albums, edit shared files, restore or move them to Trash and cancel transfers. They cannot manage access or permanently delete files. Linked paired devices have Member access; they do not become editors." : action === "owner" ? "An owner can manage people, invite others and organise or delete shared content. Your own access remains in place." : "Member access allows viewing, downloading and uploading. Owners and editors organise shared files. Organisation and administration rights end; linked legacy devices follow this change." })) return;
     setBusy(true); setError(""); setNotice("");
     try {
       await api.requestJson(`people/${member.id}`, { method: "PUT", body: JSON.stringify({ action, revision: member.revision }) });
@@ -78,9 +79,9 @@ export default function SpacePeople({ spaceId }: { spaceId: string }) {
       <section className="mt-8"><h2 className="font-semibold">Library members</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Everyone listed can see this shared library. Their personal spaces stay separate.</p>
         <ul className="mt-4 divide-y divide-[var(--line)]">{people.members.map(member => <li key={member.id} className="py-5">
           <div className="flex items-start justify-between gap-4"><div className="min-w-0"><strong className="break-words text-sm">{member.name}{member.id === people.currentMembershipId ? " (you)" : ""}</strong>{member.email && <p className="mt-1 break-all text-xs text-[var(--muted)]">{member.email}</p>}</div><span className="text-xs text-[var(--muted)]">{libraryRoleLabel(member.role)}</span></div>
-          <div className="mt-3 flex flex-wrap gap-2">{people.role === "owner" && <button className="account-secondary-action min-h-11 rounded-lg px-3 text-xs" disabled={busy} onClick={() => void changeMember(member, member.role === "owner" ? "member" : "owner")}>{member.role === "owner" ? "Make member" : "Make owner"}</button>}
-            {people.role === "owner" && <button className="account-secondary-action min-h-11 rounded-lg px-3 text-xs" disabled={busy} onClick={() => void changeMember(member, member.role === "editor" ? "member" : "editor")}>{member.role === "editor" ? "Make member" : "Make editor"}</button>}
-            {people.role === "owner" && member.role !== "viewer" && <button className="account-secondary-action min-h-11 rounded-lg px-3 text-xs" disabled={busy} onClick={() => void changeMember(member, "viewer")}>Make viewer</button>}
+          <div className="mt-3 flex flex-wrap items-center gap-2">{people.role === "owner" && <WorkspaceSelect label={`Role for ${member.name}`} value={member.role} disabled={busy}
+            options={["owner", "editor", "contributor", "viewer", "member"].map(role => ({ value: role, label: libraryRoleLabel(role) }))}
+            onChange={role => { if (["owner", "editor", "contributor", "viewer", "member"].includes(role)) void changeMember(member, role as LibraryRole); }} />}
             {member.id === people.currentMembershipId ? <button disabled={busy} className="min-h-11 px-3 text-xs text-red-800" onClick={() => void changeMember(member, "leave")}>Leave library</button> : people.role === "owner" && <button disabled={busy} className="min-h-11 px-3 text-xs text-red-800" onClick={() => void changeMember(member, "remove")}>Remove access</button>}</div>
         </li>)}</ul>
         {people.role === "owner" && <p className="text-xs leading-5 text-[var(--muted)]">To hand over ownership, make another member an owner first, then leave or change your own role. Relay always keeps at least one account owner.</p>}

@@ -97,3 +97,14 @@ Local release checks: production build, TypeScript, web lint, normal API suite, 
 - [ ] Complete hosted Viewer verification, publication demotion-race checks and restricted production baseline checks. No real membership changes are part of release verification.
 
 Already issued signed URLs and bytes in flight cannot be recalled by this role change. New part requests and ready-state commits require current upload authority. This is separate from the pending provider-specific account-erasure guarantee.
+
+## Contributor increment - implementation and local verification
+
+- [x] Enforce exact membership/recorded-claim attribution inside each file mutation. Rename, capture dates, album membership, section placement and Trash/restore share the current-authority predicate. Album/section administration remains Owner/Editor only.
+- [x] Require every selected row to pass attribution, current authority and revision checks before any bulk mutation. Mixed selections, stale Editor requests and removed claims leave metadata unchanged in isolated D1 tests.
+- [x] Return per-file edit capability and distinguish selection from album administration in the web UI. Mixed selections explain the restriction instead of silently applying a permitted subset.
+- [x] Add an explicit Contributor grant and a compact role selector. Its confirmation explains that earlier contributions of the same reactivated membership are included; a new membership or a matching email never grants old attribution.
+- [x] Built Worker account API suite and isolated authority tests passed. Viewer hosted CI `35717310199` passed both jobs.
+- [ ] Complete final browser, hosted and deployed verification. Invitations still grant compatibility Member until the next increment.
+
+No schema or real membership changes were performed during this increment. The separate provider erasure question still gates account closure; it does not gate these additive roles in the existing pilot.

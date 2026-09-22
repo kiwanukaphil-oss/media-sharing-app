@@ -94,6 +94,13 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.equal(feed.data.items[0].id, upload.id);
   assert.equal((await request(aliceOtherBrowser, scoped('feed?uploader=me'))).data.total, 1);
   assert.equal((await request(bob, scoped('feed?uploader=me'))).data.total, 0);
+  await database.prepare("UPDATE space_memberships SET role='contributor' WHERE person_id=? AND space_id=?").bind(alice.personId,space).run();
+  assert.equal((await request(aliceOtherBrowser,scoped('feed'))).data.items[0].canEdit,1,'Own attribution survives a different signed-in browser.');
+  await database.prepare("UPDATE space_memberships SET role='contributor' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
+  assert.equal((await request(bob,scoped('feed'))).data.items[0].canEdit,0,'Contributor cannot edit another member original.');
+  assert.equal((await request(bob,scoped('albums'),'POST',{name:'Denied Contributor album'})).status,403);
+  await database.prepare("UPDATE space_memberships SET role='owner' WHERE person_id=? AND space_id=?").bind(alice.personId,space).run();
+  await database.prepare("UPDATE space_memberships SET role='member' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
   // A recorded claim attributes older uploads to this exact membership without guessing from names.
   const legacyId = crypto.randomUUID();
   await database.prepare("INSERT INTO devices (id,space_id,name,token_hash,role,created_at,expires_at) VALUES (?,?,'alice',?,'owner',?,?)")

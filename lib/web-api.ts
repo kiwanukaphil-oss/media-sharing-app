@@ -1,3 +1,4 @@
+import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { libraryAction, requireAlbum } from "./library-api";
 import { ApiError, bucket, database, requireMedia, requireOwner, requireOrganiser, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
@@ -75,9 +76,10 @@ export async function readFeed(request: Request, device: ActiveDevice) {
       values.push(cursor.createdAt, cursor.createdAt, cursor.id);
     } catch { throw new ApiError(400, "This page link is invalid. Refresh the feed."); }
   }
-  const result = await database().prepare(`SELECT media.id, media.name, media.mime, media.size, media.sha256, media.category,
+  const editable = fileEditAuthority(device);
+  const result = await database().prepare(`SELECT (${editable.sql}) AS canEdit, media.id, media.name, media.mime, media.size, media.sha256, media.category,
     COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
-    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(...values, limit + 1).all<MediaItem & { sortValue: number }>();
+    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(...editable.bindings, ...values, limit + 1).all<MediaItem & { sortValue: number }>();
   const items = result.results.slice(0, limit);
   const last = items.at(-1);
   const counts = await database().prepare(`SELECT COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS "all",
@@ -167,10 +169,10 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     return new Response(object.body, { headers: { "Content-Type": "image/jpeg", "Content-Length": String(object.size) } });
   }
   if (resource === "media" && id && (action === "archive" || action === "restore") && method === "POST") {
-    requireOrganiser(device);
+    requireFileEditor(device);
     const item = await requireMedia(device, id);
     if (item.status !== "ready") throw new ApiError(409, "This transfer is not ready.");
-    const authority = transferAuthority(device, Date.now(), "organiser");
+    const authority = fileEditAuthority(device);
     const changed = await database().prepare(`UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready' AND ${authority.sql}`)
       .bind(action === "archive" ? Date.now() : null, id, ...authority.bindings).run();
     if (!changed.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before trying again.");

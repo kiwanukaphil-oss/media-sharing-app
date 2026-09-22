@@ -11,7 +11,7 @@ import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contract
 export type LibraryQuery = { album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string; type: string; uploader: string };
 export const emptyLibraryQuery: LibraryQuery = { album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "", type: "", uploader: "" };
 type Props = {
-  albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; canOrganise: boolean;
+  albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; canOrganise: boolean; canSelectFiles?: boolean;
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
   refresh: () => Promise<void>; renameItems: MediaItem[]; onRename: (items: MediaItem[]) => void;
   dateItem: MediaItem | null; onDate: (item: MediaItem | null) => void;
@@ -33,6 +33,7 @@ function LibraryDialog({ title, close, children }: { title: string; close: () =>
 // Organisation controls keep mutations explicit, undoable, and independent of file transfer state.
 export function LibraryTools(props: Props) {
   const { requestJson } = useLibraryApi();
+  const editableSelection = props.canOrganise || (props.selected.length > 0 && props.selected.every(file => Boolean(file.canEdit)));
   const { albums, query, onQuery, canOrganise, selected, refresh, renameItems, onRename, dateItem, onDate } = props;
   const [albumEditor, setAlbumEditor] = useState<Album | "new" | null>(null);
   const [targetAlbum, setTargetAlbum] = useState("");
@@ -125,7 +126,7 @@ export function LibraryTools(props: Props) {
     {query.dateMode === "captured" && <p className="library-context">Camera date where available; otherwise date uploaded (UTC). Missing dates are labelled on each file.</p>}
     </div>
     {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Everyone in this space can view and save these files."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{canOrganise && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
-    {activeAlbum && <AlbumSections album={activeAlbum} sections={props.sections.filter(section => section.albumId === activeAlbum.id)} query={query} onQuery={onQuery} selected={selected} canOrganise={canOrganise} refresh={refresh} clearSelection={props.onClearSelection} feedback={props.feedback} />}
+    {activeAlbum && <AlbumSections album={activeAlbum} sections={props.sections.filter(section => section.albumId === activeAlbum.id)} query={query} onQuery={onQuery} selected={selected} canOrganise={canOrganise} canMoveSelection={editableSelection} refresh={refresh} clearSelection={props.onClearSelection} feedback={props.feedback} />}
     {activeFilterCount > 0 && <div className="active-library-filters" aria-label="Active filters">
       {query.type && <button className="filter-chip" onClick={() => onQuery({ ...query, type: "" })}>{({ photo: "Photos", video: "Videos", other: "Other files" } as Record<string, string>)[query.type] || "File type"}<X size={13} /></button>}
       {query.uploader && <button className="filter-chip" onClick={() => onQuery({ ...query, uploader: "" })}>Added by me<X size={13} /></button>}
@@ -134,12 +135,12 @@ export function LibraryTools(props: Props) {
       {query.batch && <button className="filter-chip" onClick={() => onQuery({ ...query, batch: "" })}>Upload batch<X size={13} /></button>}
       <button className="text-button" onClick={() => onQuery({ ...query, dateMode: "uploaded", from: "", to: "", batch: "", type: "", uploader: "" })}>Clear all filters</button>
     </div>}
-    {canOrganise && <div className={`selection-toolbar${selected.length ? " has-selection" : ""}`} aria-label="Bulk file actions">
-      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>
-        <button className="icon-button" title="Add to album" aria-label="Add to album" disabled={busy || selected.some(file => file.archivedAt)} onClick={() => { setTargetAlbum(""); setAlbumPickerOpen(true); }}><FolderPlus size={19} /></button>
-        {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
-        {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
-        <button className="icon-button bulk-trash" title={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} aria-label={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} disabled={busy} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? <Undo2 size={19} /> : <Trash2 size={19} />}</button>
+    {(canOrganise || props.canSelectFiles) && <div className={`selection-toolbar${selected.length ? " has-selection" : ""}`} aria-label="Bulk file actions">
+      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>{!editableSelection && <span role="status">Contributors can edit only their own files. Adjust your selection.</span>}
+        <button className="icon-button" title="Add to album" aria-label="Add to album" disabled={busy || !editableSelection || selected.some(file => file.archivedAt)} onClick={() => { setTargetAlbum(""); setAlbumPickerOpen(true); }}><FolderPlus size={19} /></button>
+        {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
+        {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy || !editableSelection} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
+        <button className="icon-button bulk-trash" title={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} aria-label={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? <Undo2 size={19} /> : <Trash2 size={19} />}</button>
         <button className="icon-button clear-selection" title="Clear selection" aria-label="Clear selection" disabled={busy} onClick={props.onClearSelection}><X size={18} /></button>
       </>}
     </div>}

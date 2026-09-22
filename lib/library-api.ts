@@ -1,3 +1,4 @@
+import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { ApiError, database, readJson, requireOrganiser, type ActiveDevice } from "./server";
 import { splitFilename, validCaptureDate, validFilename } from "./library-names";
@@ -16,9 +17,9 @@ export async function requireAlbum(device: ActiveDevice, id: string, active = fa
 }
 
 // JSON selection parameters keep bulk requests bounded and protect the entire selection against stale edits.
-function selectionGuard(state: "any" | "active" | "trashed" = "any") {
+function selectionGuard(state: "any" | "active" | "trashed" = "any", editable = "1") {
   return `(SELECT COUNT(*) FROM media AS candidate JOIN json_each(?) AS chosen ON candidate.id = json_extract(chosen.value, '$.id')
-    WHERE candidate.space_id = ? AND candidate.status = 'ready' ${state === "active" ? "AND candidate.archived_at IS NULL" : state === "trashed" ? "AND candidate.archived_at IS NOT NULL" : ""} AND candidate.revision = json_extract(chosen.value, '$.expectedRevision')) = ?`;
+    WHERE candidate.space_id = ? AND candidate.status = 'ready' ${state === "active" ? "AND candidate.archived_at IS NULL" : state === "trashed" ? "AND candidate.archived_at IS NOT NULL" : ""} AND candidate.revision = json_extract(chosen.value, '$.expectedRevision') AND ${editable}) = ?`;
 }
 
 // Album deletion hides its grouping only; retained memberships make explicit restoration lossless.
@@ -62,7 +63,7 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
 
 // Renames are one conditional SQL update: stale selections never produce a partially renamed batch.
 async function renameFiles(request: Request, device: ActiveDevice) {
-  requireOrganiser(device);
+  requireFileEditor(device);
   const input = await readJson(request, z.object({ files: z.array(z.object({ id: z.string().uuid(), name: z.string().refine(validFilename), expectedRevision: z.number().int().nonnegative() })).min(1).max(100) }));
   if (new Set(input.files.map(file => file.id)).size !== input.files.length) throw new ApiError(400, "Select each file once.");
   const json = JSON.stringify(input.files);
@@ -80,25 +81,24 @@ async function renameFiles(request: Request, device: ActiveDevice) {
     WHERE lower(COALESCE(json_extract(sibling.value, '$.name'), m.name)) = lower(json_extract(proposed.value, '$.name')) LIMIT 1`;
   const conflicts = await database().prepare(conflictsQuery).bind(json, json).first();
   if (conflicts) throw new ApiError(409, "A filename already exists in one of these albums. Choose another name or a different starting number.");
-  const authority = transferAuthority(device, Date.now(), "organiser");
+  const authority = fileEditAuthority(device, "candidate");
   const result = await database().prepare(`UPDATE media SET original_name = COALESCE(original_name, name),
     name = (SELECT json_extract(value, '$.name') FROM json_each(?) WHERE json_extract(value, '$.id') = media.id), revision = revision + 1
-    WHERE space_id = ? AND archived_at IS NULL AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard("active")}
-    AND NOT EXISTS (${conflictsQuery}) AND ${authority.sql}
-    RETURNING id, name, revision`).bind(json, device.space_id, json, json, device.space_id, input.files.length, json, json, ...authority.bindings).all();
+    WHERE space_id = ? AND archived_at IS NULL AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard("active", authority.sql)}
+    AND NOT EXISTS (${conflictsQuery})
+    RETURNING id, name, revision`).bind(json, device.space_id, json, json, device.space_id, ...authority.bindings, input.files.length, json, json).all();
   if (result.results.length !== input.files.length) throw new ApiError(409, "A file or filename changed. Refresh before renaming; no files were renamed.");
   return Response.json({ files: result.results });
 }
 
 // Membership and trash edits use the same optimistic revision guard within one D1 transaction.
 async function organiseFiles(request: Request, device: ActiveDevice) {
-  requireOrganiser(device);
+  requireFileEditor(device);
   const input = await readJson(request, z.object({ files: selectionSchema, action: z.enum(["add", "remove", "trash", "restore"]), albumId: z.string().uuid().optional() }));
   const json = JSON.stringify(input.files);
-  let selected = `media.space_id = ? AND media.status = 'ready' AND media.id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard(input.action === "restore" ? "trashed" : input.action === "remove" ? "any" : "active")}`;
-  const selectionValues: (string | number)[] = [device.space_id, json, json, device.space_id, input.files.length];
-  const authority = transferAuthority(device, Date.now(), "organiser");
-  selected += ` AND ${authority.sql}`; selectionValues.push(...authority.bindings);
+  const authority = fileEditAuthority(device, "candidate");
+  let selected = `media.space_id = ? AND media.status = 'ready' AND media.id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard(input.action === "restore" ? "trashed" : input.action === "remove" ? "any" : "active", authority.sql)}`;
+  const selectionValues: (string | number)[] = [device.space_id, json, json, device.space_id, ...authority.bindings, input.files.length];
   if (input.action === "add" || input.action === "remove") {
     if (!input.albumId) throw new ApiError(400, "Choose an album.");
     await requireAlbum(device, input.albumId, input.action === "add");
@@ -126,9 +126,9 @@ async function organiseFiles(request: Request, device: ActiveDevice) {
 
 // Capture-date corrections are metadata-only and reject stale writes from another browser.
 async function changeCaptureDate(request: Request, device: ActiveDevice) {
-  requireOrganiser(device);
+  requireFileEditor(device);
   const input = await readJson(request, z.object({ id: z.string().uuid(), capturedAt: z.string().refine(validCaptureDate).nullable(), expectedRevision: z.number().int().nonnegative() }));
-  const authority = transferAuthority(device, Date.now(), "organiser");
+  const authority = fileEditAuthority(device);
   const result = await database().prepare(`UPDATE media SET captured_at = ?, revision = revision + 1 WHERE id = ? AND space_id = ? AND status = 'ready' AND revision = ? AND ${authority.sql}`)
     .bind(input.capturedAt, input.id, device.space_id, input.expectedRevision, ...authority.bindings).run();
   if (!result.meta.changes) throw new ApiError(409, "This file changed. Refresh before correcting its date.");

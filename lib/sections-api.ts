@@ -1,3 +1,4 @@
+import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { ApiError, database, readJson, requireOrganiser, type ActiveDevice } from "./server";
 import type { AlbumSection } from "./contracts";
@@ -108,19 +109,19 @@ async function applySectionTemplate(request: Request, device: ActiveDevice) {
 
 // A single transactional guard covers the entire selection, including all destinations and revisions.
 export async function placeInSections(request: Request, device: ActiveDevice) {
-  requireOrganiser(device);
+  requireFileEditor(device);
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), files: z.array(z.object({
     id: z.string().uuid(), expectedRevision: revision, sectionId: z.string().uuid().nullable(),
   })).min(1).max(100).refine(files => new Set(files.map(file => file.id)).size === files.length) }));
   const json = JSON.stringify(input.files);
-  const authority = transferAuthority(device, Date.now(), "organiser");
+  const authority = fileEditAuthority(device, "m");
   const guard = `(SELECT COUNT(*) FROM json_each(?) chosen JOIN media m ON m.id = json_extract(chosen.value, '$.id')
     JOIN album_media am ON am.media_id = m.id AND am.album_id = ? JOIN albums a ON a.id = am.album_id
     WHERE m.space_id = ? AND a.space_id = m.space_id AND a.deleted_at IS NULL AND a.archived_at IS NULL
-    AND m.status = 'ready' AND m.archived_at IS NULL AND m.revision = json_extract(chosen.value, '$.expectedRevision')
+    AND ${authority.sql} AND m.status = 'ready' AND m.archived_at IS NULL AND m.revision = json_extract(chosen.value, '$.expectedRevision')
     AND (json_extract(chosen.value, '$.sectionId') IS NULL OR EXISTS (SELECT 1 FROM album_sections s
-      WHERE s.album_id = a.id AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))) = ? AND ${authority.sql}`;
-  const guardValues = [json, input.albumId, device.space_id, input.files.length, ...authority.bindings];
+      WHERE s.album_id = a.id AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))) = ?`;
+  const guardValues = [json, input.albumId, device.space_id, ...authority.bindings, input.files.length];
   const selectedIds = "SELECT json_extract(value, '$.id') FROM json_each(?)";
   const results = await database().batch([
     database().prepare(`SELECT am.media_id AS id, CASE WHEN s.deleted_at IS NULL THEN am.section_id ELSE NULL END AS sectionId,

@@ -16,7 +16,7 @@ const publicationAuthority = `EXISTS (SELECT 1 FROM account_sessions a JOIN peop
   WHERE a.id = ? AND p.id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
   AND a.authenticated_at >= p.credentials_changed_at
   AND own.space_id = ? AND own.role = 'owner' AND own.revoked_at IS NULL
-  AND destination.space_id = ? AND destination.revoked_at IS NULL AND destination.role IN ('owner','member','editor')
+  AND destination.space_id = ? AND destination.revoked_at IS NULL AND destination.role IN ('owner','member','editor','contributor')
   AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = destination.space_id))`;
 const destinationAvailable = `(? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL))
   AND (? IS NULL OR EXISTS (SELECT 1 FROM album_sections WHERE id = ? AND album_id = ? AND deleted_at IS NULL))`;

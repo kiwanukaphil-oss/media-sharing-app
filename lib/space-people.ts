@@ -33,7 +33,7 @@ export async function listSpacePeople(database: D1Database, session: SpacePerson
 // Viewer revokes linked bearer credentials because legacy Member can upload.
 // Never legacy Owner: older device clients retain upload/read access without access administration.
 export async function changeSpacePerson(database: D1Database, session: SpacePersonSession, spaceId: string,
-  targetId: string, action: "owner" | "member" | "editor" | "viewer" | "remove" | "leave", revision: number, now = Date.now()) {
+  targetId: string, action: "owner" | "member" | "editor" | "viewer" | "contributor" | "remove" | "leave", revision: number, now = Date.now()) {
   const eventId = crypto.randomUUID();
   const removing = action === "remove" || action === "leave";
   const admission = accountClosureCommitAuthority(session);

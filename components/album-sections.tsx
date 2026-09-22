@@ -9,12 +9,12 @@ import { WorkspaceSelect } from "./workspace-select";
 
 type Props = {
   album: Album; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void;
-  selected: MediaItem[]; canOrganise: boolean; refresh: () => Promise<void>; clearSelection: () => void;
+  selected: MediaItem[]; canOrganise: boolean; canMoveSelection?: boolean; refresh: () => Promise<void>; clearSelection: () => void;
   feedback: { setMessage: (message: string) => void; setUndo: (undo: (() => () => Promise<unknown>) | null) => void };
 };
 
 // Sections are album-local placement controls, not access settings or creative approval states.
-export function AlbumSections({ album, sections, query, onQuery, selected, canOrganise, refresh, clearSelection, feedback }: Props) {
+export function AlbumSections({ album, sections, query, onQuery, selected, canOrganise, canMoveSelection, refresh, clearSelection, feedback }: Props) {
   const { requestJson, apiUrl } = useLibraryApi();
   const [editor, setEditor] = useState<AlbumSection | "new" | "move" | "template" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -96,7 +96,7 @@ export function AlbumSections({ album, sections, query, onQuery, selected, canOr
       {canEdit && <button className="button compact" onClick={() => { setFailure(""); setEditor("new"); }}><Plus size={16} />New section</button>}
       {canEdit && !sections.length && <button className="button compact" disabled={busy} onClick={() => void previewTemplate()}><LayoutTemplate size={16} />Use template</button>}
       {canEdit && active && <button className="icon-button" aria-label="Manage section" title="Manage section" onClick={() => { setFailure(""); setEditor(active); }}><Pencil size={16} /></button>}
-      {canEdit && selected.length > 0 && !selected.some(file => file.archivedAt) && <button className="button compact" onClick={() => { setFailure(""); setDestination(""); setEditor("move"); }}><FolderInput size={16} />Move to section</button>}
+      {(canEdit || (canMoveSelection && !album.archivedAt)) && selected.length > 0 && !selected.some(file => file.archivedAt) && <button className="button compact" onClick={() => { setFailure(""); setDestination(""); setEditor("move"); }}><FolderInput size={16} />Move to section</button>}
     </div>
     <p className="section-explanation">Sections organise this album. Everyone in this space can still see its files.</p>
     {failure && !editor && <p className="error-banner" role="alert">{failure}</p>}

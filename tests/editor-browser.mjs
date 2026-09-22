@@ -16,7 +16,7 @@ await page.route('**/api/**',async route=>{
   if(url.pathname==='/api/auth/spaces') return route.fulfill({json:{spaces:[{id:space,name:'Editor library',role:'editor',kind:'shared',actorId:actor}]}});
   assert.equal(url.searchParams.get('space'),space);
   if(url.pathname==='/api/session') return route.fulfill({json:{authentication:'account',personId:'editor-person',deviceId:actor,role,transport:'local',space:{id:space,name:'Editor library',kind:'shared'}}});
-  if(url.pathname==='/api/feed') return route.fulfill({json:{items:[{...item,archivedAt:url.searchParams.get('category')==='trash'?Date.now():null}],total:1,nextCursor:null,role,counts:{all:1,original:1,final:0,trash:1}}});
+  if(url.pathname==='/api/feed') return route.fulfill({json:{items:[...(role==='contributor'?[{...item,id:'a3e4a4b2-45b1-4cb0-98d5-7d395c3c84aa',name:'My contribution.jpg',canEdit:1}]:[]),{...item,canEdit:0,archivedAt:url.searchParams.get('category')==='trash'?Date.now():null}],total:1,nextCursor:null,role,counts:{all:1,original:1,final:0,trash:1}}});
   if(url.pathname==='/api/albums') return route.fulfill({json:{albums:[],sections:[]}});
   if(url.pathname==='/api/storage') return route.fulfill({json:{used:4,reserved:0,trash:0,limit:100000,uploads:[]}});
   throw new Error(`Unexpected editor browser request ${url.pathname}`);
@@ -41,6 +41,14 @@ try {
   await expect(page.getByRole('button',{name:'Add files',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Rename',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Save to device',exact:true})).toBeVisible();
+  role='contributor';
+  await page.goto(`${origin}/?space=${space}`);
+  await expect(page.getByRole('button',{name:'Add files',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'New album',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Rename',exact:true})).toHaveCount(1);
+  await page.getByRole('checkbox',{name:/Select loaded files/}).click();
+  await expect(page.getByRole('button',{name:'Rename selected',exact:true})).toBeDisabled();
+  await expect(page.getByText('Contributors can edit only their own files. Adjust your selection.')).toBeVisible();
   assert.equal(mutations,0);
   console.log('PASS: Editor organisation controls and role label, Trash restoration, no device pairing or permanent-delete controls.');
 } finally {await browser.close();}

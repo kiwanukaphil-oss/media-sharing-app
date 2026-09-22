@@ -86,6 +86,10 @@ export async function verifySpacePeople(database, dispatch) {
   assert.equal((await database.prepare('SELECT role FROM devices WHERE id=?').bind(legacyId).first()).role,'member','Account Editor must never become a legacy Owner.');
   assert.equal((await request(departed,'feed','GET',undefined,{Cookie:`relay_device=${credential}`})).status,200);
   assert.equal((await request(departed,'invitations','POST',undefined,{Cookie:`relay_device=${credential}`})).status,403);
+  assert.equal((await request(remaining,scoped(`people/${restored.id}`),'PUT',{action:'contributor',revision:restored.revision})).status,200);
+  restored.revision++;
+  assert.equal((await request(departed,scoped('session'))).data.role,'contributor');
+  assert.equal((await database.prepare('SELECT role FROM devices WHERE id=?').bind(legacyId).first()).role,'member');
   assert.equal((await request(remaining,scoped(`people/${restored.id}`),'PUT',{action:'viewer',revision:restored.revision})).status,200);
   restored.revision++;
   assert.equal((await request(departed,'feed','GET',undefined,{Cookie:`relay_device=${credential}`})).status,401,'Viewer cannot retain upload-capable paired credentials.');

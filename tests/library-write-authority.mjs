@@ -76,6 +76,40 @@ try {
   assert.equal(dispatched,2);
   assert.equal(await database.prepare('SELECT id FROM media WHERE id=?').bind(otherUpload).first(),null);
   await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,'media',media,undefined,cancellationStorage),error=>error.status===403);
+  // Contributor bulk writes validate every row before any metadata changes; recorded legacy claims
+  // count as ownership, labels do not. Cached Editor authority must not bypass the current role.
+  const foreign=crypto.randomUUID();
+  await database.prepare("INSERT INTO media(id,space_id,device_id,name,mime,size,sha256,category,object_key,upload_id,part_size,status,created_at) VALUES(?,?,?,'foreign.jpg','image/jpeg',4,?,'original',?,'foreign',4,'ready',?)").bind(foreign,space,otherDevice,'c'.repeat(64),`${space}/${foreign}/original`,now).run();
+  await database.prepare('INSERT INTO album_media(album_id,media_id,section_id) VALUES(?,?,?)').bind(album,foreign,section).run();
+  await database.prepare("UPDATE space_memberships SET role='contributor'").run();
+  actor.role='contributor';
+  const postLibrary=async(id,body,principal=actor)=>libraryAction(new Request('https://fixture.invalid/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),principal,'library',id);
+  const selection=async(ids)=>Promise.all(ids.map(async id=>({id,expectedRevision:(await database.prepare('SELECT revision FROM media WHERE id=?').bind(id).first()).revision})));
+  for(const action of ['add','remove','trash']) {
+    const before=await snapshot();
+    await assert.rejects(postLibrary('organise',{action,albumId:album,files:await selection([media,foreign])}),error=>error.status===409);
+    assert.equal(await snapshot(),before,'A mixed Contributor selection must change nothing');
+  }
+  for(const id of ['rename','sections']) {
+    const files=(await selection([media,foreign])).map((file,index)=>({...file,name:`contributor-${index}.jpg`,sectionId:null}));
+    const before=await snapshot();
+    await assert.rejects(postLibrary(id,{files,albumId:album},{...actor,role:'editor'}),error=>error.status===409);
+    assert.equal(await snapshot(),before,'Stale Editor role must not enable a mixed selection');
+  }
+  await assert.rejects(postLibrary('capture-date',{id:foreign,capturedAt:null,expectedRevision:0}),error=>error.status===409);
+  await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'POST'}),actor,'media',foreign,'archive',cancellationStorage),error=>error.status===409);
+  assert.equal((await postLibrary('rename',{files:[{...(await selection([media]))[0],name:'mine.jpg'}]})).status,200);
+  assert.equal((await postLibrary('capture-date',{id:media,capturedAt:'2026-09-22T10:00:00',expectedRevision:await mediaRevision()})).status,200);
+  assert.equal((await postLibrary('sections',{albumId:album,files:(await selection([media])).map(file=>({...file,sectionId:section}))})).status,200);
+  for(const action of ['trash','restore','remove','add'])
+    assert.equal((await postLibrary('organise',{action,albumId:album,files:await selection([media])})).status,200);
+  // Same-name foreign device remains denied until the exact independent claim is recorded.
+  await database.prepare('INSERT INTO legacy_owner_claims(device_id,membership_id,session_id,claimed_at) VALUES(?,?,?,?)').bind(otherDevice,member,session,now).run();
+  assert.equal((await postLibrary('rename',{files:(await selection([media,foreign])).map((file,index)=>({...file,name:`claimed-${index}.jpg`}))})).status,200);
+  await database.prepare('DELETE FROM legacy_owner_claims WHERE device_id=?').bind(otherDevice).run();
+  const beforeUndo=await snapshot();
+  await assert.rejects(postLibrary('organise',{action:'trash',files:await selection([foreign])}),error=>error.status===409);
+  assert.equal(await snapshot(),beforeUndo,'Removing a claim ends subsequent authority');
   actor.role='owner';
   await database.prepare("UPDATE space_memberships SET role='owner'").run();
   // Permanent deletion and unfinished-upload cancellation must deny storage dispatch using a stale
