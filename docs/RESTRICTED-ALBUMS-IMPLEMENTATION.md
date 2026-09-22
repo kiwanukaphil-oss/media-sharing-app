@@ -38,20 +38,23 @@ Scope never changes by adding/removing an album reference or renaming a section.
 
 - [x] Define asset/album compatibility, inherited sections, personal-space exclusion, administrator grants and offboarding rules.
 - [x] Introduce additive scope/grant/audit records and central SQL predicates on the isolated development branch; private-export rehearsal passed. No remote migration.
-- [ ] Integrate every disclosure surface above, including current activity/portability work, before enabling scope creation.
-- [ ] Add explicit scope management, audience preview, restricted navigation and cross-scope copy.
-- [ ] Exercise owner-without-grant, Viewer, Contributor, Editor, legacy, private-space and multi-album adversarial cases; revocation races and restoration must preserve scope.
-- [ ] Complete hosted, migration, independent restore and live verification. Enable the feature only when the full surface inventory is covered.
+- [x] Integrate and hosted-verify the disclosure surfaces, including current activity/portability work. Production scope creation remains disabled.
+- [x] Add and hosted-verify explicit scope management, audience preview, restricted navigation and cross-scope copy.
+- [x] Exercise owner-without-grant, Viewer, Contributor, Editor, legacy, private-space and multi-album adversarial cases, revocation races and restored quarantine in the local/hosted suites.
+- [x] Complete hosted and private-export migration/restore rehearsal.
+- [ ] Complete the independent production backup gate, remote migration and live verification before enabling scope creation.
 
 The pure policy fixture records expected semantics and is not a substitute for database/route enforcement. P4-01 is a design deliverable; completing it does not complete any of P4-02 through P4-06 or claim deployed privacy.
 
-## Verified isolated schema preparation
+## Historical isolated schema preparation
+
+This initial checkpoint is superseded by the integrated and hosted-verified implementation below.
 
 `docs/prototypes/restricted-scope-schema.sql` is outside the active migration journal. `lib/asset-scope-authority.ts` is not imported by application routes. The prototype adds immutable asset/album scope references, exact-membership grants, minimal grant events and retained history scopes. Database triggers reject incompatible references and revoke restricted grants on departure.
 
 `tests/asset-scope-authority.mjs` passes with SQLite and Cloudflare's local D1 engine. It verifies owner/legacy denial, explicit Viewer grants, whole-event filtering after the original is removed, leave/rejoin revocation and restore preservation of triggers/quarantine. Existing snapshot tooling preserves triggers after data import. This does not establish runtime coverage: the full inventory above remains the activation gate.
 
-## Isolated runtime integration — 22 September 2026
+## Historical runtime integration — 22 September 2026
 
 Branch `work/restricted-scopes` is an unfinished development branch, separate from the release candidate. It must not be deployed or merged for release yet. Migration 0023 exists only on this branch; live schema remains 0020 and the main candidate remains 0021/0022.
 
@@ -78,7 +81,7 @@ Owners may see aggregate billed storage across scopes for administration; file l
 - [x] Production-build closure-tracking integration exits 0, including resource-bound multipart capability custody and closure fence entry points.
 - [x] Route and present controls behind the disabled activation flag. Dedicated built-Worker D1/R2 tests verify CSRF, owner-without-grant denial, Viewer bytes/read-only behavior, metadata/thumbnail/section denial and audited self-access. No production scope or grant was created.
 - [x] Full local browser regression exits 0: existing Chrome/Edge/Firefox/WebKit workflows preserved, plus new mobile/desktop audience checks and queue/navigation checks. Production build, TypeScript and full web lint pass.
-- [ ] Hosted verification and production release remain outstanding; cross-scope copying and final lifecycle/disclosure review remain activation gates.
+- [x] Subsequently complete hosted verification, cross-scope copying and lifecycle/disclosure review. Production activation remains outstanding.
 
 
 ### Cross-audience copy implementation (22 September)
@@ -113,7 +116,7 @@ Review performed against the actual route/query implementations, not only the UI
 - [x] Correct missing feed audience DTO and cached combined-view dialog revocation, with real-route and browser regression tests.
 - [x] Correct the erasure-plan fixture to create a valid reservation before simulating historical removal, preserving the same custody/reconciliation scenario under the new trigger.
 - [x] Copy routes pass with closure tracking enabled. Latest published Workers types `5.20260922.1` and current R2 Workers API reviewed; original copies remain streamed in production, with tiny test-only bridge buffering.
-- [ ] Final hosted rerun and production backup/deployment acceptance remain required. No unrestricted creation, account closure or external recipient feature is activated by this review.
+- [x] Complete the final hosted rerun; production backup/deployment acceptance remains separately outstanding. No unrestricted creation or account closure is activated.
 
 
 ### Hosted development acceptance

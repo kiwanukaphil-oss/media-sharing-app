@@ -56,18 +56,18 @@ Extend backup/export/minimisation schemas before enabling any delivery table. Pr
 
 - [x] Define immutable asset selection, default recipient mode, sender authority, review, expiry, capabilities, updates and revocation limits.
 - [x] Resolve D09 for the initial named-account snapshot mode. Guest bearer/passcode modes remain explicitly gated expansion.
-- [ ] P5-02: build private draft, sender review, deliberate issue/revoke and recipient-only presentation.
-- [ ] P5-03: implement bounded export jobs, complete manifests and independently checked original bytes.
-- [ ] P5-04/P5-05: integrate existing metadata/import work and accurate privacy/status copy.
+- [x] P5-02 implementation: private draft, sender review, deliberate issue/revoke and recipient-only presentation pass local/hosted checks. Live release remains separate.
+- [x] P5-03 bounded first implementation: in-tab export jobs, complete manifests and independently checked original bytes pass local/hosted checks. Unattended jobs are deferred; live acceptance remains separate.
+- [x] P5-04/P5-05 implementation: metadata/import integration, original-package manifests and accurate privacy/status copy pass local/hosted checks.
 - [ ] P5-06: test access loss during reads/jobs, expired capabilities, stale selection, partial failure, restore quarantine, recipient usability and operational costs; record deployed verification.
 
-This contract completes design only. It neither approves a purchase nor marks delivery implementation or Phase 5 complete.
+The original design checkpoint is followed by implementation and verification evidence below. Neither a purchase nor Phase 5 production completion is implied.
 
 ## Isolated implementation checkpoint
 
 Named-recipient authority preparation now passes real D1 tests. The draft grants no access; acceptance binds the invited verified account without membership or source audience grants. Every delivery read requires all captured originals and the sender's current authority. Snapshot labels survive working-file renames; Trash, source removal and sender grant loss suspend the whole issued delivery, with no automatic revival. Revoked/recovered sessions, expired deliveries and reassigned email addresses cannot inherit access. Historical restore quarantines issued deliveries.
 
-Prototype tables remain outside the migration journal. Sender draft/issue/revoke, recipient routes/UI and bounded download capabilities now pass local checks. Lifecycle/minimisation, original packages and live acceptance remain outstanding. This preparation creates no live grants and sends no invitations.
+At this initial checkpoint, prototype tables remained outside the migration journal. Sender draft/issue/revoke, recipient routes/UI and bounded download capabilities now pass local checks. Lifecycle/minimisation, original packages and live acceptance remain outstanding. This preparation creates no live grants and sends no invitations.
 
 Sender management preparation also passes D1: drafts capture one audience and up to 100 distinct originals, with up to 20 distinct named recipients and at most 100 unexpired drafts/issued/suspended deliveries per source space. Exact concurrent retries create one selection and grant set. Missing/mixed-scope/stale selections are rejected as a whole. Issuance requires the original sender's current Owner/grant authority; suspended snapshots can be explicitly re-reviewed while preserving captured labels. Current owners with the source audience can revoke access, which cannot be silently reopened. Recipient-insert collisions roll back the whole draft.
 
@@ -79,7 +79,7 @@ Disabled owner/recipient routes now pass actual built-Worker D1/R2 tests with cl
 - [x] Implement secret-fragment sign-in handoff and explicit named-account acceptance, with no source membership or private working-library labels exposed.
 - [x] Verify mobile and desktop presentation, native download wording, streamed checksum-verified saving and removal of displayed filenames on access loss. Corrected mobile file layout after screenshot inspection.
 - [x] Verify actual built-Worker native and verified-download endpoints, captured attachment names and original bytes. The browser's native-download fixture uses an actual local HTTP server because Chromium bypasses route interception for download navigation; endpoint authorization is independently checked in the Worker suite.
-- [ ] Complete hosted verification, lifecycle/minimisation, schema migration and operational release gates before enabling deliveries.
+- [x] Subsequently complete hosted verification, lifecycle/minimisation and prepared migration 0026. Operational release gates remain outstanding before enabling deliveries.
 
 The public sender label is explicitly reviewed and captured, rather than disclosing the source library's current name. An accepted invitation is labelled as acceptance, never as a read or save receipt. Native downloads say requested; only the supported streamed save reports verified bytes after the writer closes. Delivery tables remain outside the active migration journal, and the feature flag remains absent from production.
 
@@ -91,7 +91,8 @@ The public sender label is explicitly reviewed and captured, rather than disclos
 - [x] Integrate exact-person inventory with the read-only erasure plan and the snapshot minimiser. Email matching only clears contacts; it never establishes file ownership. Narrow irreversible redaction exceptions cannot restore contact values or rebind recipients.
 - [x] Verify migration, minimisation, existing intake/account lifecycle, actual built-Worker delivery routes, type checks and lint locally.
 - [x] Rehearse against the private production-schema export: all 25 existing tables preserved, no grants invented, protective triggers and access quarantine retained on restore. Source digest `fe005a714436264b1c0e07c4b22a652627db264389ece63fab93519877272f36`; reviewed schema digest `7e7140a337f88704a4ce4df05807d22010144e600424e03fcc8abfbf365f9495`.
-- [ ] Complete hosted verification, original package jobs and live operational acceptance. No migration or flag has been applied in production.
+- [x] Subsequently complete hosted verification and bounded original package jobs.
+- [ ] Complete live operational acceptance. No migration or flag has been applied in production.
 
 This checkpoint supersedes the earlier prototype-only status. The prototype remains a historical reference and retirement candidate; the migration journal owns the current schema. Snapshot minimisation still requires the existing global-backup-only protocol restrictions and never authorises real deletion or restore cutover.
 
@@ -106,7 +107,8 @@ This replaces the initial server-artifact implementation proposal for the bounde
 - [x] Support progress, cancellation, fresh retry and capability fallbacks. A native file writer commits only after verification; the small browser-download fallback reports a request, never a verified local save.
 - [x] Independently extract the generated ZIP with Python's standard reader, checking CRCs, manifest and original bytes. Verify an 80 MiB streamed fixture uses at most 1 MiB output chunks, without retaining output; test bounds, traversal, duplicate IDs, corrupt/truncated/oversized responses, final access loss and cancellation.
 - [x] Verify actual library Viewer and delivery-recipient browser package downloads, scoped calls, source-organisation separation and access-denial retry.
-- [ ] Complete hosted package verification and production/browser operational acceptance. A full 2 GiB generated stream also passes locally with at most 1 MiB output chunks. This checks the writer limit, not real-device disk performance; device performance and live provider retry evidence remain release checks.
+- [x] Complete hosted package verification in `35751118759`.
+- [ ] Complete production/browser operational acceptance. A full 2 GiB generated stream also passes locally with at most 1 MiB output chunks. This checks the writer limit, not real-device disk performance; device performance and live provider retry evidence remain release checks.
 
 Format and save semantics reviewed against [PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) and [FileSystemWritableFileStream](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream). No sanitised derivative is offered: it could otherwise imply removal of sensitive metadata without a tested format-specific implementation.
 

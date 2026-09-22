@@ -19,6 +19,7 @@ While the dialog is open, current access is checked every 15 seconds in a visibl
 - [x] Mobile browser checks exercise candidate wording, verification, deliberate album reuse, Undo and revoked-name clearing. Screenshot inspection confirms fitting controls and wrapping names.
 - [x] Prepared migration 0027 adds only an index for bounded fingerprint lookups. Query-plan tests use it. No table, content row, grant or byte changes are introduced.
 - [x] Private production-export rehearsal preserves all original fields/rows in 25 existing tables through prepared migrations 0026/0027; restored indexes, protective triggers and access quarantine survive. Snapshot minimisation still passes and the table-shape digest remains the reviewed 0026 digest.
-- [ ] Hosted full regression, live migration/activation and deployed multi-person acceptance.
+- [x] Hosted full regression at `676a370` passes both jobs in run `35752042399`; merged into main.
+- [ ] Live migration/activation and deployed multi-person acceptance.
 
 The 50-result limit is disclosed; this is a focused assistance tool, not a whole-library duplicate-cleaning service. No new service, email, AI processing or purchase is required.

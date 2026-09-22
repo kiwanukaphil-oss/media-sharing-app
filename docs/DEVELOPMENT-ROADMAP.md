@@ -22,7 +22,7 @@
 - [x] Corrected hosted package run `35751118759` passes both jobs at `5c66996`; merged into main. Earlier run caught a reproduced mobile toolbar overflow, now corrected.
 - [ ] Complete real-device/live operational acceptance and activation. No live delivery migration or grant has been created.
 
-[Contract, package limits and detailed evidence](DELIVERY-CONTRACT.md). Production remains schema 0020; migrations 0021-0026 are prepared, not deployed. Parent completion remains 22/47.
+[Contract, package limits and detailed evidence](DELIVERY-CONTRACT.md). Production remains schema 0020; migrations 0021-0027 are prepared, not deployed. Parent completion remains 22/47.
 
 ## Upload-request development acceptance
 
@@ -40,7 +40,7 @@
 
 ## Restricted-audience development acceptance
 
-**22 September:** Main merge `d32e7cc` passed hosted run 35739071750. Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0026 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
+**22 September:** Main merge `d32e7cc` passed hosted run 35739071750. Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0027 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
 
 - [x] Current audience enforcement, retained activity privacy, same-scope album references, explicit upload destinations and retry integrity pass local D1/route tests.
 - [x] Private-export rehearsal preserves all original fields/rows in 25 tables through schema 0024, invents no grants, and retains restored triggers/quarantine. Populated-scope minimisation retains shared originals and revokes grants.
@@ -56,7 +56,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 
 **At a glance:** 2 phases complete; 22/47 parent work items complete. Phase 2 remains a restricted designated-account pilot with a 1 GiB total personal allocation; general onboarding and account closure are not enabled. Live Worker `b7e1565a-3aa7-402c-acd2-5703cfe57ad4` is at 100%, including delayed recovery identity protection. Migration 0019 preserved every existing row across all 21 prior application tables. Global backup coordination is enabled and verified: run `35703394048` independently restored all 25 originals (321,680,743 bytes), and separate D1/B2 readers verified its archived completion receipt against the live settled run. Both-origin health/access checks pass. Fresh read-only storage reconciliation recorded 33 objects, zero unfinished uploads and zero anomalies. Hosted recovery CI `35704906771` and follow-up CI `35705343640` passed verification and browser jobs. Fresh sign-in, personal preview, recovered-publication history and shared-library switching are verified on 22 September; the database still contains 25 ready files and one publication. No user original was removed.
 
-**Next action:** Finish duplicate-assistance implementation and hosted acceptance, then audit remaining dependency-ready operational work. Restricted audiences, intake and delivery workflows are locally implemented and hosted-verified; live activation remains gated. Release favourites/activity after independent backup downloads resume. Keep account closure/general release gated on actual lifecycle evidence; backup coordination and current-pilot monitoring are already verified. The Better Stack identity/recovery test email is confirmed in Gmail Inbox (21 September, 11:57 a.m. EAT; inspected 22 September). Independent scheduled checks passed at 15:19, 15:49 and 16:19 UTC; optimised runs used 8 ms and 5 ms CPU on Workers Free; the 22 September 08:19 run reached 10 ms. Workers Paid is now explicitly approved and active, with the bounded monitor deployed; the 08:49 UTC Paid cron and independent report delivery passed at 8 ms CPU against its 1,000 ms limit. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
+**Next action:** Finish hosted admission-pause acceptance and reconcile remaining operational release evidence. Duplicate assistance passed hosted run `35752042399` and is merged into main. Restricted audiences, intake and delivery workflows are locally implemented and hosted-verified; live activation remains gated. Release favourites/activity after independent backup downloads resume. Keep account closure/general release gated on actual lifecycle evidence; backup coordination and current-pilot monitoring are already verified. The Better Stack identity/recovery test email is confirmed in Gmail Inbox (21 September, 11:57 a.m. EAT; inspected 22 September). Independent scheduled checks passed at 15:19, 15:49 and 16:19 UTC; optimised runs used 8 ms and 5 ms CPU on Workers Free; the 22 September 08:19 run reached 10 ms. Workers Paid is now explicitly approved and active, with the bounded monitor deployed; the 08:49 UTC Paid cron and independent report delivery passed at 8 ms CPU against its 1,000 ms limit. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
 
 **Recovery custody verified:** Owner submission completed; the encrypted cloud vault was independently downloaded, decrypted and checked. The single-operator intent synchronization command now reads live requests, signs permitted intent changes and independently verifies immutable archive publication; real empty revision 2 and both retained versions passed readback. Continue lifecycle and backup-writer fencing; no real deletion decision or restore cutover is authorised.
 
@@ -283,7 +283,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
   - [x] [Snapshot delivery contract](DELIVERY-CONTRACT.md): named-account recipients, owner-only audience expansion, one source scope, explicit selection/expiry, suspended access after source/authority loss, honest bearer-URL/download limitations, and separate guest-mode gates. Design only; no delivery is implemented or enabled.
 - [ ] **P5-02 — Build recipient and sender workflows.** Focused branded presentation, predictable downloads, revoke/update controls and a sender preview of exposed content. A live collection is a separately approved optional mode, never an implicit default.
-- [ ] **P5-03 — Deliver selected-file download/export jobs.** Bounded background packages with progress, cancellation, retries, collision-safe names and limits; avoid huge browser-memory archives. Check permissions at job creation and retrieval and define loss-of-access behaviour.
+- [ ] **P5-03 — Deliver selected-file download/export jobs.** Bounded in-tab packages with progress, cancellation, fresh retries, collision-safe names and limits; avoid huge browser-memory archives. Unattended background artifacts remain a separately gated expansion, per the delivery contract. Check permissions at job creation and retrieval and define loss-of-access behaviour.
 - [ ] **P5-04 — Provide portable metadata and import mapping.** Export originals with names, dates, albums, sections and available relationships in a manifest. Preview directory-import mapping and name collisions; support browser fallbacks without claiming universal folder APIs.
 - [ ] **P5-05 — Clarify metadata and delivery status.** Explain EXIF/location exposure in original files; assess an explicitly labelled sanitised derivative option. Distinguish viewed, download started, verified save and recovery status using real events only.
 - [ ] **P5-06 — Verify and release handoff.** Recipient usability, byte integrity, scope/expiry/revocation, large jobs, partial failures, operational costs and export completeness. Confirm export artifacts also expire and follow access policy.
@@ -294,7 +294,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Creative teams can compare and discuss the right version without losing originals.
 **Entry:** Phase 5, evidence of demand and approved review scope.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** Demand/scope validation pending. Owner: Codex under standing execution authority. A focused user question is pending; do not build review features without the roadmap's required evidence of need.
 
 - [ ] **P6-01 — Validate the smallest useful review workflow.** Confirm actual needs for related versions, comparison, comments and approvals. Record what will be omitted from the first release.
 - [ ] **P6-02 — Add explicit version relationships.** Add related version, lineage and current-version navigation while preserving immutable assets. Similar filenames may suggest a relationship but do not silently create it.
@@ -606,7 +606,7 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Stream original bytes directly through R2 with its SHA-256 check; preserve original name, capture date and available previews. Independent keys survive source deletion. Recheck personal ownership, destination membership, source revision and album/section availability before publication.
 - [x] Add a visible publish action in the personal-file viewer, destination selectors, audience/metadata explanation and explicit Publish copy. Reload/retry retains the operation and destination; completed history prevents accidental duplicate retries. Another copy requires an explicit new action.
 - [x] Pass lint, TypeScript, build, full existing API/security regression, account/personal/people/publication D1/R2 checks, ten backup checks and targeted publication/account-library/people/media browser checks. Phone/desktop publication screenshots inspected. Hosted CI passed the preceding people increment `c8efe69`.
-- [ ] Verify live publication and recovery before activation. The initial flow copies one original at a time, up to 1 GiB (the current personal allowance); bulk publication and larger allocations are future enhancements. No production migration or Worker deployment in this increment.
+- [x] Subsequently verify live publication, independent recovery and the isolated cloud interruption/revocation rehearsal. The initial flow remains one original at a time, up to the 1 GiB personal allowance.
 
 ### 21 September 2026 - Password-change session invalidation
 
@@ -614,7 +614,7 @@ Latest milestone: Phase 1 deployed and verified on 19 September 2026. Auth0 appl
 - [x] Verify bounded, timestamped HMAC recovery notifications; serialize reset/sign-in races and preserve newer sessions during duplicate or delayed delivery. Record resets received before the first Relay sign-in.
 - [x] Prepare scoped Auth0 Post Login and Post Change Password Actions with bounded delivery retries and redacted failure reporting. Add Action tests to hosted CI.
 - [x] Pass signed-token protocol/Action tests, real-D1 recovery/race tests, full API/security and account-access regressions, backup checks, lint, TypeScript and production build.
-- [ ] Install and configure Actions and the matching Worker secret, verify actual password recovery and delivery-failure monitoring, and activate only after the live release gates pass. Auth0's asynchronous notification is not an instantaneous or guaranteed revocation channel; next sign-in also reconciles the signed password-change timestamp.
+- [x] Install and configure Actions and the matching Worker secret; actual password recovery, revoked old sessions, monitoring and the restricted-pilot activation were subsequently verified. Auth0's asynchronous notification is not an instantaneous or guaranteed revocation channel; next sign-in also reconciles the signed password-change timestamp.
 - [ ] Reconcile recovery watermarks against current provider state before restored identities regain access. Existing restore handling revokes all sessions/memberships; no automatic access restoration is introduced.
 
 ### 21 September 2026 - Legacy access reconciliation
@@ -922,7 +922,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Bound request reads to 10 seconds and verify stalled-body cancellation without a database mutation.
 - [x] Pass actual built-Worker enabled-route checks, disabled-route/account regressions, TypeScript, focused lint and production build. Add enabled-route coverage to hosted CI.
 - [x] Deploy the dormant endpoint alongside the sign-in guard; both origins return 404 with activation absent. Existing scheduled backup remains unchanged.
-- [ ] Activate only with the reviewed complete protocol schema, separate secret, writer configuration and hosted coordinated-backup verification.
+- [x] Subsequently activate the reviewed global-backup-only protocol stage with separate secret, writer configuration and independently verified coordinated backups. Account/device closure activation remains blocked.
 
 ## 22 September 2026 - Erased identity sign-in protection
 
@@ -952,7 +952,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 
 - [x] Implement a request-scoped R2 adapter that reserves each put/delete/multipart operation before dispatch and preserves native read/conditional-write behaviour. Record exact multipart part numbers and bound identifiers.
 - [x] Verify original bytes, conditional rejection, multipart lifecycle, per-key cleanup and retained-handle denial after fencing against isolated D1/R2. TypeScript and focused lint pass.
-- [ ] Inject tracked storage into application requests, wire direct capability reservation and complete metadata-generation checks. No production schema or tracking activation is included in this increment.
+- [x] Subsequently integrate and verify tracked storage, direct capability reservation, metadata-generation and pre-library entry points. Production account closure tracking remains disabled.
 
 ## 22 September 2026 - Request storage custody (disabled)
 
@@ -1129,7 +1129,7 @@ Cloudflare case email checked 22 September at approximately 09:10 UTC: acknowled
 - [x] Complete built API and browser checks, including account isolation, Viewer bookmarking, failure feedback and the full closure-tracking integration suite; lint and legacy migration preservation pass.
 - [x] Favourites hosted CI `35726758741` passed verification and browser jobs at source `99ddc0f`.
 - [ ] Deploy migration 0021 after a verified recovery point. Backup `35726687872` copied all 25 originals but its independent restore failed with Backblaze `download_cap_exceeded`; neither migration 0021 nor 0022 is remote.
-- [ ] Add durable scoped activity and privacy-safe in-app notifications before closing P3-03.
+- [x] Add and hosted-verify durable scoped activity and privacy-safe in-app notifications. Production release remains outstanding for P3-03.
 
 Cloudflare case 02338622 was rechecked on 22 September during this work: the thread still contains only the acknowledgement. No follow-up message was sent. This continues to gate account-erasure guarantees, not independent feature development.
 
@@ -1148,7 +1148,7 @@ Cloudflare case 02338622 was rechecked on 22 September during this work: the thr
 - [x] Include names, dates, recorded checksums and album/section mappings, with collision-safe suggested paths and explicit original-byte/EXIF limitations. Real D1 tests and actual browser JSON download checks pass.
 - [x] Correct the empty activity announcement exposed by hosted browser run `35728119703`; affected publication, activity and role browsers pass locally. Its verification job had passed.
 - [ ] Complete corrected hosted verification and release. Migrations 0021/0022 and these features remain undeployed pending backup-cap recovery (B06).
-- [ ] Complete directory mapping and integration with original export packages before checking P5-04.
+- [x] Complete directory mapping and integration with bounded original export packages locally and in hosted checks. Live acceptance remains outstanding for P5-04.
 
 [Portability contract and checked milestones](PORTABILITY-IMPLEMENTATION.md). Parent counts remain 19/47; this records implemented and tested work, not a completed phase.
 
@@ -1163,7 +1163,7 @@ Cloudflare case 02338622 was rechecked on 22 September during this work: the thr
 
 - [x] Complete P4-01 / D08: immutable asset scopes, same-scope album references, inherited sections, explicit audited administrator access, owner-only administrative metadata, offboarding and restore quarantine. Personal spaces remain excluded from shared administration.
 - [x] Verify design-level policy scenarios for owner without a grant, legacy credentials, personal spaces, mixed-scope events and same-scope album references. These are reference-policy tests, not deployed access enforcement.
-- [ ] Implement and verify the complete SQL/API/UI surface inventory before enabling restricted scope creation. No existing audience has changed.
+- [x] Implement and hosted-verify the complete SQL/API/UI surface inventory. Scope creation remains disabled in production.
 
 Parent counts are now 20/47, including this completed policy-definition item; only phases 0 and 1 are complete. Restricted albums remain unavailable in production.
 
@@ -1171,7 +1171,7 @@ Parent counts are now 20/47, including this completed policy-definition item; on
 
 - [x] Verify proposed scope/grant schema and central read/event predicates in SQLite and local D1, including incompatible-reference rejection, owner/legacy denial and restored-trigger grant quarantine.
 - [x] Keep this prototype outside the migration journal and application routing until the entire disclosure inventory is integrated. No live scope/data/audience change is made.
-- [ ] Integrate runtime writes, reads, previews, exports, activity and navigation before enabling restricted albums.
+- [x] Integrate and hosted-verify runtime writes, reads, previews, exports, activity and navigation. Restricted activation remains gated.
 
 Corrected folder-import CI at `f588c68` includes successful hosted run `35729947615`; earlier `35729466805` verification passed but its browser selector was corrected. Deployment remains held on B06; the new backup is still unverified.
 
@@ -1181,7 +1181,7 @@ Corrected folder-import CI at `f588c68` includes successful hosted run `35729947
 - [x] Build owner-only captured selections, named-recipient draft/issue/revoke and explicit source-audience expansion review; real D1 atomic retry and stale-access tests pass.
 - [x] Build sender review and recipient-only pages, secret-fragment sign-in handoff and captured public sender labels. Mobile/desktop browser checks and screenshot review pass.
 - [x] Verify actual built-Worker recipient boundaries, native original downloads, captured filenames, sticky suspension and explicit reactivation. Client checksum-verified saving remains distinct from a normal download request.
-- [ ] Complete hosted verification and delivery lifecycle/minimisation before adding its migration. Original package jobs and live release acceptance remain outstanding.
+- [x] Complete hosted delivery lifecycle/minimisation, prepared migration 0026 and bounded original package implementation. Live release acceptance remains outstanding.
 
 [Delivery contract and checked evidence](DELIVERY-CONTRACT.md). Delivery preparation remains feature-gated and outside the active schema journal. No live audience or file changes; parent completion counts remain 22/47.
 
@@ -1215,3 +1215,10 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [ ] Complete hosted and deployed acceptance before checking P7-02. Parent completion remains 22/47; production stays on schema 0020.
 
 [Duplicate assistance contract and checked evidence](DUPLICATE-ASSISTANCE.md).
+
+
+### 22 September - checked status reconciliation
+
+- [x] Duplicate assistance source `676a370` passes verification and browser jobs in run `35752042399`, and is merged into main.
+- [x] Reconcile older implementation checklists with subsequent hosted/live evidence, preserving separate unchecked production gates.
+- [ ] Hosted admission-pause increment `9e8fb16`; independent backup/provider gates and Phase 6 demand validation remain outstanding.
