@@ -350,3 +350,6 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .collection-page section > p { margin-top: 12px; line-height: 1.65; }
 .collection-page section > h2 { margin-bottom: 12px; }
 .collection-page .intake-file p { margin-top: 6px; }
+
+.intake-file { flex-wrap: wrap; }
+.intake-file > div { flex: 1 1 180px; }

@@ -18,6 +18,42 @@ export async function verifyIntakeOriginal(body:ReadableStream<Uint8Array>,size:
   finally{reader.releaseLock();hash.destroy();}
 }
 
+// Review downloads never make a staged original library-visible. Verify the immutable completed
+// object first, then check current owner/audience authority again before returning attachment bytes.
+export async function readIntakeReviewOriginal(database:D1Database,bucket:R2Bucket,owner:AccountSpaceAccess,id:string){
+  const authority=()=>{const live=transferAuthority(owner,Date.now(),true),audience=resourceAudienceAuthority(owner,"m");return {sql:`${live.sql} AND ${audience.sql}`,bindings:[...live.bindings,...audience.bindings]};};
+  const initial=authority();
+  const row=await database.prepare(`SELECT m.id,m.name,m.object_key,m.size,m.sha256 FROM media m JOIN intake_submissions i ON i.id=m.id
+    WHERE m.id=? AND ((m.status='pending-review' AND i.phase='received') OR (m.status='intake-rejected' AND i.phase='rejected')) AND ${initial.sql}`)
+    .bind(id,...initial.bindings).first<{id:string;name:string;object_key:string;size:number;sha256:string}>();
+  if(!row)throw new AccountError(404,"This received original is unavailable.");
+  const source=await bucket.get(row.object_key);
+  if(!source)throw new AccountError(409,"The received original is unavailable for review.");
+  await verifyIntakeOriginal(source.body,row.size,row.sha256);
+  const object=await bucket.get(row.object_key),current=authority();
+  if(!object||object.etag!==source.etag||object.size!==row.size){await object?.body.cancel();throw new AccountError(409,"The original changed before review. Refresh this request.");}
+  if(!await database.prepare(`SELECT m.id FROM media m WHERE m.id=? AND m.object_key=? AND m.status IN ('pending-review','intake-rejected') AND ${current.sql}`)
+    .bind(id,row.object_key,...current.bindings).first()){await object.body.cancel();throw new AccountError(404,"This original or your access changed.");}
+  return {name:row.name,size:row.size,body:object.body};
+}
+
+// Decline is reversible metadata: retain bytes, capacity and custody without publishing the file.
+// A later restore returns it to review; it does not accept it or reopen the contributor's request.
+export async function changeIntakeReview(database:D1Database,owner:AccountSpaceAccess,id:string,restore:boolean){
+  const live=transferAuthority(owner,Date.now(),true),audience=resourceAudienceAuthority(owner,"m");
+  const phase=restore?"received":"rejected",status=restore?"pending-review":"intake-rejected";
+  const previousPhase=restore?"rejected":"received",previousStatus=restore?"intake-rejected":"pending-review";
+  const result=await database.batch([
+    database.prepare(`UPDATE media AS m SET status=? WHERE id=? AND status=? AND ${live.sql} AND ${audience.sql}
+      AND EXISTS(SELECT 1 FROM intake_submissions i WHERE i.id=m.id AND i.phase=?)`)
+      .bind(status,id,previousStatus,...live.bindings,...audience.bindings,previousPhase),
+    database.prepare('UPDATE intake_submissions SET phase=? WHERE id=? AND phase=? AND changes()=1').bind(phase,id,previousPhase),
+  ]);
+  if(!result[0].meta.changes&&!await database.prepare(`SELECT m.id FROM media m JOIN intake_submissions i ON i.id=m.id WHERE m.id=? AND m.status=? AND i.phase=? AND ${live.sql} AND ${audience.sql}`)
+    .bind(id,status,phase,...live.bindings,...audience.bindings).first())throw new AccountError(409,"The original or your access changed. Refresh this request.");
+  return {phase,bytesRetained:true};
+}
+
 // An owner deliberately accepts already-received shared work, even after collection closes. New
 // recipient uploads still require an open request. Require current scope/role/destination at commit,
 // publish once with a destination-only arrival event, and retain independent verification evidence.

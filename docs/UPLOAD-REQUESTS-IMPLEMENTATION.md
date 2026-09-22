@@ -42,7 +42,8 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 - [x] Generated 250 MiB maximum-size stream verifies in the actual local workerd runtime (2759 ms local wall time); a mismatched hash is rejected without publication. This is not production CPU/latency evidence.
 - [ ] Route bounded multipart capabilities with custody, test expiry/revocation races and integrate shared quota/staging lifecycle inventory before activation.
 - [x] Build and locally verify mobile/desktop owner creation/review, explicit recipient sign-in/acceptance, receipt states and exact interrupted retry. A tab-local intent precedes reservation; original bytes are never persisted in browser storage.
-- [ ] Complete rejection/cleanup and operational abuse handling before activation.
+- [x] Owner-only independently verified attachment review and reversible decline/restore pass actual built-Worker and mobile browser checks. Download does not publish; recipient receipts distinguish declined files from deletion.
+- [ ] Complete physical cleanup/disposition and operational abuse handling before activation.
 - [ ] Extend lifecycle/minimisation/restore contracts and test cross-account, revoked, expired, concurrent and malformed requests.
 - [ ] Hosted verification, independent recovery point, migration, pilot verification and operational limits before activation. General onboarding remains subject to Phase 2 gates.
 
@@ -65,3 +66,11 @@ Closing collection stops new contributor writes. Already received shared work re
 The actual production build passes recipient-only intake with closure tracking: owner private destination, CSRF rejection, no membership/feed/download access, bounded capabilities, real multipart receipt, independent acceptance, retained original and closure. Browser checks exercise secret removal from the URL, tab-preserved sign-in handoff, explicit acceptance, failed-part recovery across reload with the same submission ID, honest review receipts and owner confirmation at 390 px and desktop widths. Review caught and corrected a refresh hiding transfer errors and an inherited file-input width overflowing mobile. Hosted core run 35741321353 passed before these route/UI additions; their hosted rerun follows this checkpoint.
 
 The feature remains disabled and prototype SQL remains outside the active migration journal. Existing pilot users cannot create live requests. Lifecycle review, request minimisation, staging inventory, rejection/custody reconciliation and release gates are still outstanding.
+
+## Lifecycle preparation checkpoint
+
+Exact issuer/accepted-recipient references now enter the read-only account-erasure plan, including every attempt and capability even after expiry. Accepted shared originals appear in the preserve list. Staged work and provider custody add explicit reconciliation blockers; contact email never establishes storage ownership. Snapshot-only contact minimisation closes the relevant request, removes recipient email and disables the token while retaining all media/custody; immutable triggers prevent reopening or rebinding it. Tests also verify historical restore quarantines staging and preserves completed shared originals.
+
+Live object reconciliation understands allowance/staging states and exact late multipart attempts, and refuses intake states without the companion custody inventory. The schema is detected before querying new tables, preserving compatibility with production 0020. Storage totals now include staged intake reservations without exposing their filenames to ordinary library members. The new schema is not yet allowlisted for full snapshot minimisation or entered into the journal; this checkpoint is preparation, not release or erasure authorisation.
+
+Hosted route/UI source `cd01dcd` passed both jobs in run 35744040823. Subsequent review download and reversible decline/restore changes pass local built-Worker and browser checks; hosted verification will follow this increment. Review attachments are octet-stream downloads with no-store/nosniff headers, current audience checks after verification, and a matching immutable-object ETag. Received and declined bytes remain charged and outside ordinary feeds.

@@ -13,7 +13,9 @@
 - [x] Isolated multipart receipt, streamed checksum acceptance, corruption/authority-race denial and maximum 250 MiB local workerd verification pass. Files remain outside the feed until verified acceptance.
 - [x] Durable bounded part-capability custody and built-Worker owner/recipient routes pass with closure tracking, including no membership, no recipient download, and verified owner acceptance. Hosted core checks passed in run 35741321353.
 - [x] Owner destination/allowance confirmation, secret-fragment sign-in handoff, recipient receipts and exact interrupted-file retry pass rendered mobile/desktop browser checks. Files stay outside the library until verified acceptance.
-- [ ] Lifecycle/minimisation/inventory review, rejection/cleanup and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
+- [x] Isolated lifecycle preparation inventories exact contributor/issuer custody, retains accepted shared files, minimises request contact details, prevents reopening and reconciles late multipart/staged bytes.
+- [x] Owner review download and reversible decline/restore pass local built-Worker/browser checks. Full route/UI hosted run 35744040823 passed before this review increment.
+- [ ] Full schema/minimisation acceptance, physical cleanup/disposition and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
 
 ## Restricted-audience development acceptance
 

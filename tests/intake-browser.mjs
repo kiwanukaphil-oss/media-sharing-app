@@ -36,7 +36,8 @@ await page.route('**/api/**',async route=>{
   if(path==='/api/sections')return route.fulfill({json:{sections:[]}});
   if(path==='/api/upload-requests'&&call.method()==='POST'){ownerRequest=call.postDataJSON();assert.equal(ownerRequest.confirmed,true);assert.equal(ownerRequest.albumId,album);assert.equal(ownerRequest.accessScopeId,null);return route.fulfill({json:{id:ownerRequest.id}});}
   if(path==='/api/upload-requests')return route.fulfill({json:{requests:ownerRequest?[{...ownerRequest,state:'open',revision:0}]:[]}});
-  if(path.startsWith('/api/upload-requests/'))return route.fulfill({json:{submissions:[]}});
+  if(path.startsWith('/api/upload-requests/')&&call.method()==='POST'){receipt.phase=path.endsWith('/decline')?'rejected':path.endsWith('/restore')?'received':'accepted';return route.fulfill({json:{}});}
+  if(path.startsWith('/api/upload-requests/'))return route.fulfill({json:{submissions:receipt?[receipt]:[]}});
   if(path==='/api/storage')return route.fulfill({json:{usedBytes:0,limitBytes:1073741824,reservedBytes:0}});
   return route.fulfill({json:{}});
 });
@@ -74,6 +75,14 @@ try{
   assert.match(await page.getByLabel('Request link').inputValue(),/\/collect#request=[a-f0-9]{64}$/);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:'outputs/intake/owner-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Review submissions',exact:true}).click();
+  await expect(page.getByRole('link',{name:'Verify and download'})).toBeVisible();
+  await page.screenshot({path:'outputs/intake/review-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'Decline',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Decline this original?'})).toContainText('storage reservation are retained');
+  await page.getByRole('button',{name:'Decline original',exact:true}).click();
+  await page.getByRole('button',{name:'Restore to review',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Verify and accept',exact:true})).toBeVisible();
   await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'outputs/intake/owner-desktop.png',fullPage:true});
   console.log('PASS intake browser: secret-fragment sign-in handoff, explicit acceptance, exact interrupted retry, review receipts and owner destination confirmation at mobile/desktop widths');
 }finally{await browser.close();}

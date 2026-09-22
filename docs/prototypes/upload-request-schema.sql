@@ -32,11 +32,14 @@ CREATE TRIGGER upload_request_destination BEFORE INSERT ON upload_requests BEGIN
     THEN RAISE(ABORT,'Incompatible intake destination') END;
 END;
 CREATE TRIGGER upload_request_intent_immutable BEFORE UPDATE OF space_id,issuer_membership_id,recipient_email,title,album_id,section_id,access_scope_id,created_at,expires_at,max_files,max_file_bytes,max_bytes,token_hash ON upload_requests
-WHEN NEW.space_id IS NOT OLD.space_id OR NEW.issuer_membership_id IS NOT OLD.issuer_membership_id OR NEW.recipient_email IS NOT OLD.recipient_email
+WHEN NEW.space_id IS NOT OLD.space_id OR NEW.issuer_membership_id IS NOT OLD.issuer_membership_id OR (NEW.recipient_email IS NOT OLD.recipient_email AND NOT(NEW.recipient_email='' AND NEW.state='closed' AND NEW.revoked_at IS NOT NULL))
   OR NEW.title IS NOT OLD.title OR NEW.album_id IS NOT OLD.album_id OR NEW.section_id IS NOT OLD.section_id OR NEW.access_scope_id IS NOT OLD.access_scope_id
   OR NEW.created_at IS NOT OLD.created_at OR NEW.expires_at IS NOT OLD.expires_at OR NEW.max_files IS NOT OLD.max_files
-  OR NEW.max_file_bytes IS NOT OLD.max_file_bytes OR NEW.max_bytes IS NOT OLD.max_bytes OR NEW.token_hash IS NOT OLD.token_hash
+  OR NEW.max_file_bytes IS NOT OLD.max_file_bytes OR NEW.max_bytes IS NOT OLD.max_bytes OR (NEW.token_hash IS NOT OLD.token_hash AND NOT(NEW.token_hash='erased-intake:' || OLD.id AND NEW.state='closed' AND NEW.revoked_at IS NOT NULL))
 BEGIN SELECT RAISE(ABORT,'Intake intent is immutable'); END;
+CREATE TRIGGER upload_request_revocation_immutable BEFORE UPDATE OF state,revoked_at ON upload_requests
+WHEN (OLD.state='closed' AND NEW.state<>'closed') OR (OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS NULL)
+BEGIN SELECT RAISE(ABORT,'Closed intake cannot reopen'); END;
 CREATE TRIGGER upload_request_recipient_immutable BEFORE UPDATE OF accepted_by,accepted_at ON upload_requests
 WHEN OLD.accepted_by IS NOT NULL AND (NEW.accepted_by IS NOT OLD.accepted_by OR NEW.accepted_at IS NOT OLD.accepted_at)
 BEGIN SELECT RAISE(ABORT,'Intake recipient is immutable'); END;
@@ -67,7 +70,7 @@ CREATE TABLE intake_submissions (
   size INTEGER NOT NULL CHECK(size>0),
   sha256 TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  phase TEXT NOT NULL DEFAULT 'reserved' CHECK(phase IN ('reserved','starting','uploading','received','accepted','cancelled')),
+  phase TEXT NOT NULL DEFAULT 'reserved' CHECK(phase IN ('reserved','starting','uploading','received','accepted','rejected','cancelled')),
   attempt_key TEXT,
   lease_expires_at INTEGER NOT NULL DEFAULT 0,
   verified_at INTEGER

@@ -1,12 +1,12 @@
 import {z} from "zod";
-import {ApiError,database,readJson,spaceLimitBytes,tokenHash} from "./server";
+import {ApiError,attachmentName,database,readJson,spaceLimitBytes,tokenHash} from "./server";
 import type {AccountSpaceAccess} from "./account-space-access";
 import {intakeEnabled} from "./intake-runtime";
 import {resourceAudienceAuthority} from "./asset-scope-authority";
 import {transferAuthority} from "./transfer-authority";
 import {createUploadRequestDraft,closeUploadRequest} from "./upload-request-management";
 import {activateUploadRequest} from "./upload-request-reservations";
-import {acceptIntakeOriginal} from "./intake-review";
+import {acceptIntakeOriginal,readIntakeReviewOriginal,changeIntakeReview} from "./intake-review";
 
 // Owner views use current role and content audience on every query. Administrative ownership alone
 // cannot list a restricted collection's title, recipient or incoming filenames without a grant.
@@ -33,10 +33,16 @@ export async function uploadRequestAction(request:Request,owner:AccountSpaceAcce
   if(id&&!action&&request.method==="DELETE"){
     const input=await readJson(request,z.object({expectedRevision:z.number().int().nonnegative()}));return Response.json(await closeUploadRequest(db,owner,id,input.expectedRevision));
   }
-  if(id&&action==="accept"&&request.method==="POST"){
+  if(id&&action==="original"&&request.method==="GET"){
+    const fileId=z.string().uuid().parse(new URL(request.url).searchParams.get("file"));
+    if(!await db.prepare(`SELECT i.id FROM intake_submissions i JOIN upload_requests ON upload_requests.id=i.request_id WHERE i.id=? AND i.request_id=? AND ${guard}`).bind(fileId,id,...values).first())throw new ApiError(404,"This received file is unavailable.");
+    const original=await readIntakeReviewOriginal(db,storage,owner,fileId);
+    return new Response(original.body,{headers:{"Content-Type":"application/octet-stream","Content-Length":String(original.size),"Content-Disposition":attachmentName(original.name),"Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Content-Security-Policy":"sandbox"}});
+  }
+  if(id&&["accept","decline","restore"].includes(action||"")&&request.method==="POST"){
     const input=await readJson(request,z.object({fileId:z.string().uuid(),confirmed:z.literal(true)}));
     if(!await db.prepare(`SELECT i.id FROM intake_submissions i JOIN upload_requests ON upload_requests.id=i.request_id WHERE i.id=? AND i.request_id=? AND ${guard}`).bind(input.fileId,id,...values).first())throw new ApiError(404,"This received file is unavailable.");
-    return Response.json(await acceptIntakeOriginal(db,storage,owner,input.fileId));
+    return Response.json(action==="accept"?await acceptIntakeOriginal(db,storage,owner,input.fileId):await changeIntakeReview(db,owner,input.fileId,action==="restore"));
   }
   throw new ApiError(404,"This upload request action is unavailable.");
 }

@@ -50,6 +50,17 @@ export async function verifyIntakeRoutes(db,bucket,dispatch){
   const completed=await call(recipient,`intake/uploads/${file.id}/complete`,'POST',{parts:[part]});assert.equal(completed.status,200,JSON.stringify(completed.data));assert.equal(completed.data.verified,false);
   assert.equal((await call(owner,'feed?scope='+scope,'GET',undefined,true)).data.total,0);
   const review=await call(owner,`upload-requests/${input.id}`,'GET',undefined,true);assert.equal(review.data.submissions[0].phase,'received');assert.doesNotMatch(JSON.stringify(review.data),/object_key|upload_id|token_hash/);
+  const downloadPath=`${settings.appOrigin}/api/upload-requests/${input.id}/original?file=${file.id}&space=${space}`;
+  const deniedDownload=await dispatch(downloadPath,{headers:{Cookie:`__Host-relay_account=${other.token}`}});assert.equal(deniedDownload.status,404);await deniedDownload.arrayBuffer();
+  const downloaded=await dispatch(downloadPath,{headers:{Cookie:`__Host-relay_account=${owner.token}`}});
+  assert.equal(downloaded.status,200);assert.equal(downloaded.headers.get('Content-Type'),'application/octet-stream');assert.match(downloaded.headers.get('Content-Disposition'),/^attachment;/);
+  assert.deepEqual(new Uint8Array(await downloaded.arrayBuffer()),bytes);
+  assert.equal((await call(owner,'feed?scope='+scope,'GET',undefined,true)).data.total,0,'Review download must not publish');
+  assert.equal((await call(owner,`upload-requests/${input.id}/decline`,'POST',{fileId:file.id,confirmed:true},true)).status,200);
+  assert.equal((await call(recipient,`intake/requests/${input.id}`)).data.receipts[0].phase,'rejected');
+  assert.equal((await call(owner,`upload-requests/${input.id}/accept`,'POST',{fileId:file.id,confirmed:true},true)).status,404);
+  assert.equal((await call(owner,`upload-requests/${input.id}/restore`,'POST',{fileId:file.id,confirmed:true},true)).status,200);
+  assert.equal((await call(owner,`upload-requests/${input.id}/restore`,'POST',{fileId:file.id,confirmed:true},true)).status,200);
   const accepted=await call(owner,`upload-requests/${input.id}/accept`,'POST',{fileId:file.id,confirmed:true},true);assert.equal(accepted.status,200,JSON.stringify(accepted.data));
   assert.equal((await call(owner,'feed?scope='+scope,'GET',undefined,true)).data.total,1);
   assert.equal((await call(recipient,`media/${file.id}/download`,'GET',undefined,true)).status,403);
