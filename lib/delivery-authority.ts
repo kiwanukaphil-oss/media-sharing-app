@@ -3,15 +3,15 @@ import {accountClosureCommitAuthority} from "./account-closure-fence";
 
 // Every delivery read rechecks all originals and the original sender's exact authority. Losing one
 // source suspends the whole snapshot instead of silently presenting an incomplete selection.
-export function deliverySourceAuthority(now=Date.now()){
-  return {sql:`delivery_snapshots.state='issued' AND delivery_snapshots.revoked_at IS NULL AND delivery_snapshots.expires_at>?
+export function deliverySourceAuthority(now=Date.now(),state:"draft"|"issued"|"suspended"="issued"){
+  return {sql:`delivery_snapshots.state=? AND delivery_snapshots.revoked_at IS NULL AND delivery_snapshots.expires_at>?
     AND EXISTS(SELECT 1 FROM space_memberships issuer JOIN people p ON p.id=issuer.person_id LEFT JOIN personal_spaces personal ON personal.space_id=issuer.space_id
       WHERE issuer.id=delivery_snapshots.issuer_membership_id AND issuer.space_id=delivery_snapshots.space_id AND issuer.role='owner' AND issuer.revoked_at IS NULL AND p.disabled_at IS NULL AND (personal.space_id IS NULL OR personal.person_id=issuer.person_id)
       AND (delivery_snapshots.access_scope_id IS NULL OR EXISTS(SELECT 1 FROM scope_grants WHERE scope_id=delivery_snapshots.access_scope_id AND membership_id=issuer.id AND revoked_at IS NULL)))
     AND (SELECT COUNT(*) FROM delivery_items WHERE delivery_id=delivery_snapshots.id)=delivery_snapshots.file_count
     AND NOT EXISTS(SELECT 1 FROM delivery_items item WHERE item.delivery_id=delivery_snapshots.id AND NOT EXISTS(
       SELECT 1 FROM media m WHERE m.id=item.media_id AND m.space_id=delivery_snapshots.space_id AND m.access_scope_id IS delivery_snapshots.access_scope_id
-        AND m.status='ready' AND m.archived_at IS NULL AND m.size=item.size AND m.sha256=item.sha256))`,bindings:[now]};
+        AND m.status='ready' AND m.archived_at IS NULL AND m.size=item.size AND m.sha256=item.sha256))`,bindings:[state,now]};
 }
 
 export function deliveryRecipientAuthority(session:AccountSession,now=Date.now()){

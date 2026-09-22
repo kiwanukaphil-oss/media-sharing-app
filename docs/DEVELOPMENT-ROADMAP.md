@@ -8,7 +8,8 @@
 ## Delivery preparation checkpoint
 
 - [x] Isolated named-recipient authority and immutable snapshot labels pass real D1 tests: no membership grant, all-source availability, session/recovery/expiry denial, sticky Trash/source/grant suspension and restored quarantine.
-- [ ] Sender issuance, recipient UI/downloads, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
+- [x] Isolated atomic sender drafts, exact retries, stale/mixed-scope denial, explicit issue/reactivation/revocation and rollback checks pass D1.
+- [ ] Recipient routes/UI/downloads, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
 
 ## Upload-request development acceptance
 
