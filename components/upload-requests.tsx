@@ -19,7 +19,7 @@ export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{s
   const {confirm,confirmation}=useActionConfirmation();
   const loadVersion=useRef(0),serverClock=useRef<{time:number;readAt:number}|null>(null);
   const [requests,setRequests]=useState<RequestEntry[]>([]),[selected,setSelected]=useState(""),[submissions,setSubmissions]=useState<Submission[]>([]);
-  const [creating,setCreating]=useState(false),[scopes,setScopes]=useState<{id:string;name:string}[]>([]),[audience,setAudience]=useState("general");
+  const [paused,setPaused]=useState(false),[creating,setCreating]=useState(false),[scopes,setScopes]=useState<{id:string;name:string}[]>([]),[audience,setAudience]=useState("general");
   const [albums,setAlbums]=useState<Album[]>([]),[sections,setSections]=useState<AlbumSection[]>([]),[albumId,setAlbumId]=useState(""),[sectionId,setSectionId]=useState("");
   const [title,setTitle]=useState(""),[email,setEmail]=useState(""),[hours,setHours]=useState("24"),[maxFiles,setMaxFiles]=useState(20),[totalBytes,setTotalBytes]=useState(1024*MiB),[fileBytes,setFileBytes]=useState(250*MiB);
   const [intent,setIntent]=useState<Draft|null>(null),[createdLink,setCreatedLink]=useState(""),[copied,setCopied]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[loaded,setLoaded]=useState(false);
@@ -27,10 +27,10 @@ export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{s
   const load=useCallback(async()=>{
     const version=++loadVersion.current;
     try{
-      const list=await api.requestJson<{requests:RequestEntry[];serverTime:number}>("upload-requests");
+      const list=await api.requestJson<{requests:RequestEntry[];serverTime:number;paused?:boolean}>("upload-requests");
       if(version!==loadVersion.current)return;
       if(Number.isSafeInteger(list.serverTime))serverClock.current={time:list.serverTime,readAt:performance.now()};
-      setRequests(list.requests);
+      setRequests(list.requests);setPaused(Boolean(list.paused));
       if(selected){const detail=await api.requestJson<{submissions:Submission[]}>(`upload-requests/${selected}`);if(version!==loadVersion.current)return;setSubmissions(detail.submissions);}
       setLoaded(true);
     }catch(failure){if(version!==loadVersion.current)return;setRequests([]);setSubmissions([]);setError(failure instanceof Error?failure.message:"Requests could not be loaded.");}
@@ -89,8 +89,9 @@ export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{s
   return <><dialog ref={dialog} className="modal intake-manager" aria-labelledby={heading} onCancel={event=>{event.preventDefault();if(!busy)onClose();}} onClose={()=>{if(!busy)onClose();}}>
     <div className="modal-heading"><h2 id={heading}>Upload requests</h2><button className="icon-button" aria-label="Close upload requests" disabled={busy} onClick={onClose}><X size={20}/></button></div>
     <p className="modal-intro">Collect originals without opening your library. You choose the audience and review what arrives.</p>
+    {paused&&<p role="status" className="small-muted">New requests and uploads are temporarily paused. You can still review received files or close requests.</p>}
     {error&&<p className="error-banner" role="alert">{error}</p>}
-    {!creating?<><div className="intake-toolbar"><button className="button primary" disabled={busy} onClick={()=>{setCreating(true);setIntent(null);setCreatedLink("");setCopied(false);setError("");}}><Plus size={16}/>New request</button><button className="icon-button" aria-label="Refresh upload requests" disabled={busy} onClick={()=>void load()}><RefreshCw size={17}/></button></div>
+    {!creating?<><div className="intake-toolbar"><button className="button primary" disabled={busy||paused} onClick={()=>{setCreating(true);setIntent(null);setCreatedLink("");setCopied(false);setError("");}}><Plus size={16}/>New request</button><button className="icon-button" aria-label="Refresh upload requests" disabled={busy} onClick={()=>void load()}><RefreshCw size={17}/></button></div>
       {!loaded?<p role="status">Loading requests...</p>:!requests.length?<div className="intake-empty"><Inbox size={28}/><p>No requests yet.</p><span>A focused place for clients or friends to send their originals.</span></div>:<WorkspaceSelect label="Upload request" value={selected} options={[{value:"",label:"Choose a request"},...requests.map(request=>({value:request.id,label:`${request.title}${request.revokedAt||request.state==="closed"?" (closed)":""}`}))]} onChange={id=>{setSelected(id);setSubmissions([]);setError("");}}/>}
       {current&&<section className="intake-review"><div className="intake-summary"><div><strong>{current.title}</strong><p>{current.recipientEmail}</p><p>{current.maxFiles} files &middot; {formatBytes(current.maxBytes)} total &middot; Ends {new Date(current.expiresAt).toLocaleString()}</p></div>{current.state!=="closed"&&<button className="text-button" disabled={busy} onClick={()=>void closeRequest(current)}>Close request</button>}</div>
         <h3>Received originals</h3>{!submissions.length?<p className="small-muted">No files received yet.</p>:submissions.map(file=><div className="intake-file" key={file.id}><div><strong>{file.name||"Unavailable submission"}</strong><p>{formatBytes(file.size)} &middot; {file.phase==="accepted"?"Verified and accepted":file.phase==="received"?"Received for review":file.phase==="rejected"?"Declined: bytes retained":"Upload unfinished"}</p></div>{["received","rejected"].includes(file.phase)&&<a className="text-button" href={api.apiUrl(`upload-requests/${selected}/original?file=${file.id}`)} target="_blank" rel="noopener noreferrer">Verify and download</a>}{file.phase==="received"?<><button className="button secondary compact" disabled={busy} onClick={()=>void acceptOriginal(file)}><ShieldCheck size={16}/>Verify and accept</button><button className="text-button" disabled={busy} onClick={()=>void changeReview(file,false)}>Decline</button></>:file.phase==="rejected"?<button className="text-button" disabled={busy} onClick={()=>void changeReview(file,true)}>Restore to review</button>:file.phase==="accepted"?<Check size={18} aria-label="Accepted"/>:null}</div>)}</section>}
@@ -104,7 +105,7 @@ export default function UploadRequests({spaceId,spaceName,restricted,onClose}:{s
       <label>Total allowance<WorkspaceSelect label="Total allowance" value={String(totalBytes)} disabled={locked} options={[64,256,1024].map(size=>({value:String(size*MiB),label:formatBytes(size*MiB)}))} onChange={value=>{setTotalBytes(Number(value));setFileBytes(current=>Math.min(current,Number(value)));}}/></label><label>Per file<WorkspaceSelect label="Per-file limit" value={String(fileBytes)} disabled={locked} options={[32,64,250].filter(size=>size*MiB<=totalBytes).map(size=>({value:String(size*MiB),label:formatBytes(size*MiB)}))} onChange={value=>setFileBytes(Number(value))}/></label></div>
       <p className="small-muted">This allowance is reserved from your library storage. The recipient sees the title and receiving library, but no private album names or existing files.</p>
       {intent&&<p className="small-muted">Retry keeps this exact request and allowance. Close a saved draft in the request list before replacing it.</p>}
-      <div className="confirmation-actions"><button type="button" className="button secondary" disabled={busy} onClick={()=>{setCreating(false);setIntent(null);void load();}}>Back</button><button className="button primary" disabled={busy||!albumId||!title.trim()||!email.trim()} type="submit">{busy?<><LoaderCircle size={16} className="spin"/>Creating...</>:intent?"Retry request":"Review request"}</button></div>
+      <div className="confirmation-actions"><button type="button" className="button secondary" disabled={busy} onClick={()=>{setCreating(false);setIntent(null);void load();}}>Back</button><button className="button primary" disabled={busy||paused||!albumId||!title.trim()||!email.trim()} type="submit">{busy?<><LoaderCircle size={16} className="spin"/>Creating...</>:intent?"Retry request":"Review request"}</button></div>
     </form>}
     {busy&&!creating&&<p className="publication-progress" role="status"><LoaderCircle size={17} className="spin"/>Checking the original and current access. Keep this tab open.</p>}
   </dialog>{confirmation}</>;

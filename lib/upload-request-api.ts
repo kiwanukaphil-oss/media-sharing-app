@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {ApiError,attachmentName,database,readJson,spaceLimitBytes,tokenHash} from "./server";
 import type {AccountSpaceAccess} from "./account-space-access";
-import {intakeEnabled} from "./intake-runtime";
+import {intakeEnabled,intakePaused} from "./intake-runtime";
 import {resourceAudienceAuthority} from "./asset-scope-authority";
 import {transferAuthority} from "./transfer-authority";
 import {createUploadRequestDraft,closeUploadRequest} from "./upload-request-management";
@@ -22,9 +22,10 @@ export async function uploadRequestAction(request:Request,owner:AccountSpaceAcce
     if(id&&!requests.results.length)throw new ApiError(404,"This upload request is unavailable.");
     const submissions=id?await db.prepare(`SELECT i.id,m.name,i.size,i.phase,i.verified_at AS verifiedAt FROM intake_submissions i LEFT JOIN media m ON m.id=i.id
       JOIN upload_requests ON upload_requests.id=i.request_id WHERE i.request_id=? AND ${guard} ORDER BY i.created_at,i.id LIMIT 100`).bind(id,...values).all():null;
-    return Response.json({serverTime:Date.now(),requests:requests.results,...(submissions?{submissions:submissions.results}:{})});
+    return Response.json({paused:intakePaused(),serverTime:Date.now(),requests:requests.results,...(submissions?{submissions:submissions.results}:{})});
   }
   if(request.method==="POST"&&!id){
+    if(intakePaused())throw new ApiError(503,"New upload requests are temporarily paused. Existing requests can still be reviewed or closed.");
     const input=await readJson(request,z.object({id:z.string().uuid(),token:z.string().regex(/^[a-f0-9]{64}$/),title:z.string().min(1).max(120),recipientEmail:z.string().email().max(320),
       albumId:z.string().uuid(),sectionId:z.string().uuid().nullable(),accessScopeId:z.string().uuid().nullable(),expiresAt:z.number().int(),maxFiles:z.number().int(),maxFileBytes:z.number().int(),maxBytes:z.number().int(),confirmed:z.literal(true)}));
     await createUploadRequestDraft(db,owner,{...input,tokenHash:await tokenHash(input.token)});

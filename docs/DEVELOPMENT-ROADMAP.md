@@ -1203,3 +1203,11 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [ ] Complete hosted and deployed acceptance before checking P7-02. Parent completion remains 22/47; production stays on schema 0020.
 
 [Duplicate assistance contract and checked evidence](DUPLICATE-ASSISTANCE.md).
+
+
+### 22 September - collection operations preparation
+
+- [x] Implement a separate intake admission pause: deny new requests, acceptance, reservation, part admission and completion while retaining receipts and owner review/close.
+- [x] Verify the actual built Worker with closure tracking, staged-capacity preservation and no new multipart attempts; owner/recipient pause browser checks pass.
+- [x] Document bounded abuse response, private incident evidence, containment, resume conditions and admitted-capability limitations in the [intake operations runbook](INTAKE-OPERATIONS.md).
+- [ ] Complete hosted pause verification, independent backup and provider-disposition/live release gates. Production flags are unchanged; P3-05 remains open for disposition and deployed acceptance.

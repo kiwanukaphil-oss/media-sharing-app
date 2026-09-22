@@ -7,7 +7,7 @@ const settings={issuer:'https://access.auth0.com/',clientId:'access-test',client
 
 // Exercise the real built Worker, D1/R2, account cookies and closure tracking. Fixture recipient has
 // no space membership: successful collection must not create one or expose existing restricted files.
-export async function verifyIntakeRoutes(db,bucket,dispatch){
+export async function verifyIntakeRoutes(db,bucket,dispatch,paused=false){
   const now=Date.now(),space=crypto.randomUUID(),scope=crypto.randomUUID(),people=[];
   await db.prepare('INSERT INTO spaces VALUES(?,?,?)').bind(space,'Receiving fixture',now).run();
   for(const name of ['Owner','Recipient','Other owner']){
@@ -29,6 +29,31 @@ export async function verifyIntakeRoutes(db,bucket,dispatch){
   const album=await call(owner,'albums','POST',{name:'Hidden album',description:'',accessScopeId:scope},true);assert.equal(album.status,200);
   const input={id:crypto.randomUUID(),token:'a'.repeat(64),title:'Send selected photos',recipientEmail:recipient.email,albumId:album.data.id,sectionId:null,accessScopeId:scope,expiresAt:now+86400000,maxFiles:2,maxFileBytes:8,maxBytes:16,confirmed:true};
   assert.equal((await call(owner,'upload-requests','POST',input,true,'https://foreign.invalid')).status,403);
+  if(paused){
+    assert.equal((await call(owner,'upload-requests','POST',input,true)).status,503);
+    assert.equal((await db.prepare('SELECT COUNT(*) n FROM upload_requests').first()).n,0);
+    // Seed previously admitted generated work through the tested core helpers, bypassing only the
+    // new route-level pause to model an incident occurring after reservation, without real storage.
+    const preparation=await build({entryPoints:['lib/upload-request-management.ts','lib/upload-request-reservations.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+    const modules=await Promise.all(preparation.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
+    const management=modules.find(module=>module.createUploadRequestDraft),reservations=modules.find(module=>module.activateUploadRequest);
+    const actor=(await call(owner,'session','GET',undefined,true)).data.deviceId;
+    const authority={...owner,id:actor,space_id:space,space_kind:'shared',role:'owner',authentication:'account'};
+    await management.createUploadRequestDraft(db,authority,{...input,tokenHash:createHash('sha256').update(input.token).digest('hex')});
+    await reservations.activateUploadRequest(db,authority,input.id,1024);
+    await db.prepare('UPDATE upload_requests SET accepted_by=?,accepted_at=? WHERE id=?').bind(recipient.personId,now,input.id).run();
+    const file={id:crypto.randomUUID(),requestId:input.id,name:'Retained fixture',mime:'application/octet-stream',size:4,sha256:'a'.repeat(64)};
+    await reservations.reserveIntakeSubmission(db,recipient,file);
+    assert.equal((await call(recipient,'intake/preview','POST',{token:input.token})).status,200);
+    for(const [path,body] of [['intake/accept',{token:input.token}],['intake/uploads',file],[`intake/uploads/${file.id}/part`,{partNumber:1}],[`intake/uploads/${file.id}/complete`,{parts:[]}]])assert.equal((await call(recipient,path,'POST',body)).status,503);
+    const receipt=await call(recipient,`intake/requests/${input.id}`);assert.equal(receipt.status,200);assert.equal(receipt.data.paused,true);assert.equal(receipt.data.receipts[0].phase,'reserved');
+    const review=await call(owner,`upload-requests/${input.id}`,'GET',undefined,true);assert.equal(review.status,200);assert.equal(review.data.paused,true);
+    assert.equal((await call(owner,`upload-requests/${input.id}`,'DELETE',{expectedRevision:review.data.requests[0].revision},true)).status,200);
+    assert.equal((await db.prepare('SELECT size FROM media WHERE id=?').bind(file.id).first()).size,4);
+    assert.equal((await db.prepare('SELECT COUNT(*) n FROM intake_upload_attempts').first()).n,0);
+    console.log('PASS intake admission pause: no new grants/reservations/capabilities/completion, retained receipts, owner review/close and staged capacity preserved');return;
+  }
+
   const created=await call(owner,'upload-requests','POST',input,true);assert.equal(created.status,200,JSON.stringify(created.data));
   assert.equal((await call(owner,'upload-requests','POST',input,true)).status,200);
   assert.equal((await call(other,'upload-requests','GET',undefined,true)).data.requests.length,0);

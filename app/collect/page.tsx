@@ -9,7 +9,7 @@ import {formatBytes} from "@/lib/contracts";
 import {hashOriginal,sendPart} from "@/lib/transfers";
 
 type Receipt={id:string;name:string;size:number;sha256:string;phase:string};
-type Collection={request:{id:string;title:string;receivingLibrary:string;expiresAt:number;maxFileBytes:number;remainingBytes:number;remainingFiles:number};receipts:Receipt[];account:{personId:string;verifiedEmail:string}};
+type Collection={paused?:boolean;request:{id:string;title:string;receivingLibrary:string;expiresAt:number;maxFileBytes:number;remainingBytes:number;remainingFiles:number};receipts:Receipt[];account:{personId:string;verifiedEmail:string}};
 type Part={partNumber:number;etag:string};
 
 // This focused surface never resolves a library membership. Server receipts are the recovery source;
@@ -49,6 +49,7 @@ export default function CollectPage(){
     let storageKey="";
     try{
       const current=await refresh(abort.signal);
+      if(current.paused)throw new Error("Uploads are temporarily paused. Your existing reservations are retained.");
       if(file.size<=0||file.size>current.request.maxFileBytes)throw new Error(`Choose a non-empty original up to ${formatBytes(current.request.maxFileBytes)}.`);
       const hash=await hashOriginal(file,abort.signal,value=>setProgress(`Checking ${file.name}: ${value}%`));
       const previous=current.receipts.find(receipt=>receipt.sha256===hash&&receipt.size===file.size&&receipt.name===file.name&&["reserved","starting","uploading"].includes(receipt.phase));
@@ -89,7 +90,8 @@ export default function CollectPage(){
     {checked&&!signedIn&&<section className="rounded-2xl border border-[var(--line)] p-6"><p>Sign in with the email invited by the organiser.</p><Link className="account-primary-action inline-flex mt-5 rounded-xl px-5 py-3" href="/account">Continue to sign in</Link>{requestId&&<p className="mt-3 text-sm">Return to this page after signing in.</p>}</section>}
     {collection&&<>
       <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6"><h2 className="font-semibold">For {collection.request.receivingLibrary}</h2><p className="mt-2 text-sm break-words">Sending as {collection.account.verifiedEmail}</p><p className="mt-4 text-sm">{collection.request.remainingFiles} files and {formatBytes(collection.request.remainingBytes)} remaining. Up to {formatBytes(collection.request.maxFileBytes)} per file.</p><p className="mt-2 text-sm">Ends {new Date(collection.request.expiresAt).toLocaleString()}.</p><p className="mt-4 text-sm leading-6 text-[var(--muted)]">The organiser verifies each original before adding it to their library audience. Embedded location and other metadata travel with the original.</p>
-      <label className={`account-primary-action inline-flex items-center gap-2 mt-6 rounded-xl px-5 py-3 ${busy?"opacity-50":"cursor-pointer"}`}><ArrowUpFromLine size={18}/>Choose an original<input ref={input} type="file" className="sr-only" disabled={busy} onChange={event=>{const file=event.target.files?.[0];if(file)void sendOriginal(file);}}/></label>
+      {collection.paused&&<p role="status" className="mt-4 text-sm">Uploads are temporarily paused. Your receipts and reserved files are retained; try again later.</p>}
+      <label className={`account-primary-action inline-flex items-center gap-2 mt-6 rounded-xl px-5 py-3 ${busy?"opacity-50":"cursor-pointer"}`}><ArrowUpFromLine size={18}/>Choose an original<input ref={input} type="file" className="sr-only" disabled={busy||collection.paused} onChange={event=>{const file=event.target.files?.[0];if(file)void sendOriginal(file);}}/></label>
       {busy&&<button className="text-button ml-3" onClick={()=>controller.current?.abort()}><Pause size={16}/>Pause</button>}
       <p className="mt-3 text-xs text-[var(--muted)]">Keep this tab open while sending. To continue an interrupted upload, choose the same original again.</p>
       {progress&&<p className="mt-4 text-sm" role="status">{progress}</p>}</section>

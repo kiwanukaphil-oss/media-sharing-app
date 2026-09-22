@@ -3,6 +3,7 @@ import {mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {chromium,expect} from '@playwright/test';
 
+let admissionPaused=false;
 const origin=process.env.RELAY_TEST_ORIGIN||'http://127.0.0.1:8796';
 assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
 const browser=await chromium.launch(process.env.CI?{}:{channel:'chrome'});
@@ -20,7 +21,7 @@ await page.route('**/api/**',async route=>{
   if(path==='/api/auth/spaces')return route.fulfill({json:{spaces:[{id:space,name:'Studio library',role:'owner',kind:'shared',actorId:person}]}});
   if(path==='/api/intake/preview'){assert.equal(call.postDataJSON().token,'a'.repeat(64));return route.fulfill({json:request});}
   if(path==='/api/intake/accept'){accepted=true;return route.fulfill({json:request});}
-  if(path===`/api/intake/requests/${id}`){assert.equal(accepted,true);return route.fulfill({json:{request:{...request,remainingFiles:receipt?19:20,remainingBytes:request.maxBytes-(receipt?.size||0)},receipts:receipt?[receipt]:[],account:{personId:person,verifiedEmail:'recipient@example.test'}}});}
+  if(path===`/api/intake/requests/${id}`){assert.equal(accepted,true);return route.fulfill({json:{paused:admissionPaused,request:{...request,remainingFiles:receipt?19:20,remainingBytes:request.maxBytes-(receipt?.size||0)},receipts:receipt?[receipt]:[],account:{personId:person,verifiedEmail:'recipient@example.test'}}});}
   if(path==='/api/intake/uploads'){
     const body=call.postDataJSON();reservations++;
     if(receipt)assert.equal(body.id,receipt.id,'Retry must preserve the original submission');
@@ -35,7 +36,7 @@ await page.route('**/api/**',async route=>{
   if(path==='/api/albums')return route.fulfill({json:{albums:[{id:album,name:'Wedding',description:'',count:0,revision:0}],sections:[]}});
   if(path==='/api/sections')return route.fulfill({json:{sections:[]}});
   if(path==='/api/upload-requests'&&call.method()==='POST'){ownerRequest=call.postDataJSON();assert.equal(ownerRequest.confirmed,true);assert.equal(ownerRequest.albumId,album);assert.equal(ownerRequest.accessScopeId,null);assert.ok(ownerRequest.expiresAt<=Date.now()-300000+604800000+1000,'Use the server clock for the seven-day ceiling');return route.fulfill({json:{id:ownerRequest.id}});}
-  if(path==='/api/upload-requests')return route.fulfill({json:{serverTime:Date.now()-300000,requests:ownerRequest?[{...ownerRequest,state:'open',revision:0}]:[]}});
+  if(path==='/api/upload-requests')return route.fulfill({json:{paused:admissionPaused,serverTime:Date.now()-300000,requests:ownerRequest?[{...ownerRequest,state:'open',revision:0}]:[]}});
   if(path.startsWith('/api/upload-requests/')&&call.method()==='POST'){receipt.phase=path.endsWith('/decline')?'rejected':path.endsWith('/restore')?'received':'accepted';return route.fulfill({json:{}});}
   if(path.startsWith('/api/upload-requests/'))return route.fulfill({json:{submissions:receipt?[receipt]:[]}});
   if(path==='/api/storage')return route.fulfill({json:{usedBytes:0,limitBytes:1073741824,reservedBytes:0}});
@@ -86,5 +87,10 @@ try{
   await page.getByRole('button',{name:'Restore to review',exact:true}).click();
   await expect(page.getByRole('button',{name:'Verify and accept',exact:true})).toBeVisible();
   await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'outputs/intake/owner-desktop.png',fullPage:true});
+  admissionPaused=true;await page.getByRole('button',{name:'Refresh upload requests',exact:true}).click();
+  await expect(page.getByRole('button',{name:'New request',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Verify and accept',exact:true})).toBeEnabled();
+  await expect(page.getByText('New requests and uploads are temporarily paused. You can still review received files or close requests.',{exact:true})).toBeVisible();
+  await page.goto(`${origin}/collect?request=${id}`);await expect(page.getByLabel('Choose an original',{exact:true})).toBeDisabled();
+  await expect(page.getByText('Uploads are temporarily paused. Your receipts and reserved files are retained; try again later.',{exact:true})).toBeVisible();
   console.log('PASS intake browser: secret-fragment sign-in handoff, explicit acceptance, exact interrupted retry, review receipts and owner destination confirmation at mobile/desktop widths');
 }finally{await browser.close();}
