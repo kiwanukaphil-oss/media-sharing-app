@@ -5,6 +5,10 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Restricted-scope development checkpoint
+
+**22 September:** Isolated branch `work/restricted-scopes`, commit `b004bea`, is pushed. Local D1 checks pass for retained activity privacy, owner denial after scope revocation, album discovery, metadata/bookmark denial, explicit upload destinations and retry integrity; existing editor/contributor write-authority checks, TypeScript and focused lint pass. This is partial implementation, not a release: migration 0023 remains outside main and production. Capability issuance, publication/import, minimisation and export/restore rehearsal, management/navigation UI and complete browser/release checks are outstanding. Main remains the independently tested favourites/activity/portability candidate, held for backup download capacity. Parent counts remain unchanged.
+
 ## Current position
 
 Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Memberships, explicit legacy owner claims and account-scoped library access are live for the designated-account pilot; live sign-in/recovery/claim checks passed. General release and remaining operational gates are outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
