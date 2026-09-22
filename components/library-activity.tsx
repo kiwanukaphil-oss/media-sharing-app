@@ -58,7 +58,7 @@ export function LibraryActivity() {
     <button className="icon-button activity-open" aria-label={unread ? "Library activity, new updates" : "Library activity"} title="Library activity" onClick={() => { setOpen(true); void loadActivity(); }}>
       <History size={18} />{unread && <span className="activity-unread" />}
     </button>
-    <span className="sr-only" role="status">{unread ? "New library activity is available." : ""}</span>
+    <span className="sr-only" aria-live="polite">{unread ? "New library activity is available." : ""}</span>
     {open && <dialog ref={dialog} className="modal activity-modal" aria-labelledby={titleId} onClose={() => setOpen(false)}>
       <div className="modal-heading"><div><p className="eyebrow">THIS LIBRARY</p><h2 id={titleId}>Activity</h2></div><button className="icon-button" aria-label="Close activity" onClick={() => dialog.current?.close()}><X size={20} /></button></div>
       <p className="small-muted">Changes recorded since activity was enabled. Personal favourites stay private.</p>

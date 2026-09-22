@@ -21,3 +21,5 @@ P3-03 implementation contract, 22 September 2026. Private favourites are indepen
 This is an implementation contract, not a claim that these features are deployed. Access-control changes already retain separate membership events; invitation secrets and personal bookmarks must never enter library history.
 
 Local evidence: `tests/library-activity.mjs`, `tests/activity-browser.mjs`, `tests/erased-snapshot.mjs` and `scripts/rehearse-activity-upgrade.mjs`. Pending migrations 0021/0022 preserve all 25 existing live tables in the private-export rehearsal. Release awaits hosted checks and resumed independent backup downloads (roadmap B06).
+
+Hosted run `35728119703` passed verification; browser coverage exposed an empty global status region conflicting with an existing publication progress assertion. The notice now uses a polite live region without an empty status role. Corrected browser verification is pending.

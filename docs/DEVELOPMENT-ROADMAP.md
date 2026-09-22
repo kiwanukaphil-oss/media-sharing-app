@@ -24,7 +24,7 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 | 2 | People, recoverable accounts and personal/shared spaces | In progress | 4/7 complete features in restricted pilot | Deletion/retention execution and remaining operational gates |
 | 3 | Useful collaboration and upload requests | In progress | 2/6 | Verified identity/access foundation; general release gates remain |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
-| 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
+| 5 | Deliberate deliveries and portable exports | In progress | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
 | 6 | Versions, comparison and review | Not started | 0/5 | Phase 5; validated creative-team demand |
 | 7 | Retrieval, media breadth and validated expansion | In progress | 2/6 | Dependencies recorded per work item |
 
@@ -1092,3 +1092,13 @@ Cloudflare case 02338622 was rechecked on 22 September during this work: the thr
 - [ ] Complete final hosted regression verification and deploy migrations 0021/0022 after the backup download-cap gate clears. Local implementation is not a deployed P3-03 completion.
 
 [Activity implementation contract and acceptance](ACTIVITY-IMPLEMENTATION.md). The new backup remains copied but unverified; the last verified independent recovery point remains the earlier invitation-release snapshot. No Backblaze spending settings were changed.
+
+### 22 September - portable metadata increment
+
+- [x] Implement selected metadata manifests for every current reader, including Viewer. Selection remains separate from mutation permissions; bounded exports fail as a whole on stale revisions or lost access.
+- [x] Include names, dates, recorded checksums and album/section mappings, with collision-safe suggested paths and explicit original-byte/EXIF limitations. Real D1 tests and actual browser JSON download checks pass.
+- [x] Correct the empty activity announcement exposed by hosted browser run `35728119703`; affected publication, activity and role browsers pass locally. Its verification job had passed.
+- [ ] Complete corrected hosted verification and release. Migrations 0021/0022 and these features remain undeployed pending backup-cap recovery (B06).
+- [ ] Complete directory mapping and integration with original export packages before checking P5-04.
+
+[Portability contract and checked milestones](PORTABILITY-IMPLEMENTATION.md). Parent counts remain 19/47; this records implemented and tested work, not a completed phase.

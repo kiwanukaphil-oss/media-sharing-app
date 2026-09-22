@@ -1,4 +1,5 @@
 import { changePersonalFavorite } from "./personal-favorites";
+import { exportSelectedMetadata } from "./metadata-export";
 import { readLibraryActivity, activityBatch } from "./library-activity";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
@@ -165,6 +166,7 @@ async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: Act
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
 export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string, storage: R2Bucket = bucket()): Promise<Response | null> {
   const method = request.method;
+  if (resource === "metadata-export" && !id && method === "POST") return exportSelectedMetadata(request, device);
   if (resource === "activity" && !id && method === "GET") return readLibraryActivity(request, device);
   if (resource === "favorites" && id && !action && method === "PUT") return changePersonalFavorite(request, device, id);
   const libraryResponse = await libraryAction(request, device, resource, id);

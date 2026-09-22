@@ -151,6 +151,12 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   await database.prepare("UPDATE space_memberships SET role='viewer' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
   assert.equal((await request(bob,scoped('session'))).data.role,'viewer');
   assert.equal((await request(bob,scoped(`favorites/${upload.id}`),'PUT',{favorite:false})).status,200,'Viewer can manage personal bookmarks.');
+  const exportRevision=(await database.prepare('SELECT revision FROM media WHERE id=?').bind(upload.id).first()).revision;
+  const metadata=await request(bob,scoped('metadata-export'),'POST',{files:[{id:upload.id,expectedRevision:exportRevision}]});
+  assert.equal(metadata.status,200,'Viewer can export currently readable metadata.');
+  assert.equal(metadata.data.includesOriginalBytes,false);
+  assert.equal(metadata.data.files[0].id,upload.id);
+  assert.equal((await request(bob,scoped('metadata-export'),'POST',{files:[{id:upload.id,expectedRevision:exportRevision+1}]})).status,409);
   assert.equal((await request(bob,scoped('feed?favorites=1'))).data.total,0);
   assert.equal((await request(aliceOtherBrowser,scoped('feed?favorites=1'))).data.total,1,'Removing a bookmark affects only its owner.');
   assert.equal((await request(bob,scoped('feed'))).status,200);
