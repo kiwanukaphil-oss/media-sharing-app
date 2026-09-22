@@ -43,6 +43,7 @@ try {
       return route.fulfill({ json: { published: true, id: input.id, destinationSpaceId: shared } });
     }
     if (/\/media\/.*\/(thumbnail|preview)$/.test(url.pathname)) return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nS8AAAAASUVORK5CYII=', 'base64') });
+  if(url.pathname==='/api/activity')return route.fulfill({json:{events:[],next:null}});
     throw new Error('Unexpected publication UI route: ' + url.pathname);
   });
   const openPublication = async () => {

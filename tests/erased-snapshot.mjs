@@ -124,6 +124,16 @@ try {
     assert.equal(favoritesRestored.prepare("SELECT COUNT(*) AS n FROM personal_favorites WHERE person_id='kept'").get().n,1);
   } finally { favoritesRestored.close(); }
   assert.equal(minimiseErasedSnapshot(favoritesMinimised.sql,receipt,1000).sql,favoritesMinimised.sql);
+  const activitySql=favoritesSql+'\n'+await readFile('drizzle/0022_glamorous_star_brand.sql','utf8')+`
+    INSERT INTO library_events VALUES('private-event','personal','private-device','file.arrive','[{"kind":"media","id":"private"}]',1,1),
+      ('shared-event','shared','shared-device','file.arrive','[{"kind":"media","id":"published"}]',1,1);`;
+  const activityMinimised=minimiseErasedSnapshot(activitySql,receipt,1000);
+  const activityRestored=importSnapshot(activityMinimised.sql);
+  try {
+    assert.equal(activityRestored.prepare("SELECT COUNT(*) AS n FROM library_events WHERE space_id='personal'").get().n,0);
+    assert.equal(activityRestored.prepare("SELECT d.name FROM library_events e JOIN devices d ON d.id=e.actor_id WHERE e.id='shared-event'").get().name,'Deleted member');
+  } finally { activityRestored.close(); }
+  assert.equal(minimiseErasedSnapshot(activityMinimised.sql,receipt,1000).sql,activityMinimised.sql);
   const roleMinimised=minimiseErasedSnapshot(roleSql,receipt,1000);
   assert.equal(minimiseErasedSnapshot(roleMinimised.sql,receipt,1000).sql,roleMinimised.sql);
   const backupReview = inspectHistoricalSnapshot(backupSql);

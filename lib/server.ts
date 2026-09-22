@@ -81,7 +81,7 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
   if (!device) throw new ApiError(401, "This device has been disconnected. Pair it again to continue.");
   return device;
 }
-export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number };
+export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number; revision: number };
 export function spaceLimitBytes(device: ActiveDevice) { return device.storage_limit_bytes ?? 100 * 1024 * 1024 * 1024; }
 // Byte-producing operations need current upload permission before storage dispatch or URL signing.
 export async function requireUploadAccess(device: ActiveDevice) {

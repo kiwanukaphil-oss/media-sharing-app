@@ -74,6 +74,12 @@ export async function verifyPublications(database, bucket, dispatch) {
   assert.deepEqual(Buffer.from(await (await bucket.get(original.key)).arrayBuffer()), originalBytes);
   assert.equal((await database.prepare('SELECT section_id FROM album_media WHERE media_id=?').bind(input.id).first()).section_id, section.id);
   assert.equal((await request(personal, 'publications', 'POST', input)).status, 200, 'Retry is idempotent');
+  const arrivals = await database.prepare("SELECT actor_id,space_id,resources FROM library_events WHERE action='file.arrive' AND resources LIKE ?")
+    .bind(`%${input.id}%`).all();
+  assert.equal(arrivals.results.length,1,'Publication retry records one shared arrival.');
+  assert.equal(arrivals.results[0].actor_id,destinationMembership);
+  assert.equal(arrivals.results[0].space_id,shared);
+  assert.equal(arrivals.results[0].resources.includes(original.id),false,'Shared history never reveals the private source reference.');
   assert.equal((await request(personal, `publications/${input.id}`, 'DELETE')).status, 409, 'Cancel cannot remove a published copy');
   assert.equal((await request(personal, 'publications', 'POST', { ...input, sourceRevision: 1 })).status, 409);
   await database.prepare('DELETE FROM media WHERE id=?').bind(original.id).run();

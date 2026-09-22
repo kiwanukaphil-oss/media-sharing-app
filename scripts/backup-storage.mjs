@@ -59,6 +59,15 @@ async function readStorageResponse(response) {
   return response.json();
 }
 
+// Expose only known operational codes. Provider messages can contain private paths or identifiers;
+// never copy their message/body into CI logs while diagnosing a failed restore.
+export async function restoreDownloadError(response) {
+  let code;
+  try { code = (await response.json()).code; } catch { /* Non-JSON failures retain only HTTP status. */ }
+  const known = ['download_cap_exceeded', 'transaction_cap_exceeded', 'expired_auth_token', 'bad_auth_token', 'unauthorized', 'file_not_present'];
+  return new Error(`Restore download failed (HTTP ${response.status}${known.includes(code) ? `; ${code}` : ''}).`);
+}
+
 // Hosted runners receive role-specific secrets through their environment; local operators use Windows DPAPI.
 export async function loadBackupCredential(role) {
   if (!['writer', 'reader'].includes(role)) throw new Error('Unknown backup role.');
@@ -164,7 +173,7 @@ export async function downloadBackupFile(session, record, destination) {
   const url = new URL('/b2api/v4/b2_download_file_by_id', session.downloadUrl);
   url.searchParams.set('fileId', record.fileId);
   const response = await fetch(url, { headers: { Authorization: session.token }, redirect: 'error', signal: AbortSignal.timeout(900000) });
-  if (!response.ok) throw new Error(`Restore download failed (HTTP ${response.status}).`);
+  if (!response.ok) throw await restoreDownloadError(response);
   if (decodeURIComponent(response.headers.get('x-bz-file-name') ?? '') !== record.fileName ||
       response.headers.get('x-bz-file-id') !== record.fileId) throw new Error('Restore returned a different object version.');
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx', mode: 0o600 }));

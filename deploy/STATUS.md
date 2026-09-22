@@ -1,3 +1,9 @@
+## Pending collaboration release - 22 September, 12:35 UTC
+
+Favourites source `99ddc0f` passed hosted CI `35726758741` in both jobs. Activity is locally implemented and being verified. Migrations 0021/0022 are not remote; the live Worker remains `b7e1565a-3aa7-402c-acd2-5703cfe57ad4` on schema 0020.
+
+Fresh backup `35726687872` copied 25 originals (321,680,743 bytes) to snapshot `2026-09-22T12-22-13-217Z-89d8fb98-3d1c-4bc8-ba67-6cd3661d24f9`; its independent restore failed with confirmed HTTP 403 `download_cap_exceeded`. Do not describe this snapshot as verified. Hold migration/deployment until a successful independent verification; no spending limits changed. Private live export and combined additive migration rehearsal preserve all 25 current tables and restore quarantine.
+
 # Direct Cloudflare deployment
 
 ## Role-aware invitations - 22 September 2026

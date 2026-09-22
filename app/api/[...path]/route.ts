@@ -1,3 +1,4 @@
+import { arrivalActivityStatement } from "@/lib/library-activity-statements";
 import { z } from "zod";
 import { accountAction } from "@/lib/account-api";
 import { acceptRecoveryEvent } from "@/lib/account-recovery";
@@ -263,8 +264,8 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
         throw new ApiError(409, "File size did not match. Restart this transfer to send the original again.");
       }
       const authority = transferAuthority(device);
-      const published = await database().prepare(`UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ? AND ${authority.sql}`)
-        .bind(item.id, device.id, item.upload_id,...authority.bindings).run();
+      const [published] = await database().batch([database().prepare(`UPDATE media SET status = 'ready' WHERE id = ? AND device_id = ? AND status = 'uploading' AND upload_id = ? AND ${authority.sql}`)
+        .bind(item.id, device.id, item.upload_id,...authority.bindings), arrivalActivityStatement(database(), item.id)]);
       if (!published.meta.changes) {
         if (!await database().prepare(`SELECT 1 WHERE ${authority.sql}`).bind(...authority.bindings).first())
           throw new ApiError(403, "Library access changed. This transfer has not been published.");

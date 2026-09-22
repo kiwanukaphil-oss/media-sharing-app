@@ -33,6 +33,10 @@ export function minimiseErasedSnapshot(sql, receipt, now = Date.now()) {
     const personal = 'SELECT space_id FROM personal_spaces WHERE person_id=?';
     const actors = `SELECT device_id FROM account_space_actors WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)
       UNION SELECT device_id FROM legacy_owner_claims WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)`;
+    // Private history goes with its space; shared history has no historical names and resolves the
+    // existing actor after the Deleted member minimisation below.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='library_events'").get())
+      database.prepare(`DELETE FROM library_events WHERE space_id IN(${personal})`).run(personId);
     // Newer schemas retain personal navigation separately; it must not survive person erasure.
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='personal_favorites'").get())
       database.prepare(`DELETE FROM personal_favorites WHERE person_id=? OR media_id IN(SELECT id FROM media WHERE space_id IN(${personal}))`).run(personId,personId);

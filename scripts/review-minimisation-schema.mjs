@@ -6,6 +6,8 @@ const protocolDigest = '94b6d4de5174007726b87356cec7f5f54272cc2e9d5b34c941f24c00
 const invitationRoleDigest = '24c63d1cc974e20d141decb13ad25444222e3541c1917386aa22339528989188';
 // Migration 0021 adds person-owned bookmarks, explicitly removed by snapshot minimisation.
 const favoritesDigest = '70affae232b112a24fee850030defa3b6b78fe5f13359e804521a7601516af47';
+// Migration 0022 history stores opaque scope/actor/resource references; private history is removed.
+const activityDigest = '076d4b49ad38a4fd0616b5bc75dff4d7bc5191d040fee8e2d3ca06ef0d11fddd';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 // Review a deliberately narrow activation stage: global backup runs contain only opaque run/snapshot
@@ -15,7 +17,7 @@ export function reviewMinimisationSchema(database, shape) {
   const schemaDigest = createHash('sha256').update(JSON.stringify(shape)).digest('hex');
   if (schemaDigest === baseDigest) return { accepted: true, scope: 'migration-0018', schemaDigest };
   const denied = { accepted: false, scope: 'requires-review', schemaDigest };
-  if (![protocolDigest, invitationRoleDigest, favoritesDigest].includes(schemaDigest)) return denied;
+  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest].includes(schemaDigest)) return denied;
   if (database.prepare(`SELECT (SELECT COUNT(*) FROM closure_fences) +
       (SELECT COUNT(*) FROM closure_storage_effects) + (SELECT COUNT(*) FROM closure_write_admissions
       WHERE kind<>'backup' OR person_id IS NOT NULL OR device_id IS NOT NULL) AS n`).get().n !== 0) return denied;

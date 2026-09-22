@@ -1,4 +1,5 @@
 import { changePersonalFavorite } from "./personal-favorites";
+import { readLibraryActivity, activityBatch } from "./library-activity";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { libraryAction, requireAlbum } from "./library-api";
@@ -155,8 +156,8 @@ async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: Act
   if (!deleting.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before deleting.");
   await storage.delete([item.object_key, `${item.object_key}.preview.jpg`]);
   const completion = transferAuthority(device, Date.now(), true);
-  const removed = await database().prepare(`DELETE FROM media WHERE id = ? AND status = 'deleting' AND ${completion.sql}`)
-    .bind(item.id, ...completion.bindings).run();
+  const [removed] = await activityBatch(device, "file.delete", [{ kind: "media", id: item.id }], [database().prepare(`DELETE FROM media WHERE id = ? AND status = 'deleting' AND ${completion.sql}`)
+    .bind(item.id, ...completion.bindings)]);
   if (!removed.meta.changes) throw new ApiError(409, "Access changed during cleanup. Refresh to review the remaining record.");
   return Response.json({ deleted: true });
 }
@@ -164,6 +165,7 @@ async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: Act
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
 export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string, storage: R2Bucket = bucket()): Promise<Response | null> {
   const method = request.method;
+  if (resource === "activity" && !id && method === "GET") return readLibraryActivity(request, device);
   if (resource === "favorites" && id && !action && method === "PUT") return changePersonalFavorite(request, device, id);
   const libraryResponse = await libraryAction(request, device, resource, id);
   if (libraryResponse) return libraryResponse;
@@ -182,8 +184,8 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     const item = await requireMedia(device, id);
     if (item.status !== "ready") throw new ApiError(409, "This transfer is not ready.");
     const authority = fileEditAuthority(device);
-    const changed = await database().prepare(`UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready' AND ${authority.sql}`)
-      .bind(action === "archive" ? Date.now() : null, id, ...authority.bindings).run();
+    const [changed] = await activityBatch(device, action === "archive" ? "file.trash" : "file.restore", [{ kind: "media", id, revision: item.revision + 1 }], [database().prepare(`UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready' AND revision = ? AND ${authority.sql}`)
+      .bind(action === "archive" ? Date.now() : null, id, item.revision, ...authority.bindings)]);
     if (!changed.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before trying again.");
     return Response.json({ changed: true });
   }

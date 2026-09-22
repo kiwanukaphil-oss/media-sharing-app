@@ -1,3 +1,4 @@
+import { arrivalActivityStatement } from "./library-activity-statements";
 import { AccountError } from "./account-sessions";
 import type { AccountSpaceAccess } from "./account-space-access";
 import type { ActiveDevice } from "./server";
@@ -120,6 +121,7 @@ export async function finishPublication(database: D1Database, bucket: R2Bucket, 
         .bind(key, previewSize > 0 ? 1 : 0, previewSize, job.id, job.id, key, job.source_id, job.source_space_id, job.source_revision,
           source.sessionId, source.personId, committedAt, job.source_space_id, job.destination_space_id,
           job.album_id, job.album_id, job.destination_space_id, job.section_id, job.section_id, job.album_id, ...commitAuthority.bindings),
+      arrivalActivityStatement(database, job.id),
       database.prepare(`INSERT INTO album_media (album_id, media_id, section_id) SELECT ?, id, ? FROM media
         WHERE id = ? AND status = 'ready' AND object_key = ? AND ? IS NOT NULL ON CONFLICT DO NOTHING`)
         .bind(job.album_id, job.section_id, job.id, key, job.album_id),

@@ -1,3 +1,4 @@
+import { activityBatch, fileActivityResources } from "./library-activity";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { ApiError, database, readJson, requireOrganiser, type ActiveDevice } from "./server";
@@ -48,7 +49,7 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
       WHERE album_id = ? AND id = ? AND ${liveAlbumGuard}`).bind(input.name, input.position, input.deleted ? Date.now() : null, input.coverMediaId !== undefined ? 1 : 0, input.coverMediaId || null, input.albumId, id, ...guardValues);
   } else throw new ApiError(404, "This section action is unavailable.");
   try {
-    const results = await database().batch([statement, database().prepare(`UPDATE albums SET revision = revision + 1
+    const results = await activityBatch(device, "section.update", [{ kind: "album", id: input.albumId, revision: input.expectedRevision + 1 }], [statement, database().prepare(`UPDATE albums SET revision = revision + 1
       WHERE id = ? AND space_id = ? AND revision = ? AND ${authority.sql} AND deleted_at IS NULL AND archived_at IS NULL AND changes() = 1`).bind(...guardValues)]);
     if (!results[0].meta.changes) throw new ApiError(409, "The album changed or is archived. Refresh before trying again.");
   } catch (error) {
@@ -68,7 +69,7 @@ async function reorderSections(request: Request, device: ActiveDevice) {
   const guard = `${albumGuard} AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL) = ?
     AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL AND id IN (SELECT value FROM json_each(?))) = ? AND ${authority.sql}`;
   const values = [input.albumId, device.space_id, input.expectedRevision, input.albumId, input.ids.length, input.albumId, json, input.ids.length, ...authority.bindings];
-  const results = await database().batch([
+  const results = await activityBatch(device, "section.order", [{ kind: "album", id: input.albumId, revision: input.expectedRevision + 1 }], [
     database().prepare(`UPDATE album_sections SET position = (SELECT CAST(key AS INTEGER) * 10 FROM json_each(?) WHERE value = album_sections.id)
       WHERE album_id = ? AND deleted_at IS NULL AND ${guard}`).bind(json, input.albumId, ...values),
     database().prepare(`UPDATE albums SET revision = revision + 1 WHERE id = ? AND ${guard}`).bind(input.albumId, ...values),
@@ -92,7 +93,7 @@ async function applySectionTemplate(request: Request, device: ActiveDevice) {
   const created = "EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ?)";
   const createdValues = [input.albumId, originalId];
   const authority = transferAuthority(device, Date.now(), "organiser");
-  const results = await database().batch([
+  const results = await activityBatch(device, "section.template", [...fileActivityResources(input.files), { kind: "album", id: input.albumId, revision: input.expectedRevision + 1 }], [
     database().prepare(`INSERT INTO album_sections (album_id, id, name, position) SELECT ?, ?, 'Originals', 10
       WHERE ${albumGuard} AND NOT EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND deleted_at IS NULL)
       AND ${selected} AND ${authority.sql}`).bind(input.albumId, originalId, input.albumId, device.space_id, input.expectedRevision, input.albumId, ...selectionValues, ...authority.bindings),
@@ -123,7 +124,7 @@ export async function placeInSections(request: Request, device: ActiveDevice) {
       WHERE s.album_id = a.id AND s.id = json_extract(chosen.value, '$.sectionId') AND s.deleted_at IS NULL))) = ?`;
   const guardValues = [json, input.albumId, device.space_id, ...authority.bindings, input.files.length];
   const selectedIds = "SELECT json_extract(value, '$.id') FROM json_each(?)";
-  const results = await database().batch([
+  const results = await activityBatch(device, "file.section", [...fileActivityResources(input.files), { kind: "album", id: input.albumId }], [
     database().prepare(`SELECT am.media_id AS id, CASE WHEN s.deleted_at IS NULL THEN am.section_id ELSE NULL END AS sectionId,
       m.revision + 1 AS expectedRevision FROM album_media am JOIN media m ON m.id = am.media_id
       LEFT JOIN album_sections s ON s.album_id = am.album_id AND s.id = am.section_id

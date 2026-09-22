@@ -39,6 +39,7 @@ await page.route('**/api/**', async route => {
   if (url.pathname.endsWith('/bytes/1')) return route.fulfill({ headers: { ETag: 'fixture-etag' }, body: '{}' });
   if (url.pathname.endsWith('/complete')) { uploadCompleted = true; return route.fulfill({ json: { ready: true } }); }
   if (/\/media\/.*\/(thumbnail|preview)$/.test(url.pathname)) return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nS8AAAAASUVORK5CYII=', 'base64') });
+  if(url.pathname==='/api/activity')return route.fulfill({json:{events:[],next:null}});
   throw new Error('Unexpected route: ' + url.pathname);
 });
 try {

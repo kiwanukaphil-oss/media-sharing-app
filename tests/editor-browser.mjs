@@ -19,6 +19,7 @@ await page.route('**/api/**',async route=>{
   if(url.pathname==='/api/feed') return route.fulfill({json:{items:[...(role==='contributor'?[{...item,id:'a3e4a4b2-45b1-4cb0-98d5-7d395c3c84aa',name:'My contribution.jpg',canEdit:1}]:[]),{...item,canEdit:0,archivedAt:url.searchParams.get('category')==='trash'?Date.now():null}],total:1,nextCursor:null,role,counts:{all:1,original:1,final:0,trash:1}}});
   if(url.pathname==='/api/albums') return route.fulfill({json:{albums:[],sections:[]}});
   if(url.pathname==='/api/storage') return route.fulfill({json:{used:4,reserved:0,trash:0,limit:100000,uploads:[]}});
+  if(url.pathname==='/api/activity')return route.fulfill({json:{events:[],next:null}});
   throw new Error(`Unexpected editor browser request ${url.pathname}`);
 });
 try {

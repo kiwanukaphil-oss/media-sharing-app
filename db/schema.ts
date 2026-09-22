@@ -278,3 +278,17 @@ export const personalFavorites = sqliteTable("personal_favorites", {
   mediaId: text("media_id").notNull().references(() => media.id, { onDelete: "cascade" }),
   createdAt: integer("created_at").notNull(),
 }, table => [primaryKey({ columns: [table.personId, table.mediaId] }), index("idx_favorites_media").on(table.mediaId)]);
+
+// History stores typed actions and opaque references, never historic filenames or request payloads.
+// Actor rows already survive offboarding in minimised form; personal-space history is erased with it.
+export const libraryEvents = sqliteTable("library_events", {
+  id: text("id").primaryKey().notNull(),
+  spaceId: text("space_id").notNull().references(() => spaces.id),
+  actorId: text("actor_id").notNull().references(() => devices.id),
+  action: text("action").notNull(),
+  resources: text("resources").notNull(),
+  affectedCount: integer("affected_count").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [index("idx_library_events_page").on(table.spaceId, table.createdAt, table.id),
+  check("library_event_resources", sql`json_valid(${table.resources}) AND json_array_length(${table.resources}) BETWEEN 1 AND 101`),
+  check("library_event_count", sql`${table.affectedCount} BETWEEN 1 AND 500`)]);

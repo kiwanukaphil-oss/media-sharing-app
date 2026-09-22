@@ -278,3 +278,15 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 .saved-view-form > p { margin-top: 10px; }
 
 .library-command-row .saved-views-trigger { order: 3; }
+
+/* Activity is quiet chrome until deliberately opened; notices contain no sensitive content. */
+.activity-open { position: relative; }
+.activity-unread { position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #5b6ee1); }
+.activity-modal { width: min(620px, calc(100vw - 28px)); max-height: calc(100dvh - 40px); overflow-y: auto; }
+.activity-list { list-style: none; padding: 0; margin: 20px 0; }
+.activity-list li { padding: 16px 0; border-bottom: 1px solid var(--border, #e5e7eb); }
+.activity-event-title { display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap; }
+.activity-event-title strong { font-size: 14px; }
+.activity-event-title time, .activity-list small { font-size: 11px; color: var(--muted, #667085); }
+.activity-list p { font-size: 13px; margin: 6px 0; overflow-wrap: anywhere; }
+.activity-empty { padding: 32px 0; color: var(--muted, #667085); text-align: center; }

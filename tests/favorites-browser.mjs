@@ -27,6 +27,7 @@ await page.route('**/api/**',async route=>{
     if(deny)return route.fulfill({status:409,json:{error:'Library access changed. Refresh before updating favourites.'}});
     favorite=request.postDataJSON().favorite;return route.fulfill({json:{favorite}});
   }
+  if(url.pathname==='/api/activity')return route.fulfill({json:{events:[],next:null}});
   throw new Error('Unexpected favourites UI request '+url.pathname);
 });
 try {
