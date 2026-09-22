@@ -94,3 +94,20 @@ The public sender label is explicitly reviewed and captured, rather than disclos
 - [ ] Complete hosted verification, original package jobs and live operational acceptance. No migration or flag has been applied in production.
 
 This checkpoint supersedes the earlier prototype-only status. The prototype remains a historical reference and retirement candidate; the migration journal owns the current schema. Snapshot minimisation still requires the existing global-backup-only protocol restrictions and never authorises real deletion or restore cutover.
+
+### Bounded original package decision and implementation
+
+The first package job runs in the open browser tab, with progress and cancellation. This deliberately bounds the initial promise: it does not continue after the tab closes, and retry restarts the complete reviewed selection. Direct file saving streams up to 2 GiB / 100 originals without retaining all bytes in memory; other browsers have a 64 MiB original-byte cap and bounded ZIP/manifest overhead. One package runs per tab. Larger or unattended jobs remain a separate expansion requiring demand and operational evidence.
+
+This replaces the initial server-artifact implementation proposal for the bounded first release. There are no new cloud package writers, storage copies, retention bills or cleanup races. This is a product implementation decision within the standing authority, not a claim that unfinished provider-erasure gates have cleared. A saved local archive cannot be recalled.
+
+- [x] Implement stored ZIP entries with UTF-8 collision-safe paths, CRC32, per-original SHA-256 verification and manifest inclusion. Library manifests preserve names, dates, albums and sections; delivery manifests contain only captured public selection labels.
+- [x] Recheck the entire selection at creation and immediately before committing the archive, plus normal current download authority for each original. Stale revisions, unavailable originals, corruption or revoked access fail the entire job.
+- [x] Support progress, cancellation, fresh retry and capability fallbacks. A native file writer commits only after verification; the small browser-download fallback reports a request, never a verified local save.
+- [x] Independently extract the generated ZIP with Python's standard reader, checking CRCs, manifest and original bytes. Verify an 80 MiB streamed fixture uses at most 1 MiB output chunks, without retaining output; test bounds, traversal, duplicate IDs, corrupt/truncated/oversized responses, final access loss and cancellation.
+- [x] Verify actual library Viewer and delivery-recipient browser package downloads, scoped calls, source-organisation separation and access-denial retry.
+- [ ] Complete hosted package verification and production/browser operational acceptance. Full-sized 2 GiB device performance and live provider retry evidence remain release checks.
+
+Format and save semantics reviewed against [PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT) and [FileSystemWritableFileStream](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream). No sanitised derivative is offered: it could otherwise imply removal of sensitive metadata without a tested format-specific implementation.
+
+Hosted run `35749765799` passed verification and browser jobs at `c0a5151` for the delivery lifecycle/schema increment. Earlier `35749339230` passed verification and delivery browser checks but failed a repeated folder-import browser step; the unchanged folder workflow passed locally and in the subsequent complete hosted run. Package changes require their own hosted run.

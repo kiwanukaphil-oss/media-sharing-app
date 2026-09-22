@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import {ArrowDown,FileImage,FileVideo,File,PackageCheck,ShieldCheck,X} from "lucide-react";
+import {OriginalPackage} from "@/components/original-package";
 import DeliveryInvitation from "@/components/delivery-invitation";
 import {requestJson} from "@/lib/api-client";
 import {formatBytes} from "@/lib/contracts";
@@ -52,8 +53,8 @@ export default function DeliveryPage(){
     {error&&<div role="alert" className="error-banner">{error}{session&&id&&<button className="text-button" onClick={()=>setRevision(value=>value+1)}>Retry</button>}</div>}
     {!checked&&<p role="status">Checking your account...</p>}
     {checked&&!session&&<section className="rounded-2xl border border-[var(--line)] p-6"><p>Sign in with the email invited by the sender.</p><Link href="/account" className="account-primary-action inline-flex mt-5 rounded-xl px-5 py-3">Continue to sign in</Link>{id&&<p className="mt-3 text-sm">Return to this page after signing in.</p>}</section>}
-    {delivery&&<><section className="delivery-summary"><div><strong>{delivery.delivery.fileCount} originals</strong><span>{formatBytes(delivery.delivery.totalBytes)}</span></div><p>Available until {new Date(delivery.delivery.expiresAt).toLocaleString()}</p></section>
-      <p className="delivery-note"><ShieldCheck size={16}/><span>Original quality. Embedded location and other original metadata are preserved.</span></p>
+    {delivery&&<><section className="delivery-summary"><div><strong>{delivery.delivery.fileCount} {delivery.delivery.fileCount===1?"original":"originals"}</strong><span>{formatBytes(delivery.delivery.totalBytes)}</span></div><p>Available until {new Date(delivery.delivery.expiresAt).toLocaleString()}</p></section>
+      <OriginalPackage files={delivery.items} deliveryId={id}/><p className="delivery-note"><ShieldCheck size={16}/><span>Original quality. Embedded location and other original metadata are preserved.</span></p>
       <div className="delivery-originals">{delivery.items.map(item=><article className="delivery-original" key={item.id}><div className="delivery-file-symbol">{item.mime.startsWith("image/")?<FileImage size={26}/>:item.mime.startsWith("video/")?<FileVideo size={26}/>:<File size={26}/>}</div><div className="delivery-file-details"><h2>{item.name}</h2><p>{formatBytes(item.size)} &middot; Original</p>{saving===item.id&&<p role="status">Saving and verifying: {progress}%</p>}</div>{verified?<button className="button secondary compact" disabled={Boolean(saving)} onClick={()=>void save(item)}><ArrowDown size={16}/>Save verified</button>:<a className="button secondary compact" href={`/api/delivery/${id}/${item.id}/download`} download={item.name} onClick={()=>setNotice("Download requested. Check your browser's downloads.")}><ArrowDown size={16}/>Save original</a>}</article>)}</div>
       {saving&&<button className="text-button" onClick={()=>savingController.current?.abort()}><X size={16}/>Cancel save</button>}
       {notice&&<p className="delivery-status" role="status">{notice}</p>}

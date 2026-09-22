@@ -1182,3 +1182,13 @@ Corrected folder-import CI at `f588c68` includes successful hosted run `35729947
 - [ ] Complete hosted verification, original packages and live release acceptance. Delivery remains disabled in production; phase parents remain 22/47.
 
 [Detailed delivery evidence](DELIVERY-CONTRACT.md). Hosted sender/recipient workflow run `35749339230` is in progress; migration/lifecycle changes require a fresh run.
+
+
+### 22 September - bounded original packages
+
+- [x] Hosted delivery lifecycle/schema run `35749765799` passes verification and browser jobs at `c0a5151`.
+- [x] Implement library and recipient ZIP packages, including manifests, safe paths, original byte verification, progress, cancellation and restart.
+- [x] Verify independent ZIP extraction, 80 MiB bounded streaming, corruption/partial-failure/access-loss refusal, and actual library Viewer/recipient browser downloads.
+- [ ] Complete hosted package verification, full-sized device/performance acceptance and production release. Parent counts remain 22/47.
+
+The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64 MiB fallback. It creates no cloud export artifacts; unattended jobs remain a separate expansion. [Decision, limits and evidence](DELIVERY-CONTRACT.md).
