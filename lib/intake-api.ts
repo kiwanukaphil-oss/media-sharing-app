@@ -2,7 +2,7 @@ import {z} from "zod";
 import {AccountError,readAccountSession,readAccountToken,type AccountSession} from "./account-sessions";
 import {readAuth0Settings} from "./auth0-config";
 import {ApiError,bucket,database,isLocal,readJson,signedObjectUrl,storageMode,tokenHash} from "./server";
-import {intakeEnabled} from "./intake-runtime";
+import {intakeEnabled,intakePaused} from "./intake-runtime";
 import {acceptUploadRequest,intakeIssuerAuthority,intakeRecipientAuthority} from "./upload-request-authority";
 import {reserveIntakeSubmission} from "./upload-request-reservations";
 import {beginIntakeUpload,completeIntakeUpload,requireIntakeUpload,reserveIntakePartCapability} from "./intake-transfers";
@@ -54,13 +54,14 @@ async function readRecipientRequest(session:AccountSession,id:string) {
   const [requestResult,receipts]=await database().batch([requestQuery,receiptsQuery]);
   const request=requestResult.results[0];
   if(!request)throw new AccountError(404,"This upload request has ended or is unavailable.");
-  return {request,receipts:receipts.results,account:{personId:session.personId,verifiedEmail:session.verifiedEmail}};
+  return {paused:intakePaused(),request,receipts:receipts.results,account:{personId:session.personId,verifiedEmail:session.verifiedEmail}};
 }
 
 // All mutation callers arrive through the account closure wrapper when tracking is active. Durable
 // intake capability records are maintained in both modes, and unresolved bytes never become ready.
 async function authenticatedIntakeRequest(request:Request,segments:string[],session:AccountSession,storage:R2Bucket):Promise<Response> {
   const [,resource,id,action]=segments,method=request.method,db=database();
+  if(intakePaused()&&method!=="GET"&&resource!=="preview")throw new ApiError(503,"Uploads are temporarily paused. Your existing receipts and reserved files are retained.");
   if(["preview","accept"].includes(resource)&&!id&&method==="POST"){
     const input=await readJson(request,z.object({token:z.string().regex(/^[a-f0-9]{64}$/)}));const hash=await tokenHash(input.token);
     return Response.json(resource==="preview"?await previewUploadRequest(session,hash):await acceptUploadRequest(db,session,hash));

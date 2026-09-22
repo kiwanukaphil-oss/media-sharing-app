@@ -11,7 +11,8 @@ const browserChecks = process.argv.includes('--browser');
 const closureEntryChecks = process.argv.includes('--closure-entrypoints');
 const closureTrackingChecks = process.argv.includes('--closure-tracking') || closureEntryChecks;
 const deliveryChecks=process.argv.includes('--deliveries');
-const intakeChecks=process.argv.includes('--intake');
+const intakePausedChecks=process.argv.includes('--intake-paused');
+const intakeChecks=process.argv.includes('--intake')||intakePausedChecks;
 const restrictedChecks = process.argv.includes('--restricted-scopes');
 const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks || restrictedChecks || intakeChecks || deliveryChecks;
 const backupCoordinationChecks = process.argv.includes('--backup-coordination');
@@ -35,6 +36,7 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
       ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}),
       ...(restrictedChecks || intakeChecks || deliveryChecks ? {RELAY_RESTRICTED_SCOPES_ENABLED:'true'} : {}),
       ...(intakeChecks ? {RELAY_INTAKE_ENABLED:'true'} : {}),
+      ...(intakePausedChecks ? {RELAY_INTAKE_PAUSED:'true'} : {}),
       ...(deliveryChecks ? {RELAY_DELIVERIES_ENABLED:'true'} : {}) } } : {}),
     ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
@@ -75,7 +77,7 @@ try {
     await verifyDeliveryRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options));
   } else if (intakeChecks) {
     const {verifyIntakeRoutes}=await import('../tests/intake-routes.mjs');
-    await verifyIntakeRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options));
+    await verifyIntakeRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options),intakePausedChecks);
   } else if (restrictedChecks) {
     const {verifyRestrictedRoutes}=await import('../tests/restricted-routes.mjs');
     await verifyRestrictedRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options));

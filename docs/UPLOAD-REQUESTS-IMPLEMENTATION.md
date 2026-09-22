@@ -43,7 +43,8 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 - [x] Route bounded multipart capabilities with custody; test expiry/revocation races and shared quota/staging lifecycle inventory locally.
 - [x] Build and locally verify mobile/desktop owner creation/review, explicit recipient sign-in/acceptance, receipt states and exact interrupted retry. A tab-local intent precedes reservation; original bytes are never persisted in browser storage.
 - [x] Owner-only independently verified attachment review and reversible decline/restore pass actual built-Worker and mobile browser checks. Download does not publish; recipient receipts distinguish declined files from deletion.
-- [ ] Complete physical cleanup/disposition and operational abuse handling before activation.
+- [x] Prepare operational abuse handling and a tested admission pause that retains receipts, owner review/close and staged capacity. [Runbook and checks](INTAKE-OPERATIONS.md).
+- [ ] Complete physical cleanup/disposition and live operational acceptance before activation.
 - [x] Extend lifecycle/minimisation/restore contracts and test cross-account, revoked, expired, concurrent and malformed requests locally.
 - [ ] Hosted verification, independent recovery point, migration, pilot verification and operational limits before activation. General onboarding remains subject to Phase 2 gates.
 
@@ -84,3 +85,5 @@ The private current-schema export (digest `fe005a714436264b1c0e07c4b22a652627db2
 Owner refreshes now discard superseded request responses, and expiry uses server-reported time plus elapsed browser time. Browser coverage includes a clock five minutes ahead with the seven-day limit, avoiding an invalid request caused by workstation clock skew.
 
 Full hosted source `269c1ef` passed both verify and browser jobs in run 35745353865, including migration 0025 and intake lifecycle/review changes. The subsequent server-clock and superseded-refresh correction `1000fd7` passes local lint, TypeScript and browser checks. Ready for integration with activation disabled; physical-cleanup and independent-backup release gates remain open.
+
+Admission-pause preparation now passes built-Worker checks with closure tracking and recipient/owner browser controls. The pause is separate from disabling all intake routes; already-admitted storage capabilities remain subject to the provider-quiescence gate. No production flag changed.
