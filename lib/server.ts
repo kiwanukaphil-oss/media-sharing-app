@@ -84,7 +84,7 @@ export function attachmentName(name: string) {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, c => `%${c.charCodeAt(0).toString(16)}`)}`;
 }
 // Sign only the server-selected object and operation; callers cannot choose a bucket or key.
-export async function signedObjectUrl(key: string, method: "GET" | "PUT", parameters: Record<string, string> = {}, expectedBytes?: number) {
+export async function signedObjectUrl(key: string, method: "GET" | "PUT", parameters: Record<string, string> = {}, expectedBytes?: number, signedAt?: number) {
   const { R2_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
   if (!R2_ACCOUNT_ID || !R2_BUCKET_NAME || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
     throw new ApiError(503, "Direct transfers are not connected yet.");
@@ -94,7 +94,7 @@ export async function signedObjectUrl(key: string, method: "GET" | "PUT", parame
   for (const [name, value] of Object.entries(parameters)) url.searchParams.set(name, value);
   const client = new AwsClient({ accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY, service: "s3", region: "auto" });
   // Signing Content-Length binds each upload URL to its reserved part size; browsers supply this header for Blob bodies.
-  return (await client.sign(url, { method, ...(expectedBytes === undefined ? {} : { headers: { "Content-Length": String(expectedBytes) } }), aws: { signQuery: true, allHeaders: expectedBytes !== undefined } })).url;
+  return (await client.sign(url, { method, ...(expectedBytes === undefined ? {} : { headers: { "Content-Length": String(expectedBytes) } }), aws: { signQuery: true, allHeaders: expectedBytes !== undefined, ...(signedAt === undefined ? {} : { datetime: new Date(signedAt).toISOString().replace(/[:-]|\.\d{3}/g, "") }) } })).url;
 }
 export const uploadSchema = z.object({
   id: z.string().uuid(), name: z.string().min(1).max(240).refine(name => !/[\u0000-\u001f/\\]/.test(name)),
@@ -104,7 +104,7 @@ export const uploadSchema = z.object({
   albumId: z.string().uuid().optional(), sectionId: z.string().uuid().optional(), capturedAt: z.string().refine(validCaptureDate).optional(), uploadBatch: z.string().uuid().optional(),
 });
 // Reuse a caller's stable upload ID after interrupted requests rather than creating duplicates.
-export async function initializeUpload(device: ActiveDevice, input: z.infer<typeof uploadSchema>) {
+export async function initializeUpload(device: ActiveDevice, input: z.infer<typeof uploadSchema>, storage: R2Bucket = bucket()) {
   const existing = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
   if (existing) {
     if (existing.space_id !== device.space_id || existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size) throw new ApiError(409, "That transfer belongs to a different file.");
@@ -120,7 +120,7 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
     if (!section) throw new ApiError(409, "The upload section is unavailable. Choose a destination before retrying.");
   }
   const key = `${device.space_id}/${input.id}/original`;
-  const upload = await bucket().createMultipartUpload(key, {
+  const upload = await storage.createMultipartUpload(key, {
     httpMetadata: { contentType: input.mime, contentDisposition: attachmentName(input.name) },
     customMetadata: { sha256: input.sha256, filename: input.name },
   });

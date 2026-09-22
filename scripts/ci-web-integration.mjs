@@ -8,7 +8,8 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Cho
 const origin = `http://127.0.0.1:${port}`;
 const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
-const accountAccessChecks = process.argv.includes('--account-access');
+const closureTrackingChecks = process.argv.includes('--closure-tracking');
+const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks;
 const backupCoordinationChecks = process.argv.includes('--backup-coordination');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
 const modules = (await readdir('dist/server', { recursive: true }))
@@ -26,7 +27,8 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     d1Databases: ['DB'], r2Buckets: ['BUCKET'],
     ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_ROLLOUT: 'open', AUTH0_DOMAIN: 'access.auth0.com',
       AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
-      AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648' } } : {}),
+      AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648',
+      ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}) } } : {}),
     ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
@@ -52,9 +54,11 @@ try {
       if (statement.trim()) await database.prepare(statement.trim()).run();
     }
   }
-  if (backupCoordinationChecks) {
+  if (backupCoordinationChecks || closureTrackingChecks) {
     for (const sql of (await readFile('deploy/closure-fence-prototype.sql','utf8')).split('--> statement-breakpoint'))
       if (sql.trim()) await database.prepare(sql).run();
+  }
+  if (backupCoordinationChecks) {
     const {verifyBackupCoordinationRoute}=await import('../tests/backup-coordination-route.mjs');
     await verifyBackupCoordinationRoute(database,(url,options)=>emulator.dispatchFetch(url,options));
   } else if (servePreview) {
@@ -81,6 +85,10 @@ try {
     await verifyReadOnlyBackup(database);
     const { verifyRecoveryRepair } = await import('../tests/recovery-repair-rehearsal.mjs');
     await verifyRecoveryRepair(database);
+    if (closureTrackingChecks) {
+      const {verifyClosureRequestCoverage}=await import('../tests/closure-request-coverage.mjs');
+      await verifyClosureRequestCoverage(database);
+    }
   } else if (process.argv.includes('--capacity')) {
     const { verifyLibraryCapacity } = await import('../tests/library-capacity.mjs');
     await verifyLibraryCapacity(database, origin);

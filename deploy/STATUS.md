@@ -4,7 +4,7 @@
 
 Worker `d2878ef1-7faa-4220-88bf-7fce19b63320` is at **100%**, read back at 06:57 UTC. Source `6c57684` adds password-recovery checks to publication reservation/copy/visibility commits and current account/device authority before cancellation cleanup. Authorised repeated cleanup is preserved. Previous version: `13b029f9-328b-467d-9c5e-99a7dfc63285`.
 
-TypeScript, focused lint, production build, actual-D1/R2 recovery race tests, full account-access/legacy API checks and deployment dry run passed. Both origins return health/operations 200, anonymous feed 401 and dormant coordinator 404. Retained signed-in My space shows its existing ready fixture after reload. Hosted CI `35697206357` is still running. No schema, account audience, secrets, pilot quota or user originals changed.
+TypeScript, focused lint, production build, actual-D1/R2 recovery race tests, full account-access/legacy API checks and deployment dry run passed. Both origins return health/operations 200, anonymous feed 401 and dormant coordinator 404. Retained signed-in My space shows its existing ready fixture after reload. Hosted CI `35697206357` passed verification and browser jobs. No schema, account audience, secrets, pilot quota or user originals changed.
 
 The external identity/recovery test alert is now confirmed in Gmail Inbox (21 September, 11:57 a.m. EAT; inspected 22 September). Expansion capacity and full lifecycle execution remain open. Historical sections below describe their verification state at the time.
 

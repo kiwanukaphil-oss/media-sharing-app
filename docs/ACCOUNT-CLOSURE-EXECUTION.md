@@ -96,3 +96,11 @@ This is preparatory bookkeeping, not a completed direct-upload freeze: productio
 ### Delayed sign-in after minimisation
 
 Account-session creation now checks the same issuer/subject digest retained by the snapshot minimiser before both profile insertion/update and session insertion, inside D1. This prevents a previously verified callback from recreating an identity whose original provider columns have been anonymised. Actual-schema tests cover a tombstone alone, an inconsistent duplicate active row and unrelated login. No erasure is performed by this guard; full executor and restore reconciliation remain required.
+
+### Request storage injection (disabled)
+
+The library route now passes one explicit request-scoped bucket into upload initialization, web management and publication. With `RELAY_CLOSURE_TRACKING_ENABLED=true`, admission precedes dispatch and every awaited storage mutation is journalled. Successful requests settle only when effects are acknowledged; direct capabilities and ambiguous effects retain uncertainty. Failed requests remain held. Concurrent adapters share no mutable request context.
+
+Direct part URLs reserve their exact object/upload/part before signing. Signing receives the same second-aligned timestamp used to record the one-hour deadline. Tests verify the actual signature parameters and signed content length without contacting storage. Expiry still cannot clear the capability.
+
+The built-Worker account suite now also runs with the prototype schema and tracking enabled in isolated D1/R2. This verifies route injection and recorded multipart/put/delete effects. Account setup, login, pairing and compatibility attribution precede this library boundary; complete metadata-generation checks and those writers remain review targets. No production flag or protocol migration is activated, and no fulfilment or deletion guarantee is introduced.

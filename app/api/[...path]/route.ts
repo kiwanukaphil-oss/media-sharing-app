@@ -13,6 +13,10 @@ import { webAction } from "@/lib/web-api";
 import { changeDeviceAccess, expiredSessionCookie } from "@/lib/device-access";
 import { limitPublicRequest, limitDeviceRequest, privateResponseHeaders } from "@/lib/request-security";
 import { ApiError, assertSameOrigin, attachmentName, bucket, database, initializeUpload, isLocal, newToken, readJson, requireDevice, requireMedia, requireOwner, sessionCookie, signedObjectUrl, spaceLimitBytes, storageMode, tokenHash, uploadSchema } from "@/lib/server";
+import { runClosureTrackedRequest } from "@/lib/closure-tracked-request";
+import { reserveClosureUploadCapability } from "@/lib/account-closure-fence";
+import type { ActiveDevice } from "@/lib/server";
+import type { AccountSpaceAccess } from "@/lib/account-space-access";
 import { transferAuthority } from "@/lib/transfer-authority";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +119,21 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     throw new ApiError(409, "Use Account for sign-out. Device pairing is available from a connected device.");
   }
   await limitDeviceRequest(request, device.id, resource, id, action);
+  const segments = [resource, id, action, part];
+  if (process.env.RELAY_CLOSURE_TRACKING_ENABLED === "true" && method !== "GET") {
+    const actor = accountAccess ? { kind: "account" as const, session: accountAccess } :
+      { kind: "legacy" as const, deviceId: device.id, spaceId: device.space_id };
+    return runClosureTrackedRequest(database(), bucket(), actor, (storage, admissionId) =>
+      routeLibraryRequest(request, segments, device, accountAccess, storage, admissionId));
+  }
+  return routeLibraryRequest(request, segments, device, accountAccess, bucket());
+}
+
+// Explicit request-scoped storage prevents one request from borrowing another person's admission.
+// Authentication/account setup and pairing precede this boundary and remain separate coverage targets.
+async function routeLibraryRequest(request: Request, [resource, id, action, part]: string[], device: ActiveDevice,
+  accountAccess: AccountSpaceAccess | null, storage: R2Bucket, admissionId?: string): Promise<Response> {
+  const method = request.method;
   if (resource === "legacy-devices") {
     if (!accountAccess) throw new ApiError(403, "Sign in as a library owner to review paired devices.");
     if (!id && method === "GET") return Response.json(await listLegacyAccess(database(), accountAccess, device.space_id));
@@ -136,7 +155,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
         .bind(accountAccess.personId, accountAccess.space_id, sourceId).first();
       return Response.json({ publication });
     }
-    if (id && !action && method === "DELETE") return Response.json(await cancelPublication(database(), bucket(), accountAccess, id));
+    if (id && !action && method === "DELETE") return Response.json(await cancelPublication(database(), storage, accountAccess, id));
     if (!id && method === "POST") {
       const input = await readJson(request, z.object({ id: z.string().uuid(), sourceId: z.string().uuid(), sourceRevision: z.number().int().nonnegative(),
         destinationSpaceId: z.string().uuid(), albumId: z.string().uuid().optional(), sectionId: z.string().uuid().optional(), confirmed: z.literal(true) }));
@@ -145,7 +164,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
       const destination = await requireAccountSpaceAccess(destinationRequest, database(), readAuth0Settings(process.env));
       if (!destination) throw new ApiError(403, "Choose an authorised shared destination.");
       const job = await reservePublication(database(), accountAccess, destination, input, spaceLimitBytes(destination));
-      return Response.json(await finishPublication(database(), bucket(), accountAccess, job));
+      return Response.json(await finishPublication(database(), storage, accountAccess, job));
     }
     throw new ApiError(404, "This publication action is unavailable.");
   }
@@ -163,7 +182,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     if (resource === "person-invitations" && id && !action && method === "DELETE") return Response.json(await revokePersonInvitation(database(), accountAccess, device.space_id, id));
     throw new ApiError(404, "This people action is unavailable.");
   }
-  const webResponse = await webAction(request, device, resource, id, action);
+  const webResponse = await webAction(request, device, resource, id, action, storage);
   if (webResponse) return webResponse;
   if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
   if (resource === "session" && !id && method === "DELETE") {
@@ -205,7 +224,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
   }
   if (resource === "uploads" && !id && method === "POST") {
     if (storageMode(request) === "unconfigured") throw new ApiError(503, "Direct transfers are not connected yet.");
-    return Response.json(await initializeUpload(device, await readJson(request, uploadSchema)));
+    return Response.json(await initializeUpload(device, await readJson(request, uploadSchema), storage));
   }
   if (resource === "uploads" && id) {
     const item = await requireMedia(device, id, true);
@@ -213,7 +232,12 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
       if (item.status !== "uploading") throw new ApiError(409, "This transfer is no longer accepting parts.");
       const { number } = await readJson(request, z.object({ number: z.number().int().min(1).max(Math.ceil(item.size / item.part_size)) }));
       const expectedBytes = Math.min(item.part_size, item.size - (number - 1) * item.part_size);
-      const url = storageMode(request) === "local" ? scopedTransferUrl(`/api/uploads/${id}/bytes/${number}`, device) : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) }, expectedBytes);
+      const signedAt = Math.floor(Date.now() / 1000) * 1000;
+      if (admissionId && storageMode(request) !== "local") {
+        await reserveClosureUploadCapability(database(), admissionId, { objectKey: item.object_key,
+          uploadId: item.upload_id, partNumber: number, expiresAt: signedAt + 3600000 });
+      }
+      const url = storageMode(request) === "local" ? scopedTransferUrl(`/api/uploads/${id}/bytes/${number}`, device) : await signedObjectUrl(item.object_key, "PUT", { uploadId: item.upload_id, partNumber: String(number) }, expectedBytes, signedAt);
       return Response.json({ url });
     }
     if (action === "bytes" && method === "PUT" && isLocal(request)) {
@@ -221,7 +245,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
       if (item.status !== "uploading" || !Number.isInteger(number) || number < 1 || number > Math.ceil(item.size / item.part_size)) throw new ApiError(400, "Invalid transfer part.");
       const expected = Math.min(item.part_size, item.size - (number - 1) * item.part_size);
       if (Number(request.headers.get("Content-Length")) !== expected || !request.body) throw new ApiError(400, "Incomplete transfer part. Please retry.");
-      const uploaded = await bucket().resumeMultipartUpload(item.object_key, item.upload_id).uploadPart(number, request.body);
+      const uploaded = await storage.resumeMultipartUpload(item.object_key, item.upload_id).uploadPart(number, request.body);
       return Response.json(uploaded, { headers: { ETag: uploaded.etag } });
     }
     if (action === "complete" && method === "POST") {
@@ -230,10 +254,10 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
       const { parts } = await readJson(request, z.object({ parts: z.array(z.object({ partNumber: z.number().int().positive(), etag: z.string().min(1).max(200) })).max(10000) }));
       const ordered = parts.sort((a, b) => a.partNumber - b.partNumber);
       if (ordered.length !== Math.ceil(item.size / item.part_size) || ordered.some((value, index) => value.partNumber !== index + 1)) throw new ApiError(400, "Some parts are missing. Resume this transfer.");
-      let object = await bucket().head(item.object_key);
-      if (!object) object = await bucket().resumeMultipartUpload(item.object_key, item.upload_id).complete(ordered);
+      let object = await storage.head(item.object_key);
+      if (!object) object = await storage.resumeMultipartUpload(item.object_key, item.upload_id).complete(ordered);
       if (object.size !== item.size) {
-        await bucket().delete(item.object_key);
+        await storage.delete(item.object_key);
         throw new ApiError(409, "File size did not match. Restart this transfer to send the original again.");
       }
       const authority = transferAuthority(device);
@@ -245,7 +269,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
         const latest = await database().prepare("SELECT status FROM media WHERE id = ?").bind(item.id).first<{ status: string }>();
         if (latest?.status === "ready") return Response.json({ ready: true });
         // Completion can race an explicit cancellation; remove a late R2 object left by that race.
-        if (!latest || latest.status === "cancelling") await bucket().delete(item.object_key);
+        if (!latest || latest.status === "cancelling") await storage.delete(item.object_key);
         throw new ApiError(409, "This upload was cancelled or restarted.");
       }
       return Response.json({ ready: true });
@@ -264,7 +288,7 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     if (storageMode(request) === "direct") return new Response(null, { status: 302, headers: { Location: await signedObjectUrl(item.object_key, "GET", { "response-content-disposition": disposition }) } });
     if (!isLocal(request)) throw new ApiError(503, "Direct downloads are not connected yet.");
     const rangeRequested = request.headers.has("Range");
-    const object = await bucket().get(item.object_key, rangeRequested ? { range: request.headers } : undefined);
+    const object = await storage.get(item.object_key, rangeRequested ? { range: request.headers } : undefined);
     if (!object) throw new ApiError(404, "This file is not available.");
     const headers = new Headers({ "Content-Type": inline ? item.mime : "application/octet-stream", "Content-Disposition": disposition, "Accept-Ranges": "bytes", ETag: object.httpEtag });
     if (rangeRequested && object.range && "offset" in object.range && "length" in object.range && object.range.offset !== undefined && object.range.length !== undefined) {

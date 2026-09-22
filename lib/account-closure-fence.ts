@@ -1,6 +1,6 @@
 import { AccountError, type AccountSession } from "./account-sessions";
 
-type WriteActor = { kind: "account"; session: AccountSession } | { kind: "legacy"; deviceId: string; spaceId: string } | { kind: "backup" };
+export type ClosureWriteActor = { kind: "account"; session: Pick<AccountSession, "sessionId" | "personId"> } | { kind: "legacy"; deviceId: string; spaceId: string } | { kind: "backup" };
 type ClosureApproval = { id: string; personId: string; requestId: string; requestRevision: number; issuer: string; subject: string;
   planDigest: string; decisionDigest: string; approvalDigest: string; authorisedAt: number };
 
@@ -12,7 +12,7 @@ const admissionHasFence = `EXISTS (SELECT 1 FROM closure_fences f WHERE w.kind='
 
 // These primitives are not wired to production routes until the complete writer audit and migration are
 // ready. Admission and closure share D1 ordering: either the write is tracked before the fence, or denied.
-export async function admitClosureTrackedWrite(database: D1Database, actor: WriteActor, now = Date.now()) {
+export async function admitClosureTrackedWrite(database: D1Database, actor: ClosureWriteActor, now = Date.now()) {
   const id = crypto.randomUUID();
   let authority: string, bindings: (string | number)[], personId: string | null = null, deviceId: string | null = null;
   if (actor.kind === "account") {

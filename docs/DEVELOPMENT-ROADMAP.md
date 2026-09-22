@@ -883,10 +883,17 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Recheck current account/device access before cancellation dispatches storage cleanup; retain authorised repeated cleanup for already-cancelled attempts.
 - [x] Verify password recovery during copy, stale reservation/copy/cancel denial without storage dispatch, revoked-session cancellation and valid retry against actual isolated D1/R2. The complete account-access suite, TypeScript and focused lint pass.
 - [x] Deploy source `6c57684` as Worker `d2878ef1-7faa-4220-88bf-7fce19b63320` at 100% (06:57 UTC). Both origins pass health/operations checks, reject anonymous feeds and keep coordination disabled; retained signed-in My space loads its ready fixture. Legacy API checks and deployment dry run pass.
-- [ ] Record hosted CI `35697206357` completion; running at deployment time.
+- [x] Hosted CI `35697206357` completed successfully in verification and browser jobs. Privacy inventory CI `35696893022` also passed both jobs.
 
 ## 22 September 2026 - Tracked storage adapter
 
 - [x] Implement a request-scoped R2 adapter that reserves each put/delete/multipart operation before dispatch and preserves native read/conditional-write behaviour. Record exact multipart part numbers and bound identifiers.
 - [x] Verify original bytes, conditional rejection, multipart lifecycle, per-key cleanup and retained-handle denial after fencing against isolated D1/R2. TypeScript and focused lint pass.
 - [ ] Inject tracked storage into application requests, wire direct capability reservation and complete metadata-generation checks. No production schema or tracking activation is included in this increment.
+
+## 22 September 2026 - Request storage custody (disabled)
+
+- [x] Inject a request-scoped tracked bucket through upload initialization, preview/restart/cancellation, publication and multipart route operations behind `RELAY_CLOSURE_TRACKING_ENABLED`. Default remains disabled; no ambient request state is used.
+- [x] Reserve direct part capabilities before signing with the exact recorded signing time/deadline. Issued capabilities and ambiguous effects leave the admission uncertain even when a response is delivered successfully.
+- [x] Verify concurrent request isolation, successful settlement, failed-request retention, native R2 operations and signing timestamp/target/byte binding. Actual built-Worker account/upload/publication tests pass with tracking enabled; add this mode to CI.
+- [ ] Complete metadata-generation and pre-library identity/pairing coverage, capability quiescence, schema minimisation and coordinated backup activation before enabling the flag in production. This source has not been deployed.

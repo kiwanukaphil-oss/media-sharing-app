@@ -31,6 +31,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/identity-operations.mjs
       - run: node --disable-warning=ExperimentalWarning tests/account-erasure-plan.mjs
       - run: node tests/account-closure-fence.mjs
+      - run: node tests/upload-signing-custody.mjs
       - run: node tests/library-write-authority.mjs
       - run: node tests/account-metadata-authority.mjs
       - run: node tests/backup-closure-coordination.mjs
@@ -66,6 +67,7 @@ jobs:
       - run: npm run build
       - run: node scripts/ci-web-integration.mjs
       - run: node scripts/ci-web-integration.mjs --account-access
+      - run: node scripts/ci-web-integration.mjs --closure-tracking
       - run: node scripts/ci-web-integration.mjs --backup-coordination
   browser:
     runs-on: ubuntu-latest

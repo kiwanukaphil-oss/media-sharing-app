@@ -7,6 +7,8 @@ const bundle=await build({entryPoints:['lib/account-closure-fence.ts'],bundle:tr
 const fence=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const storageBundle=await build({entryPoints:['lib/closure-tracked-bucket.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const {createClosureTrackedBucket}=await import(`data:text/javascript;base64,${Buffer.from(storageBundle.outputFiles[0].text).toString('base64')}`);
+const requestBundle=await build({entryPoints:['lib/closure-tracked-request.ts'],bundle:true,write:false,platform:'node',format:'esm'});
+const {runClosureTrackedRequest}=await import(`data:text/javascript;base64,${Buffer.from(requestBundle.outputFiles[0].text).toString('base64')}`);
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'closure-protocol-test',modules:true,
   script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB'],r2Buckets:['MEDIA']}]}));
 const now=Date.now(),issuer='https://closure.fixture/';
@@ -51,6 +53,25 @@ try {
   };
   assert.equal(await commit(activeAccount),1);
   const storage=await runtime.getR2Bucket('MEDIA');
+  // Concurrent request adapters keep separate admissions; ambiguous/capability responses retain custody.
+  const requestPerson=await createPerson('request');
+  const requestActor={kind:'account',session:requestPerson};
+  const requestIds=await Promise.all(['one','two'].map(label=>runClosureTrackedRequest(database,storage,requestActor,async(tracked,id)=>{
+    await tracked.put(`fixture/request-${label}`,label);return id;
+  })));
+  assert.notEqual(requestIds[0],requestIds[1]);
+  for(const id of requestIds)assert.equal((await database.prepare('SELECT state FROM closure_write_admissions WHERE id=?').bind(id).first()).state,'settled');
+  let failedRequest;
+  await assert.rejects(runClosureTrackedRequest(database,storage,requestActor,async(tracked,id)=>{
+    failedRequest=id;await tracked.put('fixture/request-failed','retained');throw new Error('request interrupted');
+  }),/interrupted/);
+  assert.equal((await database.prepare('SELECT state FROM closure_write_admissions WHERE id=?').bind(failedRequest).first()).state,'uncertain');
+  const capabilityRequest=await runClosureTrackedRequest(database,storage,requestActor,async(_tracked,id)=>{
+    await fence.reserveClosureUploadCapability(database,id,{objectKey:'fixture/request-capability',uploadId:'pending',partNumber:1,expiresAt:Date.now()+60000});
+    return {id,response:'issued'};
+  });
+  assert.equal(capabilityRequest.response,'issued');
+  assert.equal((await database.prepare('SELECT state FROM closure_write_admissions WHERE id=?').bind(capabilityRequest.id).first()).state,'uncertain');
   // Exercise the actual R2 interface through the adapter, including handles retained across a fence.
   const adapterPerson=await createPerson('adapter');
   const adapterAdmission=await fence.admitClosureTrackedWrite(database,{kind:'account',session:adapterPerson},now);

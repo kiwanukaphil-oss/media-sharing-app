@@ -82,7 +82,7 @@ export async function readStorage(device: ActiveDevice) {
 }
 
 // Previews are small, separate JPEG objects. An original is never decoded or replaced here.
-async function writeThumbnail(request: Request, device: ActiveDevice, id: string) {
+async function writeThumbnail(request: Request, device: ActiveDevice, id: string, storage: R2Bucket) {
   const item = await requireMedia(device, id, true);
   if (item.status !== "ready" || item.archived_at) throw new ApiError(409, "This original is not available for preview.");
   if (item.preview_ready) return Response.json({ ready: true });
@@ -105,12 +105,12 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
     .bind(size, id,...authority.bindings,device.space_id, size, spaceLimitBytes(device)).run();
   if (!reserved.meta.changes) return Response.json({ ready: false });
   try {
-    await bucket().put(`${item.object_key}.preview.jpg`, bytes, { httpMetadata: { contentType: "image/jpeg" } });
+    await storage.put(`${item.object_key}.preview.jpg`, bytes, { httpMetadata: { contentType: "image/jpeg" } });
     const current = transferAuthority(device);
     const committed = await database().prepare(`UPDATE media SET preview_ready = 1 WHERE id = ? AND status = 'ready'
       AND archived_at IS NULL AND ${current.sql}`).bind(id,...current.bindings).run();
     if (!committed.meta.changes) {
-      await bucket().delete(`${item.object_key}.preview.jpg`);
+      await storage.delete(`${item.object_key}.preview.jpg`);
       throw new ApiError(409, "This preview could not be saved because the file or library access changed.");
     }
   } catch (failure) {
@@ -120,26 +120,26 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
 }
 
 // A tombstone prevents new links during deletion; storage is released only after R2 acknowledges it.
-async function permanentlyDelete(item: UploadRow) {
+async function permanentlyDelete(item: UploadRow, storage: R2Bucket) {
   if (!item.archived_at) throw new ApiError(409, "Move this file to Trash before deleting it permanently.");
   await database().prepare("UPDATE media SET status = 'deleting' WHERE id = ?").bind(item.id).run();
-  await bucket().delete([item.object_key, `${item.object_key}.preview.jpg`]);
+  await storage.delete([item.object_key, `${item.object_key}.preview.jpg`]);
   await database().prepare("DELETE FROM media WHERE id = ? AND status = 'deleting'").bind(item.id).run();
   return Response.json({ deleted: true });
 }
 
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
-export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string): Promise<Response | null> {
+export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string, storage: R2Bucket = bucket()): Promise<Response | null> {
   const method = request.method;
   const libraryResponse = await libraryAction(request, device, resource, id);
   if (libraryResponse) return libraryResponse;
   if (resource === "feed" && method === "GET") return readFeed(request, device);
   if (resource === "storage" && method === "GET") return readStorage(device);
-  if (resource === "media" && id && action === "thumbnail" && method === "PUT") return writeThumbnail(request, device, id);
+  if (resource === "media" && id && action === "thumbnail" && method === "PUT") return writeThumbnail(request, device, id, storage);
   if (resource === "media" && id && action === "thumbnail" && method === "GET") {
     const item = await requireMedia(device, id);
     if (item.status !== "ready" || !item.preview_ready) throw new ApiError(404, "No preview is available.");
-    const object = await bucket().get(`${item.object_key}.preview.jpg`);
+    const object = await storage.get(`${item.object_key}.preview.jpg`);
     if (!object) throw new ApiError(404, "No preview is available.");
     return new Response(object.body, { headers: { "Content-Type": "image/jpeg", "Content-Length": String(object.size) } });
   }
@@ -155,33 +155,33 @@ export async function webAction(request: Request, device: ActiveDevice, resource
   }
   if (resource === "media" && id && !action && method === "DELETE") {
     requireOwner(device);
-    return permanentlyDelete(await requireMedia(device, id));
+    return permanentlyDelete(await requireMedia(device, id), storage);
   }
   if (resource === "uploads" && id && !action && method === "DELETE") {
     const item = await requireMedia(device, id);
     if (item.device_id !== device.id) requireOwner(device);
     if (item.status === "publishing" || (item.status === "cancelling" && await database().prepare("SELECT id FROM publications WHERE id = ?").bind(id).first())) {
       const publisher = await database().prepare("SELECT person_id FROM space_memberships WHERE id = ?").bind(device.id).first<{ person_id: string }>();
-      return Response.json(await cancelPublication(database(), bucket(), { ...device, personId: device.authentication === "account" ? publisher?.person_id : undefined }, id));
+      return Response.json(await cancelPublication(database(), storage, { ...device, personId: device.authentication === "account" ? publisher?.person_id : undefined }, id));
     }
     if (!["uploading", "cancelling"].includes(item.status)) throw new ApiError(409, "This file has already arrived. Refresh your feed.");
     const cancelled = await database().prepare("UPDATE media SET status = 'cancelling' WHERE id = ? AND status = 'uploading'").bind(id).run();
     if (item.status === "uploading" && !cancelled.meta.changes) throw new ApiError(409, "This file finished arriving. Refresh the feed.");
-    try { await bucket().resumeMultipartUpload(item.object_key, item.upload_id).abort(); }
+    try { await storage.resumeMultipartUpload(item.object_key, item.upload_id).abort(); }
     catch (failure) { if (!/NoSuchUpload|does not exist|not found/i.test(String(failure))) throw failure; }
-    await bucket().delete(item.object_key);
+    await storage.delete(item.object_key);
     await database().prepare("DELETE FROM media WHERE id = ? AND status = 'cancelling'").bind(id).run();
     return Response.json({ cancelled: true });
   }
   if (resource === "uploads" && id && action === "restart" && method === "POST") {
     const item = await requireMedia(device, id, true);
     if (item.status !== "uploading") throw new ApiError(409, "Only unfinished uploads can be restarted.");
-    const upload = await bucket().createMultipartUpload(item.object_key, { httpMetadata: { contentType: item.mime }, customMetadata: { sha256: item.sha256, filename: item.name } });
+    const upload = await storage.createMultipartUpload(item.object_key, { httpMetadata: { contentType: item.mime }, customMetadata: { sha256: item.sha256, filename: item.name } });
     const authority = transferAuthority(device);
     const changed = await database().prepare(`UPDATE media SET upload_id = ? WHERE id = ? AND upload_id = ? AND status = 'uploading' AND ${authority.sql}`)
       .bind(upload.uploadId, id, item.upload_id, ...authority.bindings).run();
     if (!changed.meta.changes) { await upload.abort(); throw new ApiError(409, "This transfer changed. Refresh and retry."); }
-    try { await bucket().resumeMultipartUpload(item.object_key, item.upload_id).abort(); } catch { /* Expired upload parts may already have been removed by R2. */ }
+    try { await storage.resumeMultipartUpload(item.object_key, item.upload_id).abort(); } catch { /* Expired upload parts may already have been removed by R2. */ }
     return Response.json({ id, partSize: item.part_size, status: "uploading", uploadId: upload.uploadId });
   }
   return null;
