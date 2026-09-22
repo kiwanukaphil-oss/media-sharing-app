@@ -1,8 +1,14 @@
 # Direct Cloudflare deployment
 
+## Publication recovery clarity - 22 September 2026
+
+Worker `70b02d61-1fa7-4d99-8197-93e467b9fa45` is at **100%**, deployed 08:46 UTC from `fa55b93`. The dialog waits for publication history before showing editable controls and distinguishes Previously published from a new completion. Fresh sign-in, personal preview, shared switching and People & access were verified. Independent D1 readback confirms 25 ready files and one publication, unchanged from before this review. No duplicate copy was created.
+
+Delayed-response browser tests, TypeScript, focused lint, build and dry run passed. Hosted UI CI `35706287820` and disposition-verifier CI `35706520490` passed both jobs. Punctuation follow-up CI `35706646571` passed both jobs. Both origins retain health/operations 200, anonymous feed 401 and coordinator 403. Schema, pilot budget and access flags are unchanged.
+
 ## Approved Workers Paid monitor - 22 September 2026
 
-Cloudflare confirms the explicitly approved Workers Paid subscription active at $5/month plus usage. Monitor version `679cc9bd-a536-448e-a4fd-d34db1be5420` is at 100%, deployed 08:32 UTC from `d1c5797`. Independent version readback confirms standard usage model and 1,000 ms CPU limit. The 19/49 schedule, private endpoint, read-only credentials and 40-identity pilot guard remain in place. Hosted CI `35705343640` passed verification and browser jobs. Post-upgrade actual cron observation remains pending; the prior 08:19 Free-plan run succeeded at 10 ms.
+Cloudflare confirms the explicitly approved Workers Paid subscription active at $5/month plus usage. Monitor version `679cc9bd-a536-448e-a4fd-d34db1be5420` is at 100%, deployed 08:32 UTC from `d1c5797`. Independent version readback confirms standard usage model and 1,000 ms CPU limit. The 19/49 schedule, private endpoint, read-only credentials and 40-identity pilot guard remain in place. Hosted CI `35705343640` passed verification and browser jobs. Post-upgrade 08:49 UTC cron passed at 8 ms CPU / 2,208 ms wall time, no exceptions; independent R2 readback confirms the signed success report. Current-pilot CPU headroom is established; broader load remains unvalidated.
 
 ## Delayed recovery identity protection - 22 September 2026
 

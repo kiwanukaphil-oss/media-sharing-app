@@ -65,3 +65,10 @@ A 1,000 ms monitor CPU limit is prepared and passes Wrangler deployment dry run.
 
 
 The bounded Paid configuration is deployed as `679cc9bd-a536-448e-a4fd-d34db1be5420` at **100%**, 08:32 UTC. Independent version readback confirms usage model `standard` and `limits.cpu_ms=1000`; the twice-hourly `19,49` schedule is installed. A transient deployment-status network error succeeded on retry. The next actual cron is still required for post-upgrade execution evidence; deployment alone is not that evidence.
+
+
+## Post-upgrade scheduled execution verified
+
+- [x] Observe actual 22 September 08:49 UTC cron on `679cc9bd-a536-448e-a4fd-d34db1be5420`: outcome ok, no exceptions, **8 ms CPU / 2,208 ms wall time**, versus the independently verified 1,000 ms CPU limit.
+- [x] Independently download the delivered R2 report: success, `eventAt=1790066992270`, `receivedAt=1790066993255`. Private evidence is retained as `paid-monitor-tail-2026-09-22-0849.json` and `paid-monitor-delivery-2026-09-22.json` under ignored operations storage.
+- [x] Establish CPU headroom for the current restricted pilot. This single Paid sample does not validate 40 active identities or broader load; retain the guard and capacity review before expansion.

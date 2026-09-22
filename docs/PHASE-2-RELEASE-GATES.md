@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 22 September 2026. Phase 2 remains a restricted designated-account pilot, not a general release. Live runtime and migration evidence are maintained in [deployment status](../deploy/STATUS.md); the current verified runtime is `a25d36be-f1ca-4b52-90bb-eb043b310312`. Total personal allocation remains 1 GiB. Navigation, recovery/current-authority checks and retained signed-in library verification passed. Backup coordination and migration 0019 are live and independently verified through the [staged activation record](COORDINATED-BACKUP-ACTIVATION.md); account closure execution remains disabled.
+Updated 22 September 2026. Phase 2 remains a restricted designated-account pilot, not a general release. Live runtime and migration evidence are maintained in [deployment status](../deploy/STATUS.md); the current verified runtime is `70b02d61-1fa7-4d99-8197-93e467b9fa45`. Total personal allocation remains 1 GiB. Navigation, recovery/current-authority checks and retained signed-in library verification passed. Backup coordination and migration 0019 are live and independently verified through the [staged activation record](COORDINATED-BACKUP-ACTIVATION.md); account closure execution remains disabled.
 
 ## Prepared and verified locally
 
@@ -31,7 +31,8 @@ Updated 22 September 2026. Phase 2 remains a restricted designated-account pilot
 - [x] Configure combined monitoring at minutes 13 and 43 UTC each hour; GitHub scheduling is best effort.
 - [x] Observe independent Cloudflare scheduled combined runs at 15:19 and 15:49 UTC on 21 September, with signed delivery and healthy public readback; optimised CPU sample is 8 ms on Free.
 - [x] Verify the already-sent identity/recovery test-alert receipt: Gmail Inbox inspected 22 September; message dated 21 September at 11:57 a.m. EAT.
-- [ ] Verify monitoring CPU headroom before expansion. Continued scheduled success observed at 08:19 UTC on 22 September, but 10 ms reaches the confirmed Free allowance. Paid activated with explicit approval; post-upgrade scheduled observation pending.
+- [x] Verify current-pilot monitoring headroom after approved Paid activation: actual 08:49 UTC run uses 8 ms of the configured 1,000 ms, with independent signed-report delivery.
+- [ ] Validate broader identity capacity before expanding beyond the restricted pilot.
 - [x] Rehearse operator repair with designated synthetic identities in isolated actual-schema D1: monitor detection, signed replay, independent watermark readback, old-session revocation, newer/unrelated-session preservation, library fingerprints and replay ordering passed. Real provider/receiver verification is recorded separately.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.
