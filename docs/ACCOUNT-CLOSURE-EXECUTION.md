@@ -127,3 +127,10 @@ The following entry points use atomic existing-authority checks before an authen
 | Anonymous sign-in transaction | Short-lived nonce/verifier state has no person/provider-subject binding; consumption grants no session by itself | Existing transaction replay/config/browser-binding tests plus the separately guarded callback |
 
 The account-disabled predicate is part of the durable fence transaction and restored fences preserve disablement. No automatic reopening exists. These tests prove the stated local database boundaries; they do not establish remote multipart quiescence, historical-version disposition or full executor completion. Unrelated shared members and separately issued credentials remain within the explicit shared-content retention policy.
+
+
+### Positive device binding coverage
+
+Closure guards and scoped revocation now resolve both `legacy_owner_claims` and `account_space_actors` through membership identity, retaining historical scope even when a membership is revoked. The same union governs admission, post-fence commits and outstanding-write reporting. Actual D1 tests include an account compatibility device, a separately claimed legacy device and an unrelated retained device. This increment is locally verified; production tracking remains disabled.
+
+The separate [multipart rehearsal](MULTIPART-CLOSURE-REHEARSAL.md) is prepared for hosted verification. Its limited post-abort test cannot clear unresolved direct capabilities or establish completion of pre-abort remote requests.

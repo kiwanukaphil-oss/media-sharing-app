@@ -4,14 +4,18 @@ export type ClosureWriteActor = { kind: "account"; session: Pick<AccountSession,
 type ClosureApproval = { id: string; personId: string; requestId: string; requestRevision: number; issuer: string; subject: string;
   planDigest: string; decisionDigest: string; approvalDigest: string; authorisedAt: number };
 
+// Include both positive device bindings, even revoked memberships: historical writes keep their owner.
+const linkedClosureDevices = `(SELECT device_id,membership_id FROM legacy_owner_claims
+  UNION SELECT device_id,membership_id FROM account_space_actors)`;
+
 // Resolve closure scope from recorded identity/legacy-claim relationships, never a display name.
 // A global backup admission intersects every closure because its snapshot can contain any person.
 const admissionHasFence = `EXISTS (SELECT 1 FROM closure_fences f WHERE w.kind='backup' OR f.person_id=w.person_id OR
-  (w.kind='legacy' AND EXISTS (SELECT 1 FROM legacy_owner_claims c JOIN space_memberships m ON m.id=c.membership_id
+  (w.kind='legacy' AND EXISTS (SELECT 1 FROM ${linkedClosureDevices} c JOIN space_memberships m ON m.id=c.membership_id
     WHERE c.device_id=w.device_id AND m.person_id=f.person_id)))`;
 
-// These primitives are not wired to production routes until the complete writer audit and migration are
-// ready. Admission and closure share D1 ordering: either the write is tracked before the fence, or denied.
+// Request tracking remains disabled in production until the writer audit and migration are ready.
+// Admission and closure share D1 ordering: either the write is tracked before the fence, or denied.
 export async function admitClosureTrackedWrite(database: D1Database, actor: ClosureWriteActor, now = Date.now()) {
   const id = crypto.randomUUID();
   let authority: string, bindings: (string | number)[], personId: string | null = null, deviceId: string | null = null;
@@ -25,7 +29,7 @@ export async function admitClosureTrackedWrite(database: D1Database, actor: Clos
     deviceId = actor.deviceId;
     authority = `EXISTS (SELECT 1 FROM devices d WHERE d.id=? AND d.space_id=? AND d.revoked_at IS NULL AND d.expires_at>?
       AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id=d.space_id)) AND NOT EXISTS
-      (SELECT 1 FROM closure_fences f JOIN space_memberships m ON m.person_id=f.person_id JOIN legacy_owner_claims c ON c.membership_id=m.id WHERE c.device_id=?)`;
+      (SELECT 1 FROM closure_fences f JOIN space_memberships m ON m.person_id=f.person_id JOIN ${linkedClosureDevices} c ON c.membership_id=m.id WHERE c.device_id=?)`;
     bindings = [deviceId, actor.spaceId, now, deviceId];
   } else {
     authority = "NOT EXISTS (SELECT 1 FROM closure_fences)"; bindings = [];
@@ -141,7 +145,7 @@ export async function beginApprovedClosureFence(database: D1Database, approval: 
     database.prepare(`UPDATE people SET disabled_at=COALESCE(disabled_at,?) WHERE id=? AND ${guard}`).bind(now, approval.personId, ...guardValues),
     database.prepare(`UPDATE account_sessions SET revoked_at=COALESCE(revoked_at,?) WHERE person_id=? AND ${guard}`).bind(now, approval.personId, ...guardValues),
     database.prepare(`UPDATE devices SET revoked_at=COALESCE(revoked_at,?) WHERE id IN
-      (SELECT c.device_id FROM legacy_owner_claims c JOIN space_memberships m ON m.id=c.membership_id WHERE m.person_id=?) AND ${guard}`)
+      (SELECT c.device_id FROM ${linkedClosureDevices} c JOIN space_memberships m ON m.id=c.membership_id WHERE m.person_id=?) AND ${guard}`)
       .bind(now, approval.personId, ...guardValues),
     database.prepare(`UPDATE account_deletion_requests SET status='review_required',updated_at=MAX(updated_at+1,?)
       WHERE id=? AND status='pending' AND ${guard}`).bind(now, approval.requestId, ...guardValues),
@@ -158,7 +162,7 @@ export async function inspectClosureFence(database: D1Database, id: string) {
   if (!fence) throw new AccountError(404, "Closure fence not found.");
   const unresolved = await database.prepare(`SELECT COUNT(*) AS count FROM closure_write_admissions w WHERE w.state<>'settled'
     AND (w.kind='backup' OR w.person_id=? OR (w.kind='legacy' AND EXISTS
-      (SELECT 1 FROM legacy_owner_claims c JOIN space_memberships m ON m.id=c.membership_id WHERE c.device_id=w.device_id AND m.person_id=?)))`)
+      (SELECT 1 FROM ${linkedClosureDevices} c JOIN space_memberships m ON m.id=c.membership_id WHERE c.device_id=w.device_id AND m.person_id=?)))`)
     .bind(fence.personId, fence.personId).first<{ count: number }>();
   return { ...fence, unresolvedWrites: unresolved?.count ?? 0, trackedWritesDrained: unresolved?.count === 0, executable: false };
 }

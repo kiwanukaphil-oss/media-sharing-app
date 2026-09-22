@@ -3,10 +3,10 @@ import { requireAccountSpaceAccess, type AccountSpaceAccess } from "../lib/accou
 import { reservePublication, finishPublication, cancelPublication } from "../lib/publications";
 
 type Environment = { DB: D1Database; BUCKET: R2Bucket; REHEARSAL_KEY?: string; REHEARSAL_EXPIRES_AT?: string; REHEARSAL_RUN_ENABLED?: string };
-type Scenario = "copy" | "interruption" | "revocation" | "cancellation";
+type Scenario = "copy" | "interruption" | "revocation" | "cancellation" | "multipart";
 type Fixture = { source: AccountSpaceAccess; destination: AccountSpaceAccess; sourceId: string; sourceKey: string;
   membershipId: string; jobId: string; sha256: string };
-const scenarios: Scenario[] = ["copy", "interruption", "revocation", "cancellation"];
+const scenarios: Scenario[] = ["copy", "interruption", "revocation", "cancellation", "multipart"];
 const settings = { issuer: "https://synthetic-rehearsal.invalid/", clientId: "synthetic-rehearsal",
   clientSecret: "unused-fixture", appOrigin: "https://synthetic-rehearsal.invalid", callbackUrl: "https://synthetic-rehearsal.invalid/callback" };
 const bytes = new TextEncoder().encode("Relay isolated publication rehearsal. Generated test bytes only.");
@@ -21,7 +21,7 @@ async function authenticateOperation(request: Request, env: Environment) {
   const signature = request.headers.get("X-Rehearsal-Signature") || "";
   const expiry = Number(env.REHEARSAL_EXPIRES_AT);
   if (request.method !== "POST" || request.headers.has("Origin") || !/^[a-f0-9]{64}$/.test(env.REHEARSAL_KEY || "") ||
-    !Number.isSafeInteger(expiry) || Date.now() >= expiry || !/^(seed|run):(copy|interruption|revocation|cancellation)$/.test(operation) ||
+    !Number.isSafeInteger(expiry) || Date.now() >= expiry || !/^(seed|run):(copy|interruption|revocation|cancellation|multipart)$/.test(operation) ||
     (operation.startsWith("run:") && env.REHEARSAL_RUN_ENABLED !== "true") ||
     !/^\d{13}$/.test(timestamp) || Math.abs(Date.now() - Number(timestamp)) > 300000 || !/^[a-f0-9]{64}$/.test(signature)) return null;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.REHEARSAL_KEY), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
@@ -122,6 +122,45 @@ async function runFixture(env: Environment, scenario: Scenario) {
   } else assert(!await env.DB.prepare("SELECT id FROM media WHERE id=?").bind(fixture.jobId).first());
 }
 
+const multipartKey = "closure-multipart-rehearsal/2026-09-22/20ce059c-53bd-48ae-94fb-31efc0e55122";
+
+// Persist the exact generated upload before any abort can run. The caller cannot choose a storage target.
+// A failed allocation acknowledgement is retained as review-required; it is never silently reseeded.
+async function seedMultipartFixture(env: Environment) {
+  await ensureIsolatedStorage(env);
+  const existing = await env.DB.prepare("SELECT fixture FROM publication_rehearsal_state WHERE id='multipart'").first();
+  if (existing) return;
+  assert(await env.BUCKET.head(multipartKey) === null);
+  await env.DB.prepare("INSERT INTO publication_rehearsal_state VALUES ('multipart','allocation-pending')").run();
+  const upload = await env.BUCKET.createMultipartUpload(multipartKey);
+  await env.DB.prepare("UPDATE publication_rehearsal_state SET fixture=? WHERE id='multipart'")
+    .bind(JSON.stringify({ key: multipartKey, uploadId: upload.uploadId, phase: "seeded" })).run();
+}
+
+// Rehearse only generated multipart bytes in the separate bucket. This tests rejection after an awaited
+// abort; it deliberately does not claim to settle a direct URL or a remotely in-flight upload request.
+async function runMultipartFixture(env: Environment) {
+  await ensureIsolatedStorage(env);
+  const record = await env.DB.prepare("SELECT fixture FROM publication_rehearsal_state WHERE id='multipart'").first<{ fixture: string }>();
+  assert(record);
+  const fixture = JSON.parse(record!.fixture);
+  assert(fixture.key === multipartKey && typeof fixture.uploadId === "string" && fixture.uploadId.length > 0);
+  if (fixture.phase === "passed") return;
+  assert(fixture.phase === "seeded");
+  const claimed = await env.DB.prepare("UPDATE publication_rehearsal_state SET fixture=? WHERE id='multipart' AND fixture=?")
+    .bind(JSON.stringify({ ...fixture, phase: "running" }), record!.fixture).run();
+  assert(claimed.meta.changes === 1);
+  const upload = env.BUCKET.resumeMultipartUpload(multipartKey, fixture.uploadId);
+  const part = await upload.uploadPart(1, bytes);
+  await upload.abort();
+  let latePartRejected = false, completionRejected = false;
+  try { await upload.uploadPart(1, bytes); } catch { latePartRejected = true; }
+  try { await upload.complete([part]); } catch { completionRejected = true; }
+  assert(latePartRejected && completionRejected && await env.BUCKET.head(multipartKey) === null);
+  await env.DB.prepare("UPDATE publication_rehearsal_state SET fixture=? WHERE id='multipart'")
+    .bind(JSON.stringify({ ...fixture, phase: "passed", latePartRejected, completionRejected, verifiedAt: Date.now(), quiescenceProven: false })).run();
+}
+
 const publicationRehearsalWorker = {
   // This is a separate, expiring test Worker, never part of the production application route tree.
   async fetch(request: Request, env: Environment) {
@@ -130,7 +169,9 @@ const publicationRehearsalWorker = {
     const [action, scenario] = operation.split(":") as [string, Scenario];
     if (!scenarios.includes(scenario)) return new Response(null, { status: 400 });
     try {
-      if (action === "seed") await seedFixture(env, scenario);
+      if (scenario === "multipart") {
+        if (action === "seed") await seedMultipartFixture(env); else await runMultipartFixture(env);
+      } else if (action === "seed") await seedFixture(env, scenario);
       else await runFixture(env, scenario);
       return Response.json({ status: "passed", operation }, { headers: { "Cache-Control": "no-store" } });
     } catch { return Response.json({ status: "failed", operation }, { status: 503, headers: { "Cache-Control": "no-store" } }); }

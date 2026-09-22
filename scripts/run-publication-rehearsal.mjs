@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { runPrivateCommand } from './backup-storage.mjs';
 
 // Pin the isolated test service and decrypt its expiring key only in memory; no production credential is read.
-async function runPublicationRehearsal(mode) {
+async function runPublicationRehearsal(mode, scenarioSelection) {
+  if (scenarioSelection !== undefined && scenarioSelection !== "multipart") throw new Error("Unknown rehearsal selection.");
   if (!['seed','run'].includes(mode)) throw new Error('Choose seed or run for the isolated publication rehearsal.');
   const config=JSON.parse(await readFile('deploy/wrangler.publication-rehearsal.json','utf8'));
   if (config.name!=='relay-publication-rehearsal'||config.d1_databases[0].database_id!=='a22d670e-2a20-4266-9f07-0601406a0d56'||
@@ -14,7 +15,7 @@ async function runPublicationRehearsal(mode) {
   const sealed=await readFile('.sites-runtime/operations/publication-rehearsal-key.dpapi','utf8');
   const key=await runPrivateCommand('powershell.exe',['-NoProfile','-NonInteractive','-Command',
     '$ErrorActionPreference="Stop"; $sealed=[Console]::In.ReadToEnd(); $value=ConvertTo-SecureString $sealed; $pointer=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($value); try { [Console]::Out.Write([Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }'],sealed);
-  for(const scenario of ['copy','interruption','revocation','cancellation']) {
+  for(const scenario of scenarioSelection ? ['multipart'] : ['copy','interruption','revocation','cancellation']) {
     const operation=`${mode}:${scenario}`,timestamp=String(Date.now());
     const signature=createHmac('sha256',key).update(`${timestamp}.${operation}`).digest('hex');
     const response=await fetch('https://relay-publication-rehearsal.kiwanukaphil.workers.dev/',{method:'POST',redirect:'error',
@@ -26,5 +27,5 @@ async function runPublicationRehearsal(mode) {
   }
 }
 
-try { await runPublicationRehearsal(process.argv[2]); }
+try { await runPublicationRehearsal(process.argv[2],process.argv[3]); }
 catch { console.error('Isolated publication rehearsal stopped; check scope, arming, expiry and private deployment diagnostics. No private response was logged.'); process.exitCode=1; }

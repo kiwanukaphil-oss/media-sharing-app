@@ -33,7 +33,7 @@ try {
   await bucket.put('existing-object','Other data');
   assert.equal((await invoke('seed:copy')).status,503,'Populated object storage must also fail closed.');
   await bucket.delete('existing-object');
-  for(const scenario of ['copy','interruption','revocation','cancellation']) {
+  for(const scenario of ['copy','interruption','revocation','cancellation','multipart']) {
     const seeded=await invoke(`seed:${scenario}`);
     assert.equal(seeded.status,200,`Seed ${scenario}: ${await seeded.text()}`);
     const completed=await invoke(`run:${scenario}`);

@@ -31,7 +31,7 @@ try {
     return {personId,sessionId,requestId,subject:label};
   }
   const [owner,other,independent]=await Promise.all(['owner','other','independent'].map(createPerson));
-  const space=crypto.randomUUID(),membership=crypto.randomUUID(),otherMembership=crypto.randomUUID(),legacy=crypto.randomUUID(),unrelatedLegacy=crypto.randomUUID();
+  const space=crypto.randomUUID(),membership=crypto.randomUUID(),otherMembership=crypto.randomUUID(),legacy=crypto.randomUUID(),unrelatedLegacy=crypto.randomUUID(),compatibilityDevice=crypto.randomUUID();
   await database.batch([
     database.prepare('INSERT INTO spaces VALUES(?,?,?)').bind(space,'Shared fixture',now),
     database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'owner',?)").bind(membership,owner.personId,space,now),
@@ -39,15 +39,18 @@ try {
     database.prepare('INSERT INTO devices(id,space_id,name,token_hash,created_at,expires_at) VALUES(?,?,?,?,?,?)').bind(legacy,space,'Linked',legacy,now,now+60000),
     database.prepare('INSERT INTO devices(id,space_id,name,token_hash,created_at,expires_at) VALUES(?,?,?,?,?,?)').bind(unrelatedLegacy,space,'Unrelated',unrelatedLegacy,now,now+60000),
     database.prepare('INSERT INTO legacy_owner_claims VALUES(?,?,?,?)').bind(legacy,membership,owner.sessionId,now),
+    database.prepare('INSERT INTO devices(id,space_id,name,token_hash,created_at,expires_at) VALUES(?,?,?,?,?,?)').bind(compatibilityDevice,space,'Account compatibility',compatibilityDevice,now,now+60000),
+    database.prepare('INSERT INTO account_space_actors VALUES(?,?)').bind(membership,compatibilityDevice),
   ]);
   const approval=person=>({id:crypto.randomUUID(),personId:person.personId,requestId:person.requestId,requestRevision:now-100,
     issuer,subject:person.subject,planDigest:'a'.repeat(64),decisionDigest:'b'.repeat(64),approvalDigest:'c'.repeat(64),authorisedAt:now});
   const ownerApproval=approval(owner);
-  const [activeAccount,activeLegacy,activeBackup,activeOther]=await Promise.all([
+  const [activeAccount,activeLegacy,activeBackup,activeOther,activeCompatibility]=await Promise.all([
     fence.admitClosureTrackedWrite(database,{kind:'account',session:owner},now),
     fence.admitClosureTrackedWrite(database,{kind:'legacy',deviceId:legacy,spaceId:space},now),
     fence.admitClosureTrackedWrite(database,{kind:'backup'},now),
     fence.admitClosureTrackedWrite(database,{kind:'account',session:other},now),
+    fence.admitClosureTrackedWrite(database,{kind:'legacy',deviceId:compatibilityDevice,spaceId:space},now),
   ]);
   const commit=async admission=>{
     const guard=fence.closureAdmissionAuthority(admission.id);
@@ -125,9 +128,9 @@ try {
   assert.deepEqual(await database.prepare('SELECT * FROM people WHERE id=?').bind(owner.personId).first(),frozenProfile);
   assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM account_sessions WHERE person_id=?').bind(owner.personId).first()).n,frozenSessionCount);
   assert.deepEqual(await fence.beginApprovedClosureFence(database,ownerApproval,now+1),started,'Exact fence retry is idempotent');
-  for(const active of [activeAccount,activeLegacy,activeBackup])assert.equal(await commit(active),0);
+  for(const active of [activeAccount,activeLegacy,activeBackup,activeCompatibility])assert.equal(await commit(active),0);
   assert.equal(await commit(activeOther),1);
-  assert.equal((await fence.inspectClosureFence(database,started.id)).unresolvedWrites,3);
+  assert.equal((await fence.inspectClosureFence(database,started.id)).unresolvedWrites,4);
   let forbiddenDispatch=false;
   await assert.rejects(fence.runClosureStorageEffect(database,activeAccount.id,{objectKey:'fixture/denied',operation:'put'},async()=>{
     forbiddenDispatch=true;return {value:null};
@@ -143,13 +146,15 @@ try {
   },now),/lost response/);
   await assert.rejects(fence.settleClosureTrackedWrite(database,activeOther.id,'settled',now),/review/);
   assert.equal((await database.prepare('SELECT state FROM closure_storage_effects WHERE admission_id=?').bind(activeOther.id).first()).state,'uncertain');
-  for(const actor of [{kind:'account',session:owner},{kind:'legacy',deviceId:legacy,spaceId:space},{kind:'backup'}])
+  for(const actor of [{kind:'account',session:owner},{kind:'legacy',deviceId:legacy,spaceId:space},{kind:'legacy',deviceId:compatibilityDevice,spaceId:space},{kind:'backup'}])
     await assert.rejects(fence.admitClosureTrackedWrite(database,actor,now),/closure|access/);
   assert.ok(await fence.admitClosureTrackedWrite(database,{kind:'legacy',deviceId:unrelatedLegacy,spaceId:space},now));
   assert.equal((await database.prepare('SELECT revoked_at FROM account_sessions WHERE id=?').bind(owner.sessionId).first()).revoked_at,now);
   assert.equal((await database.prepare('SELECT disabled_at FROM people WHERE id=?').bind(other.personId).first()).disabled_at,null);
   assert.equal((await database.prepare('SELECT revoked_at FROM devices WHERE id=?').bind(unrelatedLegacy).first()).revoked_at,null);
   await assert.rejects(fence.beginApprovedClosureFence(database,approval(other),now),/ownership/,'Last shared owner cannot close');
+  assert.equal((await database.prepare('SELECT revoked_at FROM devices WHERE id=?').bind(compatibilityDevice).first()).revoked_at,now);
+  await fence.settleClosureTrackedWrite(database,activeCompatibility.id,'settled',now+1);
   await fence.settleClosureTrackedWrite(database,activeAccount.id,'settled',now+1);
   await fence.settleClosureTrackedWrite(database,activeLegacy.id,'uncertain',now+1);
   await fence.settleClosureTrackedWrite(database,activeBackup.id,'settled',now+1);

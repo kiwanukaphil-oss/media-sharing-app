@@ -925,3 +925,11 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Test pre-issued browser/native pairing invitations after fencing a positively linked issuer; no credential is created and the retained shared owner stays active.
 - [x] Record the bounded identity-entry-point proof and anonymous sign-in transaction boundary in [closure execution](ACCOUNT-CLOSURE-EXECUTION.md). Actual-D1 and built-Worker enabled-tracking suites pass.
 - [ ] Complete remote multipart quiescence, new-schema minimisation, coordinated hosted backup and full generated-identity execution before activation. The local entry-point review does not complete P2-06.
+
+
+## 22 September 2026 - Complete positive device binding and multipart preparation
+
+- [x] Include account compatibility-device bindings alongside recorded legacy claims in closure admission, commit guards, scoped revocation and unresolved-write inspection. Actual D1/R2 tests prove both links stop at the fence while unrelated devices remain available; metadata-authority tests, TypeScript and lint pass.
+- [x] Prepare an exact-target multipart rehearsal in the existing isolated rehearsal Worker/D1/R2. Local tests and deployment dry run pass; the runner can select only this fixture. The fixed generated key and one-shot D1 state prevent caller-selected cleanup or automatic ambiguous retries.
+- [ ] Seed the isolated hosted upload, obtain specific authority for its abort, then verify post-abort part/completion rejection and record the bounded result. See [multipart rehearsal](MULTIPART-CLOSURE-REHEARSAL.md). Production closure stays disabled.
+- [ ] Independently reconcile issued direct capabilities and requests already in flight; an abort response or absence observation alone is not an authenticated full quiescence receipt.

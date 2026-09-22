@@ -19,7 +19,7 @@
     }
   ],
   "vars": {
-    "REHEARSAL_EXPIRES_AT": "0",
+    "REHEARSAL_EXPIRES_AT": "1790066585174",
     "REHEARSAL_RUN_ENABLED": "false"
   }
 }
