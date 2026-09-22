@@ -122,5 +122,6 @@
 @media (max-width: 380px) {
   .library-command-row { grid-template-columns: auto auto auto auto; }
   .library-command-row .library-sort { order: 5; grid-column: 1 / -1; }
-  .library-command-row .new-album-button { margin-left: auto; }
+  .library-command-row .new-album-button { margin-left: auto; padding: 8px; justify-content: center; }
+  .library-command-row .new-album-button span { display: none; }
 }
