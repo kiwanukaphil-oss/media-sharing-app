@@ -215,7 +215,8 @@ export const media = sqliteTable("media", {
   previewReady: integer("preview_ready").notNull().default(0),
   previewSize: integer("preview_size").notNull().default(0),
   createdAt: integer("created_at").notNull(),
-}, table => [index("idx_media_space_status_created").on(table.spaceId, table.status, table.createdAt), index("idx_media_feed").on(table.spaceId, table.status, table.archivedAt, table.createdAt, table.id)]);
+}, table => [index("idx_media_space_status_created").on(table.spaceId, table.status, table.createdAt), index("idx_media_feed").on(table.spaceId, table.status, table.archivedAt, table.createdAt, table.id),
+  index("idx_media_duplicate_candidates").on(table.spaceId,table.accessScopeId,table.sha256,table.size,table.status,table.archivedAt,table.id)]);
 
 export const albums = sqliteTable("albums", {
   id: text("id").primaryKey(),

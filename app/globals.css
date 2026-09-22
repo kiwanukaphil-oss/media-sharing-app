@@ -392,3 +392,7 @@ main.delivery-page { max-width: 980px; }
 .delivery-links input { width: 100%; min-width: 0; height: 44px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; }
 .delivery-links button { flex-shrink: 0; }
 .delivery-manager .intake-toolbar > .workspace-select { flex: 1; min-width: 0; }
+
+.duplicate-candidates { max-height: 40dvh; overflow-y: auto; margin: 16px 0; }
+.duplicate-candidates article { padding: 14px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.duplicate-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }

@@ -75,6 +75,8 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/delivery-authority.mjs
       - run: node --disable-warning=ExperimentalWarning tests/delivery-lifecycle.mjs
       - run: node --disable-warning=ExperimentalWarning tests/delivery-migration.mjs
+      - run: node tests/duplicate-candidates.mjs
+      - run: node tests/verify-duplicate.mjs
       - run: node tests/original-package.mjs
       - run: node tests/saved-library-views.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs

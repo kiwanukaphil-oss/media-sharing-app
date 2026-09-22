@@ -1,0 +1,1 @@
+CREATE INDEX `idx_media_duplicate_candidates` ON `media` (`space_id`,`access_scope_id`,`sha256`,`size`,`status`,`archived_at`,`id`);

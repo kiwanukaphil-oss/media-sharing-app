@@ -5,7 +5,7 @@ export type MediaItem = {
   isFavorite?: boolean; canEdit?: boolean; hasPreview?: boolean; archivedAt?: number | null;
   originalName?: string; capturedAt?: string | null; uploadBatch?: string | null; revision?: number;
 };
-export type Album = { id: string; name: string; description: string; createdAt: number; latestUploadAt?: number; archivedAt: number | null; deletedAt: number | null; revision: number; count: number };
+export type Album = { accessScopeId?: string | null; id: string; name: string; description: string; createdAt: number; latestUploadAt?: number; archivedAt: number | null; deletedAt: number | null; revision: number; count: number };
 export type AlbumSection = { id: string; albumId: string; name: string; position: number; count: number; coverMediaId?: string | null };
 export type RenameEntry = { id: string; name: string; expectedRevision: number };
 export type FeedPage = { items: MediaItem[]; nextCursor: string | null; counts: { all: number; original: number; final: number; trash: number }; total: number; role: LibraryRole };
