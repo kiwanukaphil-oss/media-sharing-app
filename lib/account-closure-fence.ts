@@ -52,6 +52,28 @@ export async function settleClosureTrackedWrite(database: D1Database, id: string
 
 type StorageEffect = { objectKey: string; operation: "put" | "multipart_create" | "multipart_part" | "multipart_complete" | "delete" | "multipart_abort"; uploadId?: string };
 
+// Reserve before signing or returning a direct-upload URL. URL expiry is an admission deadline, not
+// proof that storage finished a previously admitted request. Keep uncertainty without an automatic
+// acknowledgement path; a separately reviewed reconciliation must establish multipart quiescence.
+export async function reserveClosureUploadCapability(database: D1Database, admissionId: string,
+  capability: { objectKey: string; uploadId: string; partNumber: number; expiresAt: number }, now = Date.now()) {
+  if (!capability.objectKey || capability.objectKey.length > 1024 || /[\x00-\x1f]/.test(capability.objectKey) ||
+      !capability.uploadId || capability.uploadId.length > 2048 || /[\x00-\x1f]/.test(capability.uploadId) ||
+      !Number.isSafeInteger(capability.partNumber) || capability.partNumber < 1 || capability.partNumber > 10000 ||
+      !Number.isSafeInteger(now) || now <= 0 || !Number.isSafeInteger(capability.expiresAt) ||
+      capability.expiresAt <= now || capability.expiresAt > now + 3600000) {
+    throw new AccountError(400, "An exact, bounded upload capability is required.");
+  }
+  const id = crypto.randomUUID(), authority = closureAdmissionAuthority(admissionId);
+  const result = await database.prepare(`INSERT INTO closure_storage_effects
+    (id,admission_id,object_key,operation,upload_id,part_number,capability_expires_at,state,started_at)
+    SELECT ?,?,?,'multipart_capability',?,?,?,'uncertain',? WHERE ${authority.sql}`)
+    .bind(id, admissionId, capability.objectKey, capability.uploadId, capability.partNumber, capability.expiresAt, now,
+      ...authority.bindings).run();
+  if (!result.meta.changes) throw new AccountError(409, "Closure prevents a new upload capability.");
+  return { id };
+}
+
 // Record the exact storage target before dispatch. A crash or ambiguous response leaves a durable
 // unresolved effect. Acknowledgement means the request finished, not that its object was erased.
 export async function runClosureStorageEffect<T>(database: D1Database, admissionId: string, effect: StorageEffect,

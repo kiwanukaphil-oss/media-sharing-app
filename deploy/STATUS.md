@@ -230,6 +230,6 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 
 - Source `591d2ab` deployed as Worker `aa104f6e-586e-47d5-9d28-a06e0a44f26b`, confirmed at 100% at 06:14 UTC.
 - Attribution writes use current profile/authority inside the D1 batch. Claim previews, confirmations and people-management mutations reject authentication predating recovery. Deterministic actual-D1 race tests, local legacy/account integration, TypeScript, focused lint, production build and deployment dry run passed.
-- Both origins return 200 for health and operational health and 401 for anonymous feed. The owner browser session expired; fresh signed-in verification awaits owner login. CI `35693941086` passed its verification job; the browser job is still running.
+- Both origins return 200 for health and operational health and 401 for anonymous feed. Owner completed fresh sign-in; My space, shared library and owner People & access all load correctly. No membership mutation or upload was needed. CI `35693941086` passed both verification and browser jobs.
 - Database migrations remain through 0018, pilot audience and 1 GiB budget unchanged; closure coordinator/executor not activated.
 - Separate approved Auth0 rehearsal passed creation/exact-profile/removal/independent absence. Temporary API/connection access is revoked; writer token expiry approximately 23 September 06:08 UTC. No real account or media was removed.

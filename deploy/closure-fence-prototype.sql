@@ -32,11 +32,14 @@ CREATE TABLE closure_storage_effects (
   id TEXT PRIMARY KEY NOT NULL,
   admission_id TEXT NOT NULL REFERENCES closure_write_admissions(id),
   object_key TEXT NOT NULL,
-  operation TEXT NOT NULL CHECK(operation IN ('put','multipart_create','multipart_part','multipart_complete','delete','multipart_abort')),
+  operation TEXT NOT NULL CHECK(operation IN ('put','multipart_create','multipart_part','multipart_complete','delete','multipart_abort','multipart_capability')),
   upload_id TEXT,
+  part_number INTEGER,
+  capability_expires_at INTEGER,
   state TEXT NOT NULL CHECK(state IN ('active','acknowledged','uncertain')),
   started_at INTEGER NOT NULL,
-  acknowledged_at INTEGER
+  acknowledged_at INTEGER,
+  CHECK(operation<>'multipart_capability' OR (upload_id IS NOT NULL AND part_number IS NOT NULL AND part_number BETWEEN 1 AND 10000 AND capability_expires_at IS NOT NULL))
 );
 --> statement-breakpoint
 CREATE INDEX idx_closure_storage_effects_admission ON closure_storage_effects(admission_id,state);

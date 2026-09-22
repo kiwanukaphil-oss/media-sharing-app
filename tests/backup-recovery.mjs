@@ -136,12 +136,16 @@ test('restoration quarantines closure and interrupted backup/storage work withou
       INSERT INTO closure_write_admissions(id,kind,generation,state,started_at) VALUES('backup','backup',0,'active',1),('finished','backup',0,'settled',1);
       INSERT INTO closure_backup_runs VALUES('backup','snapshot',NULL,1),('finished','older','receipt',1);
       INSERT INTO closure_storage_effects(id,admission_id,object_key,operation,state,started_at) VALUES
-        ('effect','account','fixture/object','put','active',1),('old-effect','finished','fixture/old','put','acknowledged',1);`);
+        ('effect','account','fixture/object','put','active',1),('old-effect','finished','fixture/old','put','acknowledged',1);
+      INSERT INTO closure_storage_effects(id,admission_id,object_key,operation,upload_id,part_number,capability_expires_at,state,started_at)
+        VALUES('capability','account','fixture/direct','multipart_capability','fixture-upload',2,100,'uncertain',1);`);
     sanitizeRestoredAccess(database,12345);
     assert.equal(database.prepare('SELECT phase FROM closure_fences').get().phase,'review_required');
     assert.equal(database.prepare('SELECT disabled_at FROM people').get().disabled_at,12345);
     assert.deepEqual(database.prepare('SELECT state FROM closure_write_admissions ORDER BY id').all().map(row=>row.state),['uncertain','uncertain','settled']);
-    assert.deepEqual(database.prepare('SELECT state FROM closure_storage_effects ORDER BY id').all().map(row=>row.state),['uncertain','acknowledged']);
+    assert.deepEqual(database.prepare('SELECT state FROM closure_storage_effects ORDER BY id').all().map(row=>row.state),['uncertain','uncertain','acknowledged']);
+    assert.deepEqual({...database.prepare("SELECT upload_id,part_number,capability_expires_at,state FROM closure_storage_effects WHERE id='capability'").get()},
+      {upload_id:'fixture-upload',part_number:2,capability_expires_at:100,state:'uncertain'});
     assert.equal(database.prepare("SELECT receipt_digest FROM closure_backup_runs WHERE id='backup'").get().receipt_digest,null);
     assert.equal(database.prepare("SELECT receipt_digest FROM closure_backup_runs WHERE id='finished'").get().receipt_digest,'receipt');
     sanitizeRestoredAccess(database,12346);

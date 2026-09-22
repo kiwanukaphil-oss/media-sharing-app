@@ -77,8 +77,14 @@ Restore sanitisation now recognises the complete protocol table family: fences r
 
 ### Remaining metadata review targets
 
-The 22 September correction is implemented, tested and deployed in source `591d2ab`: compatibility attribution inserts recheck live membership/session/person/recovery authority inside the atomic D1 batch and use the current profile name. Claim preview insertion repeats live device/account checks; claim confirmation and people-management writes enforce the credential watermark. Actual-schema tests force recovery/revocation between the initial read and mutation and confirm that rejected effects are absent. Production deployment and pending fresh signed-in verification are recorded in `deploy/STATUS.md`. This closes these stale-authority gaps, but does not complete closure-generation admission or the full writer audit.
+The 22 September correction is implemented, tested and deployed in source `591d2ab`: compatibility attribution inserts recheck live membership/session/person/recovery authority inside the atomic D1 batch and use the current profile name. Claim preview insertion repeats live device/account checks; claim confirmation and people-management writes enforce the credential watermark. Actual-schema tests force recovery/revocation between the initial read and mutation and confirm that rejected effects are absent. Production deployment and passed fresh signed-in verification are recorded in `deploy/STATUS.md`. This closes these stale-authority gaps, but does not complete closure-generation admission or the full writer audit.
 
 ### Provider component rehearsal
 
 The explicitly approved provider fixture was created, checked, removed and independently confirmed absent on 22 September at 06:08 UTC. The rotated temporary client grant and connection access were revoked afterwards. See [provider evidence](PROVIDER-ERASURE-REHEARSAL.md#rotated-continuation--passed). The acceptance item above remains open because the complete generated-person storage/backup/ledger sequence is not yet executed.
+
+### Direct-upload capability reservation (isolated only)
+
+The prototype records the exact object key, multipart upload ID, part number and URL admission deadline before a caller signs/returns a part URL. No signed URL or bearer is stored. Issued capabilities remain uncertain and block write settlement even after their deadline; a lost response or client completion cannot clear them. New reservations are rejected after fencing. Tests cover exact custody, invalid targets/deadlines, fence ordering and expiry without settlement.
+
+This is preparatory bookkeeping, not a completed direct-upload freeze: production part-URL issuance is not wired to it, and a separately reviewed storage reconciliation must establish multipart quiescence before any clearance. The prototype schema remains outside the migration journal and the snapshot minimiser still refuses unreviewed schemas.

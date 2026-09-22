@@ -119,8 +119,17 @@ try {
   assert.equal(await database.prepare('SELECT 1 FROM closure_fences WHERE id=?').bind(independentApproval.id).first(),null);
   assert.equal((await database.prepare('SELECT disabled_at FROM people WHERE id=?').bind(independent.personId).first()).disabled_at,null);
   await database.prepare('DROP TRIGGER interrupt_fence').run();
+  const directAdmission=await fence.admitClosureTrackedWrite(database,{kind:'account',session:independent},now);
+  const capability={objectKey:'fixture/direct',uploadId:'isolated-upload',partNumber:1,expiresAt:now+3600000};
+  const capabilityReceipt=await fence.reserveClosureUploadCapability(database,directAdmission.id,capability,now);
+  const capabilityRow=await database.prepare('SELECT object_key,upload_id,part_number,capability_expires_at,state FROM closure_storage_effects WHERE id=?').bind(capabilityReceipt.id).first();
+  assert.deepEqual(capabilityRow,{object_key:capability.objectKey,upload_id:capability.uploadId,part_number:1,capability_expires_at:capability.expiresAt,state:'uncertain'});
+  for(const changed of [{partNumber:0},{partNumber:10001},{uploadId:''},{expiresAt:now},{expiresAt:now+3600001}])
+    await assert.rejects(fence.reserveClosureUploadCapability(database,directAdmission.id,{...capability,...changed},now),/bounded/);
   assert.equal((await fence.beginApprovedClosureFence(database,independentApproval,now)).id,independentApproval.id);
+  await assert.rejects(fence.reserveClosureUploadCapability(database,directAdmission.id,capability,now),/Closure/);
+  await assert.rejects(fence.settleClosureTrackedWrite(database,directAdmission.id,'settled',now+86400000),/review/,'Expired capabilities remain unresolved');
   const drained=await fence.inspectClosureFence(database,independentApproval.id);
-  assert.equal(drained.trackedWritesDrained,true);assert.equal(drained.executable,false);
+  assert.equal(drained.trackedWritesDrained,false);assert.equal(drained.unresolvedWrites,1);assert.equal(drained.executable,false);
   console.log('PASS: atomic D1 closure fence, scoped revocation, generation commit denial, stalled R2 late-write tracking, multipart allocation custody, lost response/acknowledgement retention and guarded settlement. Prototype only; no production migration or closure.');
 } finally {await runtime.dispose();}
