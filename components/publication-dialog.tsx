@@ -28,6 +28,7 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
   const [operation, setOperation] = useState<"publishing" | "cancelling" | null>(null);
   const busy = operation !== null;
   const [published, setPublished] = useState(false);
+  const [recoveredPublication, setRecoveredPublication] = useState(false);
   const [error, setError] = useState("");
   const destinationApi = useMemo(() => createLibraryApi(destinationId), [destinationId]);
   useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
@@ -36,7 +37,7 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
     const controller = new AbortController();
     void sourceApi.requestJson<{ publication: Publication | null }>(`publications?sourceId=${item.id}`, { signal: controller.signal }).then(result => {
       if (controller.signal.aborted) return;
-      if (result.publication) { setIntent(result.publication); setPublished(result.publication.phase === "ready"); setDestinationId(result.publication.destinationSpaceId); setAlbumId(result.publication.albumId || ""); setSectionId(result.publication.sectionId || ""); }
+      if (result.publication) { setIntent(result.publication); setPublished(result.publication.phase === "ready"); setRecoveredPublication(result.publication.phase === "ready"); setDestinationId(result.publication.destinationSpaceId); setAlbumId(result.publication.albumId || ""); setSectionId(result.publication.sectionId || ""); }
       setLoaded(true);
     }).catch(failure => { if (!controller.signal.aborted) setError(failure.message); });
     return () => controller.abort();
@@ -72,7 +73,7 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
     try {
       await sourceApi.requestJson("publications", { method: "POST", body: JSON.stringify({ ...captured,
         albumId: captured.albumId || undefined, sectionId: captured.sectionId || undefined, confirmed: true }) });
-      setPublished(true);
+      setRecoveredPublication(false); setPublished(true);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "The copy could not be completed. Retry or cancel it."); }
     finally { setOperation(null); }
   }
@@ -89,10 +90,10 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
   const destinationName = destinations.find(destination => destination.id === destinationId)?.name || "Unavailable library";
   return <dialog ref={dialog} className="modal publication-dialog" aria-labelledby={headingId}
     onCancel={event => { event.preventDefault(); if (!busy) onClose(); }} onClose={() => { if (!busy) onClose(); }}>
-    <div className="modal-heading"><h2 id={headingId}>{published ? "Copy published" : "Publish a shared copy"}</h2><button className="icon-button" disabled={busy} aria-label="Close publication" onClick={onClose}><X size={20} /></button></div>
+    <div className="modal-heading"><h2 id={headingId}>{!loaded ? "Shared copy" : published ? recoveredPublication ? "Previously published" : "Copy published" : "Publish a shared copy"}</h2><button className="icon-button" disabled={busy} aria-label="Close publication" onClick={onClose}><X size={20} /></button></div>
     <p className="publication-filename">{item.name}</p><p className="small-muted">{formatBytes(item.size)} &middot; Original quality</p>
     {error && <p role="alert" className="error-banner">{error}</p>}
-    {published ? <><p className="modal-intro">A verified copy was published to {destinationName}. Your personal original stays in My space. The shared library manages its copy independently.</p><div className="publication-success-actions"><a className="button primary" href={`/?space=${encodeURIComponent(destinationId)}${albumId ? `&album=${encodeURIComponent(albumId)}` : ""}${sectionId ? `&section=${encodeURIComponent(sectionId)}` : ""}`}>Open shared library <ArrowRight size={16} /></a><button className="text-button" onClick={() => { setIntent(null); setPublished(false); setError(""); }}>Publish another copy</button></div></> : <>
+    {!loaded ? <p role="status" className="publication-progress">{error ? "Close this dialog and try again." : "Checking for an existing shared copy?"}</p> : published ? <><p className="modal-intro">{recoveredPublication ? "This file already has a verified copy in " : "A verified copy was published to "}{destinationName}. Your personal original stays in My space. The shared library manages its copy independently.</p><div className="publication-success-actions"><a className="button primary" href={`/?space=${encodeURIComponent(destinationId)}${albumId ? `&album=${encodeURIComponent(albumId)}` : ""}${sectionId ? `&section=${encodeURIComponent(sectionId)}` : ""}`}>Open shared library <ArrowRight size={16} /></a><button className="text-button" onClick={() => { setIntent(null); setPublished(false); setError(""); }}>Publish another copy</button></div></> : <>
       {!destinations.length && <p className="modal-intro">Connect or join a shared library before publishing a copy.</p>}
       {destinations.length > 0 && <div className="publication-destinations"><WorkspaceSelect label="Shared destination" value={destinationId} disabled={busy || Boolean(intent)} options={destinations.map(destination => ({ value: destination.id, label: destination.name }))}
         onChange={id => { setDestinationId(id); setAlbumId(""); setSectionId(""); setAlbums([]); setSections([]); setDestinationLoaded(false); setError(""); }} />

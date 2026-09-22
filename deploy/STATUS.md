@@ -8,7 +8,7 @@ Cloudflare confirms the explicitly approved Workers Paid subscription active at 
 
 Worker `a25d36be-f1ca-4b52-90bb-eb043b310312` is at **100%**, deployed 08:28 UTC from runtime source `87d93eb`. Recovery notifications now refuse raw identity recreation after minimisation and updates to disabled identities, with authority checked inside each batch mutation. Full built-Worker account-access tests include a forced closure/recovery race and pass. TypeScript, focused lint, production build and dry run passed. Both origins return health/operations 200, anonymous feed 401 and unauthenticated coordinator 403. Hosted CI `35704906771` passed verification and browser jobs.
 
-No schema, audience, quota or flag change: migration 0019 and global backup coordination remain enabled; account closure tracking remains disabled. Fresh interactive verification still awaits user sign-in. Historical read-only inventory reconciles 12 SQL versions, 12 manifests and one completion receipt; seven older schemas still need review. No deletion or cutover performed.
+No schema, audience, quota or flag change: migration 0019 and global backup coordination remain enabled; account closure tracking remains disabled. Fresh sign-in and personal/shared library checks passed on 22 September; 25 ready files and one existing publication independently confirmed unchanged. Historical read-only inventory reconciles 12 SQL versions, 12 manifests and one completion receipt; seven older schemas still need review. No deletion or cutover performed.
 
 ## Global backup coordination - 22 September 2026
 

@@ -10,6 +10,8 @@ const personal = crypto.randomUUID(), shared = crypto.randomUUID(), album = cryp
 const item = { id: crypto.randomUUID(), name: 'Private original.jpg', mime: 'image/jpeg', size: 1024, sha256: 'a'.repeat(64), category: 'original', createdAt: Date.now(), deviceName: 'Publisher', hasPreview: true, revision: 3 };
 let pending = null;
 let copies = 0;
+let recoveryGate = null;
+let releaseRecovery = () => {};
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 
@@ -28,7 +30,10 @@ try {
       return route.fulfill({ json: { sections: [{ id: section, name: 'Selected', albumId: album }] } });
     }
     if (url.pathname === '/api/publications') {
-      if (route.request().method() === 'GET') return route.fulfill({ json: { publication: pending } });
+      if (route.request().method() === 'GET') {
+        if (recoveryGate) await recoveryGate;
+        return route.fulfill({ json: { publication: pending } });
+      }
       const input = route.request().postDataJSON();
       assert.equal(input.confirmed, true); assert.equal(input.sourceId, item.id); assert.equal(input.sourceRevision, 3);
       assert.equal(input.destinationSpaceId, shared); assert.equal(input.albumId, album); assert.equal(input.sectionId, section);
@@ -71,6 +76,19 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: '.sites-runtime/publication/desktop.png', fullPage: true });
+  // Delay recovery so the dialog cannot flash an editable new-copy form or imply a new publication.
+  await page.getByRole('button', { name: 'Close publication', exact: true }).click();
+  await page.reload();
+  recoveryGate = new Promise(resolve => { releaseRecovery = resolve; });
+  await page.getByRole('button', { name: `Preview ${item.name}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Publish shared copy', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Checking for an existing shared copy');
+  await expect(page.getByRole('combobox', { name: 'Shared destination' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Publish copy', exact: true })).toHaveCount(0);
+  releaseRecovery();
+  await expect(page.getByRole('heading', { name: 'Previously published', exact: true })).toBeVisible();
+  await expect(page.getByText('This file already has a verified copy in', { exact: false })).toBeVisible();
+  assert.equal(copies, 2, 'Opening completed publication must not create another copy.');
   assert.deepEqual(errors, []);
   console.log('PASS: explicit publication consent, album/section destination, cancellation before publication, failed-copy recovery after reload and stable operation identity. UI responses are fixtures.');
-} finally { await browser.close(); }
+} finally { releaseRecovery(); await browser.close(); }
