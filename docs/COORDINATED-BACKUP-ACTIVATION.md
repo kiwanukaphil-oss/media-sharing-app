@@ -1,12 +1,12 @@
 # Coordinated backup activation
 
-Prepared 22 September 2026. Activate only global backup admission; account closure tracking and deletion execution remain disabled.
+Activated and verified 22 September 2026. Only global backup admission is active; account closure tracking and deletion execution remain disabled.
 
 ## Exact change
 
 Migration `0019_wild_nighthawk.sql` adds four empty protocol tables and their constraints/indexes. It does not edit existing rows or infer account closure. The former prototype is retained as a comparison/removal candidate; never apply it over migration 0019.
 
-`deploy/backup-coordination.json` is the single public activation switch for both the Worker and the checked-out backup writer. It is now configured for activation (`enabled: true`); deployment and first coordinated evidence are tracked below. When enabled, the backup job requires its dedicated `RELAY_BACKUP_COORDINATION_SECRET`; missing credentials stop before export or upload. The existing D1 reader and B2 writer/reader permissions remain separate. The coordinator capability can only admit/settle global backup runs; it cannot read library contents, erase data or clear fences.
+`deploy/backup-coordination.json` is the single public activation switch for both the Worker and the checked-out backup writer. It is enabled (`enabled: true`); deployment and first coordinated evidence are verified below. When enabled, the backup job requires its dedicated `RELAY_BACKUP_COORDINATION_SECRET`; missing credentials stop before export or upload. The existing D1 reader and B2 writer/reader permissions remain separate. The coordinator capability can only admit/settle global backup runs; it cannot read library contents, erase data or clear fences.
 
 Completion receipts are archived before settlement. Independently verify one using:
 
@@ -26,8 +26,8 @@ This uses existing D1/B2 readers and compares exact immutable versions against l
 - [x] Hosted CI `35702718797` passed verification and browser jobs for source `436af67`.
 - [x] Apply migration 0019 and independently verify the fresh post-change export at 08:09 UTC: all 21 existing tables unchanged, all four new tables empty. Private bookmark/export evidence retained.
 - [x] Install the dedicated random coordinator secret via stdin into the existing Worker and protected `relay-backup-copy` environment; encrypted local custody retained, no values logged. No existing data-reader/writer permissions were broadened.
-- [ ] Enable the common public switch, deploy and verify unauthenticated coordinator rejection and ordinary production health.
-- [ ] Run a coordinated hosted backup, independently restore originals, retrieve archived receipt against live D1, and confirm no non-backup protocol state was created.
+- [x] Enable the common switch and deploy `45f8d855-7ef7-4f48-ad18-f26adc583eb2` at 100% (08:10 UTC). Both origins return application/operations health 200, anonymous feed 401 and unauthenticated coordinator 403. Account closure tracking remains absent.
+- [x] Hosted coordinated backup/restore `35703394048` passed: snapshot `2026-09-22T08-11-23-130Z-7b55498a-f8f8-4526-bdb3-0e9bde64b2dd`, 25 originals, 321,680,743 bytes. Existing independent D1/B2 readers verify the one archived completion-receipt version against the current settled run and exact manifest. Live readback: one settled backup, zero unresolved admissions, fences, effects or account/device admissions.
 
 ## Recovery boundaries
 

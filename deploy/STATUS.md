@@ -1,5 +1,13 @@
 # Direct Cloudflare deployment
 
+## Global backup coordination - 22 September 2026
+
+Worker `45f8d855-7ef7-4f48-ad18-f26adc583eb2` is at **100%**, deployed at 08:10 UTC. Runtime/build source `436af67`, activation source `1ec67a6`. Migration 0019 is applied; independently exported before/after data confirms all 21 prior application tables unchanged and all four new tables initially empty. A fresh backup and recovery bookmark preceded the migration.
+
+Global backup coordination is enabled with its separate protected credential. Coordinated hosted backup/restore `35703394048` verified all 25 originals (321,680,743 bytes); independent D1/B2 readback verified the archived completion receipt against its exact settled run and manifest version. Live protocol state contains one settled backup and no unresolved or account/device/fence/storage-effect records.
+
+Both origins pass health/operations 200, anonymous feed 401 and unauthenticated coordinator 403. Account closure tracking remains absent; pilot access and 1 GiB allocation unchanged. Source CI `35702718797` passed verification and browser jobs. The currently available user browser has no Relay session; fresh interactive verification awaits sign-in. No user-original removal. [Activation evidence](../docs/COORDINATED-BACKUP-ACTIVATION.md).
+
 ## Navigation and account authority - 22 September 2026
 
 Worker `5cb25ea3-e4c8-438c-b84c-36f34764c905` is at **100%**, deployed at 07:34:48 UTC. Runtime source `49f1195`; subsequent `b5be10d` adds identity-entry-point tests and documentation only. Both hosted CI runs `35699723145` and `35700251894` passed verification and browser jobs, resolving the earlier WebKit navigation failure. Local Chrome/Edge/Firefox/WebKit, enabled tracking/account suites, build and deployment dry run passed.

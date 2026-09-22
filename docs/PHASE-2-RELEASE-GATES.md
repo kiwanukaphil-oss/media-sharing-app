@@ -1,6 +1,6 @@
 # Phase 2 release gates
 
-Updated 22 September 2026. Phase 2 remains a restricted designated-account pilot, not a general release. Live runtime and migration evidence are maintained in [deployment status](../deploy/STATUS.md); the current verified runtime is `5cb25ea3-e4c8-438c-b84c-36f34764c905`. Total personal allocation remains 1 GiB. Navigation, recovery/current-authority checks and retained signed-in library verification passed. Backup coordination is being prepared through its [staged activation record](COORDINATED-BACKUP-ACTIVATION.md); account closure execution remains disabled.
+Updated 22 September 2026. Phase 2 remains a restricted designated-account pilot, not a general release. Live runtime and migration evidence are maintained in [deployment status](../deploy/STATUS.md); the current verified runtime is `45f8d855-7ef7-4f48-ad18-f26adc583eb2`. Total personal allocation remains 1 GiB. Navigation, recovery/current-authority checks and retained signed-in library verification passed. Backup coordination and migration 0019 are live and independently verified through the [staged activation record](COORDINATED-BACKUP-ACTIVATION.md); account closure execution remains disabled.
 
 ## Prepared and verified locally
 
