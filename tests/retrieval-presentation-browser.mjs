@@ -64,6 +64,9 @@ try {
   await expect(page.getByRole('heading',{name:'Recent album fixture.'})).toBeVisible();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile filters must not overflow.');
+  const filterBounds=await page.getByRole('button',{name:/^Filters/}).boundingBox();
+  const albumBounds=await page.getByRole('button',{name:'New album',exact:true}).boundingBox();
+  assert.ok(Math.abs(filterBounds.y-albumBounds.y)<8,'Mobile commands should share a deliberate row.');
   await hide.click();
   await page.reload();
   await expect(page.getByRole('heading',{name:'Library hidden'})).toBeVisible();

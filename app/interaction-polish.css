@@ -114,11 +114,13 @@
 
 /* Keep the saved-view control in the mobile command row without stranding New album. */
 @media (max-width: 600px) {
-  .library-command-row { gap: 4px; }
-  .library-command-row .library-sort { min-width: 108px; }
+  .library-command-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto auto; gap: 4px; }
+  .library-command-row .search-field { grid-column: 1 / -1; }
+  .library-command-row .library-sort { min-width: 0; }
   .library-sort .workspace-select { padding-inline: 4px; gap: 4px; font-size: 11px; }
 }
 @media (max-width: 380px) {
-  .library-command-row .library-sort { order: 5; flex-basis: 100%; }
+  .library-command-row { grid-template-columns: auto auto auto auto; }
+  .library-command-row .library-sort { order: 5; grid-column: 1 / -1; }
   .library-command-row .new-album-button { margin-left: auto; }
 }
