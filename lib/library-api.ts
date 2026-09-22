@@ -32,7 +32,7 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
     const scope = requestedBrowseAudience(request, device);
     if (scope === false) throw new ApiError(400, "Choose a valid library audience.");
     const audience = browseAudienceAuthority(device, scope, "a");
-    const albums = await database().prepare(`SELECT a.id, a.name, a.description, a.created_at AS createdAt, a.archived_at AS archivedAt,
+    const albums = await database().prepare(`SELECT a.id, a.access_scope_id AS accessScopeId, a.name, a.description, a.created_at AS createdAt, a.archived_at AS archivedAt,
       a.deleted_at AS deletedAt, a.revision, COUNT(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN 1 END) AS count,
       MAX(CASE WHEN m.status = 'ready' AND m.archived_at IS NULL THEN MAX(m.created_at,a.created_at) ELSE a.created_at END) AS latestUploadAt
       FROM albums a LEFT JOIN album_media am ON am.album_id = a.id LEFT JOIN media m ON m.id = am.media_id

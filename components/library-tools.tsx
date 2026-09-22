@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
+import {DuplicateReview} from "./duplicate-review";
 import { OriginalPackage } from "./original-package";
 import { MetadataExport } from "./metadata-export";
 import { AlbumSections } from "./album-sections";
@@ -147,7 +148,7 @@ export function LibraryTools(props: Props) {
         {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
         {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy || !editableSelection} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
         <button className="icon-button bulk-trash" title={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} aria-label={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? <Undo2 size={19} /> : <Trash2 size={19} />}</button>
-        </>}<MetadataExport files={selected} /><OriginalPackage files={selected} />{props.onCreateDelivery && <button className="button secondary compact" disabled={busy} onClick={() => props.onCreateDelivery?.(selected)}>Create delivery</button>}
+        </>}{selected.length===1&&!selected[0].archivedAt&&<DuplicateReview key={selected[0].id} source={selected[0]} albums={albums} canOrganise={canOrganise} refresh={refresh}/>}<MetadataExport files={selected} /><OriginalPackage files={selected} />{props.onCreateDelivery && <button className="button secondary compact" disabled={busy} onClick={() => props.onCreateDelivery?.(selected)}>Create delivery</button>}
         <button className="icon-button clear-selection" title="Clear selection" aria-label="Clear selection" disabled={busy} onClick={props.onClearSelection}><X size={18} /></button>
       </>}
     </div>}

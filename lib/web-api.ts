@@ -2,6 +2,7 @@ import { restrictedScopesEnabled } from "./restricted-runtime";
 import { readAccessScopes, createAccessScope, changeScopeGrant } from "./scope-management";
 import { mediaOperationAuthority, browseAudienceAuthority, requestedBrowseAudience, resourceAudienceAuthority } from "./asset-scope-authority";
 import { changePersonalFavorite } from "./personal-favorites";
+import {readDuplicateCandidates} from "./duplicate-candidates";
 import { exportSelectedMetadata } from "./metadata-export";
 import { createImportLayout } from "./import-layout";
 import { readLibraryActivity, activityBatch } from "./library-activity";
@@ -185,6 +186,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     throw new ApiError(404, "This audience action is unavailable.");
   }
   if (resource === "import-layout" && !id && method === "POST") return createImportLayout(request, device);
+  if (resource === "duplicate-candidates" && !id && method === "POST") return readDuplicateCandidates(request,device);
   if (resource === "metadata-export" && !id && method === "POST") return exportSelectedMetadata(request, device);
   if (resource === "activity" && !id && method === "GET") return readLibraryActivity(request, device);
   if (resource === "favorites" && id && !action && method === "PUT") return changePersonalFavorite(request, device, id);

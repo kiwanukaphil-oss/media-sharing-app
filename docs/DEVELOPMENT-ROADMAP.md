@@ -1204,3 +1204,14 @@ Corrected folder-import CI at `f588c68` includes successful hosted run `35729947
 - [ ] Complete hosted package verification, full-sized device/performance acceptance and production release. Parent counts remain 22/47.
 
 The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64 MiB fallback. It creates no cloud export artifacts; unattended jobs remain a separate expansion. [Decision, limits and evidence](DELIVERY-CONTRACT.md).
+
+
+### 22 September - duplicate assistance preparation
+
+- [x] Implement same-space/same-audience candidate lookup from a current accessible source ID, with bounded results and no arbitrary hash probe.
+- [x] Independently verify both originals before offering existing-file album reuse; preserve both files, normal revision guards and reference-specific Undo.
+- [x] Verify D1 privacy/result bounds, streamed corruption/denial/cancellation, mobile review/reuse/Undo and revoked-name clearing locally.
+- [x] Prepare index-only migration 0027 and rehearse preservation of private-export rows plus restored indexes/triggers. Existing minimisation checks pass.
+- [ ] Complete hosted and deployed acceptance before checking P7-02. Parent completion remains 22/47; production stays on schema 0020.
+
+[Duplicate assistance contract and checked evidence](DUPLICATE-ASSISTANCE.md).

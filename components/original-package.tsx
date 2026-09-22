@@ -50,6 +50,7 @@ export function OriginalPackage({files,deliveryId}:{files:Pick<MediaItem,'id'|'n
     {open&&<dialog ref={dialog} className="modal library-dialog" aria-labelledby={title} onCancel={event=>{if(busy)event.preventDefault();}} onClose={()=>setOpen(false)}>
       <div className="modal-heading"><h2 id={title}>Download originals</h2><button className="icon-button" aria-label="Close original package" disabled={busy} onClick={()=>dialog.current?.close()}><X size={20}/></button></div>
       <p>{files.length} selected {files.length===1?'original':'originals'} &middot; {formatBytes(files.reduce((sum,file)=>sum+file.size,0))}</p>
+      <div className="delivery-selection"><strong>Selected originals</strong><ul>{files.map(file=><li key={file.id}>{file.name}</li>)}</ul></div>
       <p className="small-muted">One ZIP with original files and a manifest of their names, dates and checksums{deliveryId?'.':', albums and sections.'} Original location and other embedded metadata are preserved.</p>
       <p className="small-muted">Keep this tab open. Up to 2 GiB with direct file saving, or 64 MiB in other browsers. A failed or cancelled package can be restarted; partial packages are never marked complete.</p>
       {busy&&<p role="status">Building and verifying package: {progress}%</p>}{notice&&<p role="status">{notice}</p>}{error&&<p role="alert" className="error-banner">{error}</p>}
