@@ -34,9 +34,17 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 
 - [x] Define narrow named-account grant, explicit disclosure/destination, limits, quota accounting, review and status semantics.
 - [x] Isolated SQLite/D1 acceptance and authority preparation: draft/expiry/session denial, exact verified-person binding, no membership/file disclosure, immutable destination, non-resurrecting issuer/destination revocation and restored quarantine.
-- [ ] Add atomic quota reservation/activation and transfer custody before routing this preparation.
+- [x] Atomic quota activation and exact submission reservations pass real D1 concurrency tests. Two requests cannot reserve the same free bytes; concurrent retries produce one staged file; file count/size and total allowance are enforced.
+- [ ] Add tracked transfer custody and reconcile the new staging states before routing this preparation.
 - [ ] Implement owner creation/revocation/review and recipient-only upload/receipt routes behind a disabled feature flag.
 - [ ] Integrate bounded byte transfer, checksum-verified acceptance, capability custody and shared quota reservations.
 - [ ] Build mobile/desktop owner and recipient workflows, interrupted retry/recovery and clear abuse/error states.
 - [ ] Extend lifecycle/minimisation/restore contracts and test cross-account, revoked, expired, concurrent and malformed requests.
 - [ ] Hosted verification, independent recovery point, migration, pilot verification and operational limits before activation. General onboarding remains subject to Phase 2 gates.
+
+
+## Quota preparation evidence
+
+`upload-request-reservations.ts` exchanges one media-based allowance for staged originals in a D1 transaction, keeping total charged bytes constant. The same `SUM(size + preview_size)` is already used by ordinary uploads and publications. Draft activation establishes an expired, non-authenticating attribution record, a `collecting` allowance and then the open request. Submission rows retain immutable person/request/size/hash intent, while staged media remains `receiving`, never `ready`. These are prototype states only; the active migration journal is unchanged.
+
+Current acceptance and submission SQL also carries account-closure admission authority when supplied. R2 work, multipart capability custody, lifecycle inventory/minimisation, reserved-state storage UI and restore compatibility must be integrated before activation. In particular, the current production object inventory deliberately does not accept the new staging states yet; do not deploy this preparation by itself.

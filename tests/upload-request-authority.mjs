@@ -6,8 +6,10 @@ import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
 import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
 
-const bundle=await build({entryPoints:['lib/upload-request-authority.ts'],bundle:true,write:false,platform:'node',format:'esm'});
-const {acceptUploadRequest,intakeRecipientAuthority}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+const modules=await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
+const {acceptUploadRequest,intakeRecipientAuthority}=modules.find(module=>module.acceptUploadRequest);
+const {activateUploadRequest,reserveIntakeSubmission}=modules.find(module=>module.activateUploadRequest);
 const db=new DatabaseSync(':memory:'),now=Date.now();
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
@@ -19,6 +21,7 @@ try {
   }
   db.exec("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES('owner','owner','shared','owner',1); INSERT INTO asset_scopes VALUES('private','shared','Never disclosed','owner',1); INSERT INTO scope_grants VALUES('private','owner','owner',1,NULL)");
   db.exec("INSERT INTO albums(id,space_id,name,created_at,access_scope_id) VALUES('album','shared','Private album',1,'private'); INSERT INTO album_sections(album_id,id,name,position) VALUES('album','section','Hidden section',0)");
+  db.exec("INSERT INTO devices(id,space_id,name,token_hash,role,created_at,expires_at) VALUES('owner-device','shared','Owner','account-attribution:owner','owner',1,0); INSERT INTO account_space_actors VALUES('owner','owner-device')");
   const seed=db.prepare(`INSERT INTO upload_requests(id,token_hash,space_id,issuer_membership_id,recipient_email,title,album_id,section_id,access_scope_id,created_at,expires_at,max_files,max_file_bytes,max_bytes,state)
     VALUES(?,?,'shared','owner','recipient@example.invalid','Send event photos','album','section','private',?,?,20,1024,2048,?)`);
   seed.run('request','a'.repeat(64),now,now+86400000,'draft');
@@ -43,6 +46,30 @@ try {
     assert.doesNotMatch(JSON.stringify(accepted),/Private album|Hidden section|Never disclosed|token_hash|recipient_email/);
     assert.equal((await d1.prepare('SELECT COUNT(*) AS n FROM space_memberships').first()).n,1,'Acceptance creates no membership.');
     assert.equal((await d1.prepare('SELECT COUNT(*) AS n FROM scope_grants').first()).n,1,'Acceptance creates no content audience grant.');
+    // Concurrent invitations compete against the same quota used by every ordinary upload/copy.
+    const owner={...session('owner'),id:'owner-device',space_id:'shared',space_name:'Studio',name:'Owner',role:'owner',authentication:'account',space_kind:'shared'};
+    const drafts=[{id:crypto.randomUUID(),hash:'c'.repeat(64)},{id:crypto.randomUUID(),hash:'d'.repeat(64)}];
+    for(const draft of drafts)await d1.prepare(`INSERT INTO upload_requests(id,token_hash,space_id,issuer_membership_id,recipient_email,title,album_id,section_id,access_scope_id,created_at,expires_at,max_files,max_file_bytes,max_bytes)
+      VALUES(?,?,'shared','owner','recipient@example.invalid','Send files','album','section','private',?,?,2,1024,2048)`).bind(draft.id,draft.hash,now,now+86400000).run();
+    const activations=await Promise.allSettled(drafts.map(draft=>activateUploadRequest(d1,owner,draft.id,3000,now)));
+    assert.equal(activations.filter(result=>result.status==='fulfilled').length,1,'Two requests cannot reserve the same free bytes.');
+    const winner=drafts[activations.findIndex(result=>result.status==='fulfilled')];
+    assert.equal((await activateUploadRequest(d1,owner,winner.id,3000,now)).state,'open','Activation retries do not reserve twice.');
+    await acceptUploadRequest(d1,session('recipient'),winner.hash,now);
+    const file={id:crypto.randomUUID(),requestId:winner.id,name:'Original.bin',mime:'application/octet-stream',size:1024,sha256:'1'.repeat(64)};
+    const charged=async()=>(await d1.prepare('SELECT SUM(size+preview_size) AS n FROM media').first()).n;
+    assert.equal(await charged(),2048);
+    await assert.rejects(reserveIntakeSubmission(d1,session('recipient'),{...file,size:1025},now),/limit/);
+    const sameFile=await Promise.allSettled([reserveIntakeSubmission(d1,session('recipient'),file,now),reserveIntakeSubmission(d1,session('recipient'),file,now)]);
+    assert.equal(sameFile.filter(result=>result.status==='fulfilled').length,2,'Concurrent exact retry returns the same reservation.');
+    assert.equal((await d1.prepare('SELECT COUNT(*) AS n FROM intake_submissions').first()).n,1);
+    assert.equal(await charged(),2048,'Submission replaces allowance without increasing or releasing total charged bytes.');
+    await assert.rejects(reserveIntakeSubmission(d1,session('recipient'),{...file,sha256:'2'.repeat(64)},now),/intent/);
+    await reserveIntakeSubmission(d1,session('recipient'),{...file,id:crypto.randomUUID()},now);
+    await assert.rejects(reserveIntakeSubmission(d1,session('recipient'),{...file,id:crypto.randomUUID(),size:1},now),/limit/);
+    assert.equal(await charged(),2048);assert.equal((await d1.prepare('SELECT size FROM media WHERE id=?').bind(winner.id).first()).size,0);
+    assert.equal((await d1.prepare("SELECT COUNT(*) AS n FROM media WHERE status='ready'").first()).n,0,'Intake reservation never exposes a ready original.');
+    assert.equal((await d1.prepare("SELECT expires_at FROM devices WHERE id=?").bind(winner.id).first()).expires_at,0,'Intake attribution cannot log in as a device.');
     await d1.prepare("UPDATE people SET verified_email='recipient@example.invalid' WHERE id='other'").run();
     await assert.rejects(acceptUploadRequest(d1,session('other'),'a'.repeat(64),now),/unavailable/,'Matching email cannot rebind acceptance.');
     await d1.prepare("UPDATE people SET verified_email='changed@example.invalid' WHERE id='recipient'").run();
@@ -62,5 +89,5 @@ try {
   const restorePlan=planReadOnlySnapshot(db.prepare(schemaQuery).all()),restored=importSnapshot(restoreReadOnlySnapshot(restorePlan,db.prepare(restorePlan.sql).all()));
   try{sanitizeRestoredAccess(restored,now+1);assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM upload_requests WHERE revoked_at IS NULL').get().n,0);}
   finally{restored.close();}
-  console.log('PASS: isolated SQLite/D1 intake invitation binding, no membership/disclosure, draft/expiry/session denial, immutable destination, non-resurrecting grants and restore quarantine. No quota activation or transfer routes exist yet.');
+  console.log('PASS: isolated SQLite/D1 intake invitation binding, no membership/disclosure, draft/expiry/session denial, immutable destination, non-resurrecting grants and restore quarantine. Atomic quota activation/reservations pass; no public transfer routes exist yet.');
 } finally {db.close();}

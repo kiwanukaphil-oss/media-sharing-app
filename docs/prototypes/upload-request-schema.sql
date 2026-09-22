@@ -58,3 +58,19 @@ CREATE TRIGGER upload_request_person_disabled AFTER UPDATE OF disabled_at ON peo
 WHEN NEW.disabled_at IS NOT NULL
 BEGIN UPDATE upload_requests SET revoked_at=COALESCE(revoked_at,NEW.disabled_at),revision=revision+1 WHERE revoked_at IS NULL AND
   (accepted_by=NEW.id OR issuer_membership_id IN(SELECT id FROM space_memberships WHERE person_id=NEW.id)); END;
+
+-- A submission keeps exact byte intent and custody even if later cleanup removes a media row.
+CREATE TABLE intake_submissions (
+  id TEXT PRIMARY KEY NOT NULL,
+  request_id TEXT NOT NULL REFERENCES upload_requests(id),
+  person_id TEXT NOT NULL REFERENCES people(id),
+  size INTEGER NOT NULL CHECK(size>0),
+  sha256 TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  phase TEXT NOT NULL DEFAULT 'reserved' CHECK(phase IN ('reserved','uploading','received','accepted','cancelled'))
+);
+CREATE INDEX idx_intake_submissions_request ON intake_submissions(request_id,person_id);
+CREATE TRIGGER intake_submission_immutable BEFORE UPDATE OF request_id,person_id,size,sha256,created_at ON intake_submissions
+WHEN NEW.request_id IS NOT OLD.request_id OR NEW.person_id IS NOT OLD.person_id OR NEW.size IS NOT OLD.size
+  OR NEW.sha256 IS NOT OLD.sha256 OR NEW.created_at IS NOT OLD.created_at
+BEGIN SELECT RAISE(ABORT,'Intake submission intent is immutable'); END;
