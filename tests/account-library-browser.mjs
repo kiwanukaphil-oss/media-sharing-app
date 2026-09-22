@@ -55,7 +55,7 @@ try {
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   assert.ok(requests.some(url => url.pathname.endsWith('/thumbnail')));
-  await page.locator('input[type="file"]').first().setInputFiles({ name: 'Scoped upload.txt', mimeType: 'text/plain', buffer: Buffer.from('Preserve this destination') });
+  await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'Scoped upload.txt', mimeType: 'text/plain', buffer: Buffer.from('Preserve this destination') });
   await expect.poll(() => uploadCompleted).toBe(true);
   await mkdir('.sites-runtime/account-library', { recursive: true });
   await page.screenshot({ path: '.sites-runtime/account-library/desktop.png', fullPage: true });
