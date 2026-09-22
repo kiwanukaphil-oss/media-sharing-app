@@ -233,3 +233,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Both origins return 200 for health and operational health and 401 for anonymous feed. Owner completed fresh sign-in; My space, shared library and owner People & access all load correctly. No membership mutation or upload was needed. CI `35693941086` passed both verification and browser jobs.
 - Database migrations remain through 0018, pilot audience and 1 GiB budget unchanged; closure coordinator/executor not activated.
 - Separate approved Auth0 rehearsal passed creation/exact-profile/removal/independent absence. Temporary API/connection access is revoked; writer token expiry approximately 23 September 06:08 UTC. No real account or media was removed.
+
+## 22 September 2026 - Erased identity callback guard
+
+- Source `05d1c30` deployed as Worker `13b029f9-328b-467d-9c5e-99a7dfc63285` at 100%, independently read back at 06:29 UTC.
+- Delayed verified callbacks cannot recreate profiles/sessions matching retained minimisation identity digests. Actual-D1 tests cover normal and inconsistent restored rows plus unrelated successful login. Identity/claim/legacy regression, TypeScript, lint, build and dry run pass.
+- Both origins return health/operational health 200, anonymous feed 401 and dormant backup coordinator 404. Existing signed-in My space still loads its one fixture. No fresh password entry was required for this retained-session check; it is not a new provider callback rehearsal.
+- Coordinator code is present but disabled. No protocol migration, new secret, backup activation, budget expansion or user-data deletion. Hosted CI `35695052192` passed its verification job; its browser job remains in progress.
+- Scheduled backup `35683283282` independently passed inventory, copy and verification; no extra manual restore was triggered.
