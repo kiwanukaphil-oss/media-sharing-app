@@ -11,7 +11,8 @@ P5-04, 22 September 2026. The role/access foundation is live, so this bounded po
 - [x] Suggest collision-safe `files/<opaque file id>/<sanitised filename>` paths while retaining source names unchanged in metadata. Do not include storage keys, credentials, signed links, emails or private bookmarks.
 - [x] Bound work to 100 files and 2,000 album references, with current request limits. Do not silently truncate; an oversized request asks for a smaller selection.
 - [x] Verify real D1 isolation/conflicts and an actual browser JSON download, including Viewer controls, failure recovery, keyboard focus and narrow layout.
-- [ ] Hosted regression verification and production release, alongside the pending collaboration migrations.
+- [x] Hosted regression verification: `35729947615` and `35730541652` pass verification and browser jobs.
+- [ ] Production release alongside the pending collaboration migrations; independent backup downloads remain capped.
 
 This is metadata-only portability. Original downloads remain separate and unchanged. Starting a browser download does not prove a successful local save. Original files may contain EXIF/location data; no sanitised derivative is claimed.
 
@@ -30,4 +31,4 @@ Layout creation is atomic and uses stable preview IDs. A lost response can be re
 
 Local evidence: `tests/folder-import.mjs`, `tests/import-layout.mjs`, `tests/folder-import-browser.mjs`. The browser check creates only generated local fixtures, loses the first successful layout response, retries once, verifies one album and three byte-identical originals with the reviewed section mappings, and exercises the unsupported-folder fallback. Hosted and deployed checks remain outstanding for this increment.
 
-Hosted folder-import run `35729466805` passed verification. An older account-library browser test selected the first hidden file input instead of the original-file control; it now uses the explicit accessible label. Corrected hosted browser coverage is pending.
+Hosted folder-import run `35729466805` passed verification. An older account-library browser test selected the first hidden file input instead of the original-file control; it now uses the explicit accessible label. Corrected hosted browser coverage passes in `35729947615` and `35730541652`. Production release remains pending.

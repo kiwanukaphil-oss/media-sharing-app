@@ -6,7 +6,7 @@ P7-06. 22 September 2026. Status: **discovery complete; do not build or enable a
 
 Relay already provides filename/original-name search and scoped album, section, date, media-type and uploader filters; saved views are live. No observed search-failure study or participant-approved media collection is recorded in the project. We therefore cannot substantiate that image-content search is the next most valuable use of the budget. The access model, reliable handoffs and portable originals have clearer documented needs and remain the priority.
 
-The promising future job is concrete: someone remembers ?the outdoor group photo from that event? but not its filename. Semantic search could rank candidates for that request. It should supplement familiar browsing, not reorganise albums, apply hidden labels, identify faces or decide what users are allowed to see.
+The promising future job is concrete: someone remembers "the outdoor group photo from that event" but not its filename. Semantic search could rank candidates for that request. It should supplement familiar browsing, not reorganise albums, apply hidden labels, identify faces or decide what users are allowed to see.
 
 ## Options considered
 
