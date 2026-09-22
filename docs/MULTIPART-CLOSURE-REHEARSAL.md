@@ -16,9 +16,9 @@ Prepared 22 September 2026. Component verification only; no full closure or prod
 
 - [x] Implement exact-target seed/run and isolated local tests.
 - [x] Pass TypeScript, focused lint and isolated deployment dry run.
-- [ ] Seed and record the hosted generated upload.
-- [ ] Obtain specific approval to abort/remove this generated multipart test data.
-- [ ] Execute the hosted abort/rejection checks, retain evidence and disable the endpoint again.
+- [x] Seed the hosted generated upload and independently read its exact key, recorded upload-ID presence and seeded phase from isolated D1. Prepared Worker `0c1e91c0-eea6-44ee-a538-7a369430f40e`.
+- [x] User explicitly approved this exact generated-upload test on 22 September.
+- [x] Execute successfully on Worker `6a6aa604-4a57-4e8c-aea3-2a1e33aeab7a`; independent D1 readback confirms passed, late-part rejection and completion rejection at 07:45:36 UTC. Disable again as `8a970823-89b4-458d-8f35-225baee87025` with expiry zero and run false; public endpoint rejects with 403. No production objects changed.
 
 ## Evidence boundary
 
