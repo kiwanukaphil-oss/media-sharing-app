@@ -6,12 +6,12 @@ import { planFolderImport, type FolderImportPlan } from "@/lib/folder-import";
 import { formatBytes } from "@/lib/contracts";
 import { useLibraryApi } from "./library-scope";
 
-export type MappedImportFile = { file: File; transferId: string; albumId: string; albumName: string; sectionId?: string; sectionName?: string };
-type Preview = { id: string; files: File[]; transferIds: string[]; plan: FolderImportPlan; sections: { id: string; key: string; name: string; count: number }[] };
+export type MappedImportFile = { file: File; transferId: string; accessScopeId: string | null; audienceName?: string; albumId: string; albumName: string; sectionId?: string; sectionName?: string };
+type Preview = { accessScopeId: string | null; audienceName?: string; id: string; files: File[]; transferIds: string[]; plan: FolderImportPlan; sections: { id: string; key: string; name: string; count: number }[] };
 
 // Folder APIs are optional. Preview all grouping changes before creating a new album; preserve bytes
 // and duplicate filenames as independent originals, then reuse the existing persistent transfer queue.
-export function FolderImport({ disabled, spaceName, queue }: { disabled: boolean; spaceName: string; queue: (files: MappedImportFile[]) => Promise<void> }) {
+export function FolderImport({ disabled, spaceName, accessScopeId = null, audienceName, queue }: { disabled: boolean; spaceName: string; accessScopeId?: string | null; audienceName?: string; queue: (files: MappedImportFile[]) => Promise<void> }) {
   const { requestJson } = useLibraryApi();
   const input = useRef<HTMLInputElement>(null), dialog = useRef<HTMLDialogElement>(null), titleId = useId();
   const [preview, setPreview] = useState<Preview | null>(null), [supported, setSupported] = useState(false);
@@ -25,7 +25,7 @@ export function FolderImport({ disabled, spaceName, queue }: { disabled: boolean
     setError(""); setCreated(false); setQueued(false);
     try {
       const plan = planFolderImport(files);
-      setPreview({ id: crypto.randomUUID(), files, transferIds: files.map(() => crypto.randomUUID()), plan,
+      setPreview({ accessScopeId, audienceName, id: crypto.randomUUID(), files, transferIds: files.map(() => crypto.randomUUID()), plan,
         sections: plan.sections.map(section => ({ ...section, id: crypto.randomUUID() })) });
     } catch (failure) { setError(failure instanceof Error ? failure.message : "This folder could not be previewed."); }
   }
@@ -36,12 +36,12 @@ export function FolderImport({ disabled, spaceName, queue }: { disabled: boolean
     setBusy(true); setError("");
     try {
       const layout = await requestJson<{ album: { id: string; name: string }; sections: { id: string; name: string }[] }>("import-layout", {
-        method: "POST", body: JSON.stringify({ id: preview.id, name: preview.plan.albumName, sections: preview.sections.map(({ id, name }) => ({ id, name })) }),
+        method: "POST", body: JSON.stringify({ id: preview.id, accessScopeId: preview.accessScopeId, name: preview.plan.albumName, sections: preview.sections.map(({ id, name }) => ({ id, name })) }),
       });
       setCreated(true);
       await queue(preview.plan.files.map(entry => {
         const section = preview.sections.find(candidate => candidate.key === entry.sectionKey);
-        return { file: preview.files[entry.index], transferId: preview.transferIds[entry.index], albumId: layout.album.id, albumName: layout.album.name,
+        return { accessScopeId: preview.accessScopeId, audienceName: preview.audienceName, file: preview.files[entry.index], transferId: preview.transferIds[entry.index], albumId: layout.album.id, albumName: layout.album.name,
           sectionId: section?.id, sectionName: section?.name };
       }));
       setQueued(true);

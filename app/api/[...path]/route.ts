@@ -1,3 +1,4 @@
+import { restrictedScopesEnabled } from "@/lib/restricted-runtime";
 import { mediaOperationAuthority } from "@/lib/asset-scope-authority";
 import { arrivalActivityStatement } from "@/lib/library-activity-statements";
 import { z } from "zod";
@@ -187,7 +188,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
   }
   const webResponse = await webAction(request, device, resource, id, action, storage);
   if (webResponse) return webResponse;
-  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
+  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, restrictedScopes: Boolean(accountAccess && device.space_kind === "shared" && restrictedScopesEnabled()), transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
   if (resource === "session" && !id && method === "DELETE") {
     await changeDeviceAccess(device, device.id);
     return Response.json({ disconnected: true }, { headers: { "Set-Cookie": expiredSessionCookie(request) } });

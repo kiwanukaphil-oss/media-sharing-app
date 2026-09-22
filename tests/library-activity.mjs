@@ -35,6 +35,7 @@ try {
   const history = async (actor,query='') => (await webAction(new Request('https://fixture.invalid/api/activity'+query),actor,'activity',undefined,undefined,{})).json();
   const count = async () => (await db.prepare('SELECT COUNT(*) AS n FROM library_events').first()).n;
   const owner=actors[0];
+  await assert.rejects(action(owner,"access-scopes",undefined,{id:crypto.randomUUID(),name:"Not enabled",members:[owner.id],confirmAudience:true}),e=>e.status===404,"Creation remains off without the activation flag.");
   assert.equal((await history(owner)).events.length,0,'Migration invents no historical changes.');
   await action(owner,'library','rename',{files:[{id:file,name:'renamed.jpg',expectedRevision:0}]});
   assert.equal(await count(),1);

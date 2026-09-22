@@ -40,9 +40,10 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), expectedRevision: revision, name: sectionName,
     position: z.number().int().min(-1000000).max(1000000).default(0), deleted: z.boolean().default(false), coverMediaId: z.string().uuid().nullable().optional() }));
   if (input.coverMediaId) {
+    const coverAudience = resourceAudienceAuthority(device, "m");
     const cover = await database().prepare(`SELECT m.id FROM media m JOIN album_media am ON am.media_id = m.id
       WHERE am.album_id = ? AND am.section_id = ? AND m.id = ? AND m.space_id = ? AND m.status = 'ready'
-      AND m.archived_at IS NULL AND m.preview_ready = 1`).bind(input.albumId, id || null, input.coverMediaId, device.space_id).first();
+      AND m.archived_at IS NULL AND m.preview_ready = 1 AND ${coverAudience.sql}`).bind(input.albumId, id || null, input.coverMediaId, device.space_id, ...coverAudience.bindings).first();
     if (!cover) throw new ApiError(409, "Choose a file with a preview in this section for its cover.");
   }
   const authority = sectionOrganiserAuthority(device, input.albumId);

@@ -84,19 +84,20 @@ async function renameFiles(request: Request, device: ActiveDevice) {
     if (splitFilename(file.name).extension !== splitFilename(existing.results.find(row => row.id === file.id)!.name).extension) throw new ApiError(400, "Keep the original file extension.");
   }
   // Names may repeat in unrelated albums, but not within any album shared by these files.
+  const conflictAudience = resourceAudienceAuthority(device, "m");
   const conflictsQuery = `SELECT 1 FROM json_each(?) proposed JOIN album_media own ON own.media_id = json_extract(proposed.value, '$.id')
     JOIN albums a ON a.id = own.album_id AND a.deleted_at IS NULL JOIN album_media other ON other.album_id = own.album_id AND other.media_id != own.media_id
     JOIN media m ON m.id = other.media_id AND m.status = 'ready' AND m.archived_at IS NULL
     LEFT JOIN json_each(?) sibling ON json_extract(sibling.value, '$.id') = m.id
-    WHERE lower(COALESCE(json_extract(sibling.value, '$.name'), m.name)) = lower(json_extract(proposed.value, '$.name')) LIMIT 1`;
-  const conflicts = await database().prepare(conflictsQuery).bind(json, json).first();
+    WHERE ${conflictAudience.sql} AND lower(COALESCE(json_extract(sibling.value, '$.name'), m.name)) = lower(json_extract(proposed.value, '$.name')) LIMIT 1`;
+  const conflicts = await database().prepare(conflictsQuery).bind(json, json, ...conflictAudience.bindings).first();
   if (conflicts) throw new ApiError(409, "A filename already exists in one of these albums. Choose another name or a different starting number.");
   const authority = fileEditAuthority(device, "candidate");
   const [result] = await activityBatch(device, "file.rename", fileActivityResources(input.files), [database().prepare(`UPDATE media SET original_name = COALESCE(original_name, name),
     name = (SELECT json_extract(value, '$.name') FROM json_each(?) WHERE json_extract(value, '$.id') = media.id), revision = revision + 1
     WHERE space_id = ? AND archived_at IS NULL AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard("active", authority.sql)}
     AND NOT EXISTS (${conflictsQuery})
-    RETURNING id, name, revision`).bind(json, device.space_id, json, json, device.space_id, ...authority.bindings, input.files.length, json, json)]);
+    RETURNING id, name, revision`).bind(json, device.space_id, json, json, device.space_id, ...authority.bindings, input.files.length, json, json, ...conflictAudience.bindings)]);
   if (result.results.length !== input.files.length) throw new ApiError(409, "A file or filename changed. Refresh before renaming; no files were renamed.");
   return Response.json({ files: result.results });
 }

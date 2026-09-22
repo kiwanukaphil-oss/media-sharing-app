@@ -1,3 +1,5 @@
+import { restrictedScopesEnabled } from "./restricted-runtime";
+import { readAccessScopes, createAccessScope, changeScopeGrant } from "./scope-management";
 import { mediaOperationAuthority, browseAudienceAuthority, requestedBrowseAudience, resourceAudienceAuthority } from "./asset-scope-authority";
 import { changePersonalFavorite } from "./personal-favorites";
 import { exportSelectedMetadata } from "./metadata-export";
@@ -58,7 +60,8 @@ export async function readFeed(request: Request, device: ActiveDevice) {
       where += " AND EXISTS (SELECT 1 FROM album_media am LEFT JOIN album_sections s ON s.album_id = am.album_id AND s.id = am.section_id WHERE am.media_id = media.id AND am.album_id = ? AND (am.section_id IS NULL OR s.deleted_at IS NOT NULL))";
       values.push(album);
     } else {
-      const available = await database().prepare("SELECT id FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL").bind(album, section).first();
+      const sectionAudience = resourceAudienceAuthority(device, "a");
+      const available = await database().prepare(`SELECT id FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM albums a WHERE a.id=album_sections.album_id AND ${sectionAudience.sql})`).bind(album, section, ...sectionAudience.bindings).first();
       if (!available) throw new ApiError(404, "This section is no longer available.");
       where += " AND EXISTS (SELECT 1 FROM album_media WHERE media_id = media.id AND album_id = ? AND section_id = ?)";
       values.push(album, section);
@@ -172,6 +175,13 @@ async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: Act
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
 export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string, storage: R2Bucket = bucket()): Promise<Response | null> {
   const method = request.method;
+  if (resource === "access-scopes") {
+    if (!restrictedScopesEnabled()) throw new ApiError(404, "Restricted audiences are not available yet.");
+    if (!id && method === "GET") return Response.json(await readAccessScopes(device, new URL(request.url).searchParams.get("administration") === "1"));
+    if (!id && method === "POST") return createAccessScope(request, device);
+    if (id && method === "PUT") return changeScopeGrant(request, device, id);
+    throw new ApiError(404, "This audience action is unavailable.");
+  }
   if (resource === "import-layout" && !id && method === "POST") return createImportLayout(request, device);
   if (resource === "metadata-export" && !id && method === "POST") return exportSelectedMetadata(request, device);
   if (resource === "activity" && !id && method === "GET") return readLibraryActivity(request, device);

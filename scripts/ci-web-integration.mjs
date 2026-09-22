@@ -10,7 +10,8 @@ const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
 const closureEntryChecks = process.argv.includes('--closure-entrypoints');
 const closureTrackingChecks = process.argv.includes('--closure-tracking') || closureEntryChecks;
-const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks;
+const restrictedChecks = process.argv.includes('--restricted-scopes');
+const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks || restrictedChecks;
 const backupCoordinationChecks = process.argv.includes('--backup-coordination');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
 const modules = (await readdir('dist/server', { recursive: true }))
@@ -29,7 +30,8 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
     ...(accountAccessChecks ? { bindings: { AUTH0_ENABLED: 'true', AUTH0_ROLLOUT: 'open', AUTH0_DOMAIN: 'access.auth0.com',
       AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
       AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648',
-      ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}) } } : {}),
+      ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}),
+      ...(restrictedChecks ? {RELAY_RESTRICTED_SCOPES_ENABLED:'true'} : {}) } } : {}),
     ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
@@ -62,6 +64,9 @@ try {
   } else if (servePreview) {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
+  } else if (restrictedChecks) {
+    const {verifyRestrictedRoutes}=await import('../tests/restricted-routes.mjs');
+    await verifyRestrictedRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options));
   } else if (closureEntryChecks) {
     const {verifyClosureEntryPoints}=await import('../tests/closure-entrypoints.mjs');
     await verifyClosureEntryPoints(database,(url,options)=>emulator.dispatchFetch(url,options),origin);
@@ -99,7 +104,7 @@ try {
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   } else if (browserChecks) {
-    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'space-people-browser', 'publication-browser', 'retrieval-presentation-browser', 'editor-browser', 'favorites-browser', 'activity-browser', 'metadata-export-browser', 'folder-import-browser']) await runIntegrationTest(name);
+    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'space-people-browser', 'publication-browser', 'retrieval-presentation-browser', 'editor-browser', 'favorites-browser', 'activity-browser', 'access-scopes-browser', 'metadata-export-browser', 'folder-import-browser']) await runIntegrationTest(name);
   } else {
     for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation', 'album-sections']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');

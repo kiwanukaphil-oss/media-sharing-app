@@ -5,7 +5,7 @@ const date = z.string().max(10).refine(value => !value || (/^\d{4}-\d{2}-\d{2}$/
   Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value));
 export const libraryViewStateSchema = z.object({
   category: z.enum(["all", "original", "final", "trash"]), search: z.string().max(200),
-  query: z.object({ album: z.union([optionalId,z.literal("unorganised")]),
+  query: z.object({ scope: z.union([optionalId,z.literal("accessible")]).default(""), album: z.union([optionalId,z.literal("unorganised")]),
     section: z.union([optionalId,z.literal("unsectioned")]), dateMode: z.enum(["uploaded","captured"]),
     from: date, to: date, sort: z.enum(["newest","oldest"]), batch: optionalId,
     type: z.enum(["","photo","video","other"]), uploader: z.enum(["","me"]), favorites: z.enum(["","1"]).default(""),

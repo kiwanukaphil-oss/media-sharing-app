@@ -56,5 +56,5 @@ try {
   await db.prepare("CREATE TRIGGER deny_scope_audit BEFORE INSERT ON asset_scope_events BEGIN SELECT RAISE(ABORT,'fixture audit failure'); END").run();
   await assert.rejects(changeScopeGrant(request({membershipId:other.id,version:granted.version,grant:false,confirmAudience:true}),owner,scope));
   assert.equal((await db.prepare('SELECT revoked_at FROM scope_grants WHERE scope_id=? AND membership_id=?').bind(scope,other.id).first()).revoked_at,null,'Failed audit rolls back grant mutation.');
-  console.log('PASS: atomic audience creation, exact-member validation, stable retries, opaque owner catalog, stale versions/roles, explicit audited administrator access and audit rollback. Endpoints remain unrouted.');
+  console.log('PASS: atomic audience creation, exact-member validation, stable retries, opaque owner catalog, stale versions/roles, explicit audited administrator access and audit rollback. Production activation remains disabled.');
 } finally {await runtime.dispose();delete globalThis.__activityEnv;}

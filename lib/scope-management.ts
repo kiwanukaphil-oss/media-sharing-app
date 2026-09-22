@@ -3,7 +3,7 @@ import { ApiError, database, readJson, type ActiveDevice } from "./server";
 import { transferAuthority } from "./transfer-authority";
 import { newAssetAudienceAuthority } from "./asset-scope-authority";
 
-// This module is deliberately not routed until the complete disclosure inventory and UI are ready.
+// Routes remain behind a disabled activation flag until the complete disclosure inventory is ready.
 // Audience administration is account-owner-only and cannot target another person's personal space.
 function scopeAdministrator(device: ActiveDevice) {
   if (device.authentication !== "account" || !device.personId) throw new ApiError(403, "Sign in as a shared-space owner to manage audiences.");

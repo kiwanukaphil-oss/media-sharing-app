@@ -51,7 +51,7 @@ The pure policy fixture records expected semantics and is not a substitute for d
 
 `tests/asset-scope-authority.mjs` passes with SQLite and Cloudflare's local D1 engine. It verifies owner/legacy denial, explicit Viewer grants, whole-event filtering after the original is removed, leave/rejoin revocation and restore preservation of triggers/quarantine. Existing snapshot tooling preserves triggers after data import. This does not establish runtime coverage: the full inventory above remains the activation gate.
 
-## Isolated runtime integration ? 22 September 2026
+## Isolated runtime integration — 22 September 2026
 
 Branch `work/restricted-scopes` is an unfinished development branch, separate from the release candidate. It must not be deployed or merged for release yet. Migration 0023 exists only on this branch; live schema remains 0020 and the main candidate remains 0021/0022.
 
@@ -63,15 +63,19 @@ Branch `work/restricted-scopes` is an unfinished development branch, separate fr
 - [x] Rehearse migration 0020 through 0023 against a private live export: all original columns/rows in 25 tables preserved, no invented grants, restored triggers identical and restored memberships quarantined. Source digest `fe005a714436264b1c0e07c4b22a652627db264389ece63fab93519877272f36`.
 - [x] Review minimisation schema `896bd38831c71628bab581dcd4e661273a23a9dbcf9bc9c5e7331c38e94063d2`: explicit exact-membership grant revocation, shared originals/scope records retained, identity minimised and restored grants quarantined. Local populated-scope fixture and existing erased-snapshot tests pass.
 - [x] Import/album creation captures an explicit scope. Existing personal publication accepts general destinations only; restricted destinations await the cross-scope workflow. Production-build account integration passes, including original bytes, roles, transfer races, publications, backup export and recovery repair.
-- [ ] Finish capability-issuance race coverage and restricted browser workflows. Direct multipart admission now includes resource authority; broader closure integration remains to verify.
-- [ ] Add scope management and navigation, audience previews, queue context and verified cross-scope copy.
+- [x] Resource-bound multipart capability admission and built-worker closure integration pass. Revocation denies new part URLs and original links in real local route tests.
+- [x] Current restricted browser workflows pass: general/combined navigation, scope-preserving album selection, audience preview, explicit self-access, revoked-content clearing and queue destination capture.
+- [x] Add scope management/navigation, audience previews, saved-view scope and durable queue context behind `RELAY_RESTRICTED_SCOPES_ENABLED`. No deployment configuration enables it.
+- [ ] Add independently verified cross-scope copying with explicit audience-expansion review.
 - [ ] Complete adversarial route/browser coverage, release verification and deployed checks before enabling restricted content.
 
-Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. Storage wording now identifies owner billing totals and audience-filtered lists; visual/browser verification remains outstanding. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.
+Owners may see aggregate billed storage across scopes for administration; file lists remain audience-filtered. Storage wording now identifies owner billing totals and audience-filtered lists; mobile and desktop visual checks plus the full local browser regression pass. Existing signed links have their documented bounded lifetime and cannot recall downloaded copies.
 
 ### Audience administration preparation
 
 - [x] Unrouted `scope-management.ts` implements atomic owner-only shared-scope creation, stable retry IDs, exact-member validation, bounded catalogs/grants, current role checks and opaque audit-version conflicts.
 - [x] Administrator self-access requires its own explicit confirmation and produces an `administrator-grant` event; audit failure rolls back the permission change. Local D1 tests pass.
 - [x] Production-build closure-tracking integration exits 0, including resource-bound multipart capability custody and closure fence entry points.
-- [ ] Route and present these controls only after remaining disclosure and browser acceptance checks. No production scope or grant was created.
+- [x] Route and present controls behind the disabled activation flag. Dedicated built-Worker D1/R2 tests verify CSRF, owner-without-grant denial, Viewer bytes/read-only behavior, metadata/thumbnail/section denial and audited self-access. No production scope or grant was created.
+- [x] Full local browser regression exits 0: existing Chrome/Edge/Firefox/WebKit workflows preserved, plus new mobile/desktop audience checks and queue/navigation checks. Production build, TypeScript and full web lint pass.
+- [ ] Hosted verification and production release remain outstanding; cross-scope copying and final lifecycle/disclosure review remain activation gates.

@@ -17,7 +17,7 @@ const labels: Record<string, string> = {
 
 // Scope is inherited from the mounted library. Poll only visible tabs, keep notifications generic,
 // and clear displayed history after access failure. Read state lasts only for this mounted view.
-export function LibraryActivity() {
+export function LibraryActivity({ scope = "" }: { scope?: string }) {
   const { requestJson } = useLibraryApi();
   const [open, setOpen] = useState(false), [unread, setUnread] = useState(false);
   const [page, setPage] = useState<ActivityPage>({ events: [], next: null });
@@ -29,7 +29,7 @@ export function LibraryActivity() {
     async function checkRecentActivity() {
       if (document.visibilityState !== "visible") return;
       try {
-        const recent = await requestJson<ActivityPage>("activity");
+        const recent = await requestJson<ActivityPage>(`activity?scope=${encodeURIComponent(scope)}`);
         if (!active) return;
         const id = recent.events[0]?.id || null;
         if (latest.current !== undefined && latest.current !== id) setUnread(true);
@@ -39,7 +39,7 @@ export function LibraryActivity() {
     void checkRecentActivity();
     const timer = window.setInterval(() => void checkRecentActivity(), 60000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [requestJson]);
+  }, [requestJson, scope]);
   useEffect(() => { if (open) dialog.current?.showModal(); }, [open]);
 
   // Replace or append a bounded page only after a successful response. Failed refreshes clear stale
@@ -48,7 +48,7 @@ export function LibraryActivity() {
     if (busy) return;
     setBusy(true); setError("");
     try {
-      const result = await requestJson<ActivityPage>(`activity${before ? `?before=${encodeURIComponent(before)}` : ""}`);
+      const result = await requestJson<ActivityPage>(`activity?scope=${encodeURIComponent(scope)}${before ? `&before=${encodeURIComponent(before)}` : ""}`);
       setPage(previous => ({ events: before ? [...previous.events, ...result.events] : result.events, next: result.next }));
       if (!before) { latest.current = result.events[0]?.id || null; setUnread(false); }
     } catch (failure) { setPage({ events: [], next: null }); setError(failure instanceof Error ? failure.message : "Activity could not be loaded."); }

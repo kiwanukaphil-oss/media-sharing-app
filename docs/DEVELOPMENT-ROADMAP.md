@@ -5,9 +5,15 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Restricted audience UI checkpoint
+
+- [x] Flag-gated owner management and explicit self-access, general/restricted/combined navigation, scoped album/import/upload capture, activity and saved-view contexts implemented and locally verified.
+- [x] Dedicated built-Worker D1/R2 access/bytes/CSRF/revocation tests pass. Full local browser regression exits 0, with existing cross-browser workflows and the new mobile/desktop audience workflow. Build, TypeScript and full web lint pass.
+- [ ] Cross-scope copy, final disclosure/lifecycle review, hosted verification and deployment. The activation flag remains disabled; no production restricted content exists.
+
 ## Audience administration checkpoint
 
-- [x] Local atomic creation/grant administration, explicit audited self-access, stale-version/role checks and rollback tests pass. Controls remain unrouted.
+- [x] Local atomic creation/grant administration, explicit audited self-access, stale-version/role checks and rollback tests pass. Controls are now routed behind the disabled activation flag.
 - [x] Built-worker closure-tracking integration exits 0 with scope-aware capability admission.
 - [ ] Finish audience navigation and management UI, full scope coverage and release acceptance.
 
