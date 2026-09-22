@@ -12,6 +12,7 @@ import { PresentationShield, HideLibraryButton } from "./presentation-shield";
 import { LibraryScope, useLibraryApi } from "./library-scope";
 import PublicationDialog from "./publication-dialog";
 import ScopeCopyDialog from "./scope-copy-dialog";
+import UploadRequests from "./upload-requests";
 import { SavedLibraryViews } from "./saved-library-views";
 import { savedLibraryViewsKey } from "@/lib/saved-library-views";
 import { AccessScopes } from "./access-scopes";
@@ -33,7 +34,7 @@ type LibraryView = "grid" | "list";
 const libraryViewStorageKey = "relay-library-view";
 
 type Filter = "all" | Category | "trash";
-type Modal = "devices" | "help" | "storage" | MediaItem | null;
+type Modal = "devices" | "help" | "storage" | "upload-requests" | MediaItem | null;
 const statusLabels = { queued: "Waiting to send", preparing: "Checking original", sending: "Sending", paused: "Paused", "needs-file": "Ready to resume", error: "Transfer interrupted", complete: "Available to everyone" };
 type RelayModelContext = { registerTool: (tool: { name: string; description: string; inputSchema: object; annotations: { readOnlyHint: boolean; untrustedContentHint: boolean }; execute: (input: unknown) => Promise<unknown> }, options: { signal: AbortSignal }) => void | Promise<void> };
 
@@ -636,6 +637,7 @@ function RelayWorkspace() {
         <button className={`nav-item${libraryQuery.album === "unorganised" ? " active" : ""}`} aria-current={libraryQuery.album === "unorganised" ? "page" : undefined} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, album: "unorganised" }); }}><Grid2X2 size={17} /><span className="album-name">Unorganised</span></button>
       </nav></>}
       <button aria-pressed={filter === "trash" && !libraryQuery.album} className={`nav-item ${filter === "trash" && !libraryQuery.album ? "active" : ""}`} onClick={() => { setFilter("trash"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope }); }}><FolderDown size={18} />Trash<span>{counts.trash}</span></button><button className="nav-item" disabled={!session} onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}><ShieldCheck size={18} />Storage<span>{storage ? formatBytes(storage.used) : ""}</span></button><div className="nav-divider" />
+      {session?.uploadRequests && isOwner && <button className="nav-item" onClick={() => setModal("upload-requests")}><Upload size={18}/>Upload requests</button>}
       {accountSpaceId !== undefined ? <><a className="nav-item" href="/account"><MonitorSmartphone size={18} />Account &amp; libraries</a>{session && session.space.kind !== "personal" && <a className="nav-item" href={`/people?space=${encodeURIComponent(accountSpaceId)}`}><Users size={18} />People &amp; access</a>}</> : <button className="nav-item" disabled={!session} onClick={() => { setModal("devices"); void refreshDevices().catch(() => setError("Couldn't refresh connected devices.")); }}><MonitorSmartphone size={18} />Connected devices<span>{devices.length || "—"}</span></button>}
       <div className="sidebar-bottom"><div className="quality-note"><ShieldCheck size={20} /><div><strong>Every detail, intact.</strong><p>Your files. Original quality.</p></div></div><button className="nav-item" onClick={() => setModal("help")}><CircleHelp size={18} />How Relay works<ArrowUpRight size={15} /></button><div className="device-footer"><Laptop size={17} /><span>{accountSpaceId !== undefined ? "Account access" : devices.find(device => device.current)?.name || "This device"}</span><span className={`status-dot ${session ? "online" : ""}`} /></div></div>
     </aside>
@@ -677,6 +679,7 @@ function RelayWorkspace() {
     {confirmation}
     {notice && <div className="toast" role="status"><Check size={17} />{notice}</div>}
 
+    {modal === "upload-requests" && accountSpaceId && session?.uploadRequests && isOwner && <UploadRequests spaceId={accountSpaceId} spaceName={session.space.name} restricted={Boolean(session.restrictedScopes)} onClose={() => { setModal(null); void refreshLibrary().catch(failure => setError(failure.message)); }} />}
     {scopeCopyItem && accountSpaceId && <ScopeCopyDialog item={scopeCopyItem} spaceId={accountSpaceId} onClose={() => { setScopeCopyItem(null); void refreshLibrary().catch(failure => setError(failure.message)); }} />}
     {publicationItem && accountSpaceId && <PublicationDialog item={publicationItem} sourceSpaceId={accountSpaceId} libraries={accountLibraries} onClose={() => { setPublicationItem(null); setScopeCopyItem(null); void refreshStorage().catch(failure => setError(failure.message)); }} />}
     {modal === "devices" && <ModalFrame title="Your connected devices" onClose={() => setModal(null)}>

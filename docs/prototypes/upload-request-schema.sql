@@ -86,3 +86,17 @@ CREATE TABLE intake_upload_attempts (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX idx_intake_attempt_submission ON intake_upload_attempts(submission_id);
+
+CREATE TABLE intake_capabilities (
+  id TEXT PRIMARY KEY NOT NULL,
+  submission_id TEXT NOT NULL REFERENCES intake_submissions(id),
+  object_key TEXT NOT NULL,
+  upload_id TEXT NOT NULL,
+  part_number INTEGER NOT NULL CHECK(part_number BETWEEN 1 AND 16),
+  expected_bytes INTEGER NOT NULL CHECK(expected_bytes BETWEEN 1 AND 16777216),
+  issued_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  admission_id TEXT REFERENCES closure_write_admissions(id),
+  CHECK(expires_at>issued_at AND expires_at<=issued_at+60000)
+);
+CREATE INDEX idx_intake_capabilities_submission ON intake_capabilities(submission_id);

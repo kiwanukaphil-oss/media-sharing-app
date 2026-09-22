@@ -92,7 +92,7 @@ export async function hashOriginal(file: File, signal: AbortSignal, onProgress?:
   return bytesToHex(hash.digest());
 }
 // XMLHttpRequest exposes real bytes sent; aborting leaves completed multipart parts reusable.
-function sendPart(url: string, blob: Blob, signal: AbortSignal, onProgress: (sent: number) => void): Promise<string> {
+export function sendPart(url: string, blob: Blob, signal: AbortSignal, onProgress: (sent: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const abort = () => xhr.abort();

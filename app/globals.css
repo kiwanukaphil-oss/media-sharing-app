@@ -315,3 +315,38 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 
 .audience-bar > .workspace-select { width:auto; flex:1 1 220px; max-width:360px; }
 .audience-bar > svg { flex-shrink:0; }
+
+/* Bounded collection uses the same calm controls as the library, with readable incoming-file rows. */
+.intake-manager { max-width: 680px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.intake-toolbar, .intake-summary, .intake-file { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+.intake-toolbar { margin: 20px 0; }
+.intake-empty { padding: 32px 12px; color: var(--muted); text-align: center; }
+.intake-empty svg { margin: 0 auto 12px; }
+.intake-empty p { font-weight: 600; color: var(--ink); }
+.intake-empty span { display: block; font-size: 13px; margin-top: 8px; }
+.intake-form { display: grid; gap: 18px; margin-top: 22px; }
+.intake-form label, .intake-link label { display: grid; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.intake-form input, .intake-link input { min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+.intake-form input:focus-visible, .intake-link input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.intake-form .workspace-select { width: 100%; }
+.intake-limits { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.intake-summary { margin: 24px 0; align-items: flex-start; }
+.intake-summary > div, .intake-file > div { min-width: 0; overflow-wrap: anywhere; }
+.intake-summary p, .intake-file p { color: var(--muted); font-size: 12px; line-height: 1.65; margin-top: 6px; }
+.intake-review h3 { font-size: 14px; margin-bottom: 14px; }
+.intake-file { padding: 16px 0; border-top: 1px solid var(--line); }
+.intake-file strong { font-size: 13px; }
+.intake-file button { flex-shrink: 0; }
+.intake-link { display: grid; gap: 18px; padding: 24px 0 4px; }
+.intake-link > svg { color: var(--accent); }
+.intake-link p { font-size: 14px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
+@media(max-width: 480px) { .intake-limits { gap: 12px; } .intake-file { flex-wrap: wrap; } .intake-summary { flex-wrap: wrap; } }
+
+.collection-page input[type="file"].sr-only { width: 1px; min-width: 0; height: 1px; min-height: 0; padding: 0; border: 0; }
+.collection-page label:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.collection-page header h1 { margin-top: 20px; }
+.collection-page header p { margin-top: 12px; line-height: 1.65; }
+.collection-page section > p { margin-top: 12px; line-height: 1.65; }
+.collection-page section > h2 { margin-bottom: 12px; }
+.collection-page .intake-file p { margin-top: 6px; }

@@ -11,7 +11,9 @@
 - [x] Atomic shared-quota activation and exact submission reservation pass D1 concurrency, retry, file/byte limit and non-visibility checks.
 - [x] Isolated exact owner draft/retry/close and quota-exchange rollback tests pass; closing preserves staged originals.
 - [x] Isolated multipart receipt, streamed checksum acceptance, corruption/authority-race denial and maximum 250 MiB local workerd verification pass. Files remain outside the feed until verified acceptance.
-- [ ] Part-capability custody, routes/UI, lifecycle review and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
+- [x] Durable bounded part-capability custody and built-Worker owner/recipient routes pass with closure tracking, including no membership, no recipient download, and verified owner acceptance. Hosted core checks passed in run 35741321353.
+- [x] Owner destination/allowance confirmation, secret-fragment sign-in handoff, recipient receipts and exact interrupted-file retry pass rendered mobile/desktop browser checks. Files stay outside the library until verified acceptance.
+- [ ] Lifecycle/minimisation/inventory review, rejection/cleanup and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
 
 ## Restricted-audience development acceptance
 

@@ -6,13 +6,14 @@ import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
 import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
 
-const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts','lib/upload-request-management.ts','lib/intake-transfers.ts','lib/intake-review.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts','lib/upload-request-management.ts','lib/intake-transfers.ts','lib/intake-review.ts','lib/account-closure-fence.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
 const modules=await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
 const {acceptUploadRequest,intakeRecipientAuthority}=modules.find(module=>module.acceptUploadRequest);
 const {activateUploadRequest,reserveIntakeSubmission}=modules.find(module=>module.activateUploadRequest);
 const {createUploadRequestDraft,closeUploadRequest}=modules.find(module=>module.createUploadRequestDraft);
-const {beginIntakeUpload,completeIntakeUpload}=modules.find(module=>module.beginIntakeUpload);
+const {beginIntakeUpload,completeIntakeUpload,reserveIntakePartCapability}=modules.find(module=>module.beginIntakeUpload);
 const {acceptIntakeOriginal}=modules.find(module=>module.acceptIntakeOriginal);
+const {admitClosureTrackedWrite,settleClosureTrackedWrite}=modules.find(module=>module.admitClosureTrackedWrite);
 const db=new DatabaseSync(':memory:'),now=Date.now();
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
@@ -116,6 +117,15 @@ try {
     await reserveIntakeSubmission(d1,session('recipient'),original,now);
     assert.equal((await beginIntakeUpload(d1,bucket,session('recipient'),original.id)).status,'uploading');
     const transport=await d1.prepare('SELECT object_key,upload_id FROM media WHERE id=?').bind(original.id).first();
+    const admission=await admitClosureTrackedWrite(d1,{kind:'account',session:session('recipient')});
+    const trackedSession={...session('recipient'),closureAdmissionId:admission.id};
+    const capability=await reserveIntakePartCapability(d1,trackedSession,original.id,1);
+    assert.equal(capability.expectedBytes,4);assert.equal(capability.expiresAt-capability.signedAt,60000);
+    assert.equal(capability.objectKey,transport.object_key);assert.equal(capability.uploadId,transport.upload_id);
+    assert.equal((await d1.prepare("SELECT COUNT(*) AS n FROM closure_storage_effects WHERE admission_id=? AND operation='multipart_capability' AND state='uncertain'").bind(admission.id).first()).n,1);
+    await settleClosureTrackedWrite(d1,admission.id,'uncertain');
+    await assert.rejects(reserveIntakePartCapability(d1,trackedSession,original.id,1),/unavailable/,'A settled/uncertain admission cannot issue another capability.');
+    await assert.rejects(reserveIntakePartCapability(d1,session('recipient'),original.id,2),/available upload part/);
     const part=await bucket.resumeMultipartUpload(transport.object_key,transport.upload_id).uploadPart(1,originalBytes);
     assert.deepEqual(await completeIntakeUpload(d1,bucket,session('recipient'),original.id,[part]),{received:true,verified:false});
     assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(original.id).first()).status,'pending-review');
@@ -132,6 +142,21 @@ try {
     await completeIntakeUpload(d1,bucket,session('recipient'),corrupt.id,[corruptPart]);
     await assert.rejects(acceptIntakeOriginal(d1,bucket,owner,corrupt.id),/checksum/);
     assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(corrupt.id).first()).status,'pending-review');
+    // Closing after R2 completion but before receipt cannot promote late bytes into review/the feed.
+    const lateDraft={...draft,id:crypto.randomUUID(),tokenHash:'9'.repeat(64)};
+    await createUploadRequestDraft(d1,owner,lateDraft,now);await activateUploadRequest(d1,owner,lateDraft.id,10000,now);await acceptUploadRequest(d1,session('recipient'),lateDraft.tokenHash,now);
+    const late={...original,id:crypto.randomUUID(),requestId:lateDraft.id};await reserveIntakeSubmission(d1,session('recipient'),late,now);await beginIntakeUpload(d1,bucket,session('recipient'),late.id);
+    const lateRow=await d1.prepare('SELECT object_key,upload_id FROM media WHERE id=?').bind(late.id).first();
+    const latePart=await bucket.resumeMultipartUpload(lateRow.object_key,lateRow.upload_id).uploadPart(1,originalBytes);
+    const closingBucket={head:key=>bucket.head(key),resumeMultipartUpload:(key,uploadId)=>({complete:async parts=>{
+      const object=await bucket.resumeMultipartUpload(key,uploadId).complete(parts);
+      const revision=(await d1.prepare('SELECT revision FROM upload_requests WHERE id=?').bind(lateDraft.id).first()).revision;
+      await closeUploadRequest(d1,owner,lateDraft.id,revision);return object;
+    }})};
+    await assert.rejects(completeIntakeUpload(d1,closingBucket,session('recipient'),late.id,[latePart]),/request changed/);
+    assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(late.id).first()).status,'receiving');
+    assert.ok(await bucket.head(lateRow.object_key),'Late bytes retain their custody record for reconciliation, never a false erased claim.');
+    await assert.rejects(reserveIntakePartCapability(d1,session('recipient'),late.id,1),/unavailable/);
     // An owner losing authority while reading bytes must not commit visibility or an album reference.
     const racing={...original,id:crypto.randomUUID()};await reserveIntakeSubmission(d1,session('recipient'),racing,now);await beginIntakeUpload(d1,bucket,session('recipient'),racing.id);
     const raceRow=await d1.prepare('SELECT object_key,upload_id FROM media WHERE id=?').bind(racing.id).first();
@@ -144,6 +169,13 @@ try {
     await d1.prepare("UPDATE scope_grants SET revoked_at=? WHERE scope_id='private'").bind(now).run();
     await d1.prepare("UPDATE scope_grants SET revoked_at=NULL WHERE scope_id='private'").run();
     await assert.rejects(acceptUploadRequest(d1,session('recipient'),'a'.repeat(64),now),/unavailable/,'Restoring issuer access cannot revive a revoked request.');
+    const exported=await d1.prepare(plan.sql).all(),restoredIntake=importSnapshot(restoreReadOnlySnapshot(plan,exported.results));
+    try{
+      sanitizeRestoredAccess(restoredIntake,now+1000);
+      assert.equal(restoredIntake.prepare('SELECT COUNT(*) AS n FROM upload_requests WHERE revoked_at IS NULL').get().n,0);
+      assert.equal(restoredIntake.prepare('SELECT COUNT(*) AS n FROM intake_capabilities').get().n,1,'Restore retains exact outstanding capability custody.');
+      assert.equal(restoredIntake.prepare("SELECT status FROM media WHERE id=?").get(original.id).status,'ready');
+    }finally{restoredIntake.close();}
   } finally {await runtime.dispose();}
   db.exec("UPDATE upload_requests SET state='open',accepted_by='recipient',accepted_at=1 WHERE id='request'");
   const authority=intakeRecipientAuthority(session('recipient'),now);
@@ -153,5 +185,5 @@ try {
   const restorePlan=planReadOnlySnapshot(db.prepare(schemaQuery).all()),restored=importSnapshot(restoreReadOnlySnapshot(restorePlan,db.prepare(restorePlan.sql).all()));
   try{sanitizeRestoredAccess(restored,now+1);assert.equal(restored.prepare('SELECT COUNT(*) AS n FROM upload_requests WHERE revoked_at IS NULL').get().n,0);}
   finally{restored.close();}
-  console.log('PASS: isolated SQLite/D1 intake invitation binding, no membership/disclosure, draft/expiry/session denial, immutable destination, non-resurrecting grants and restore quarantine. Atomic quota activation/reservations pass; no public transfer routes exist yet.');
+  console.log('PASS: isolated SQLite/D1 intake invitation binding, no membership/disclosure, draft/expiry/session denial, immutable destination, non-resurrecting grants and restore quarantine. Atomic quota, multipart receipt, capability custody, closure races and verified acceptance pass; production intake remains disabled.');
 } finally {db.close();}

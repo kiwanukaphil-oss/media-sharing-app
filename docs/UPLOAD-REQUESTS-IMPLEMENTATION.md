@@ -37,11 +37,12 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 - [x] Atomic quota activation and exact submission reservations pass real D1 concurrency tests. Two requests cannot reserve the same free bytes; concurrent retries produce one staged file; file count/size and total allowance are enforced.
 - [ ] Add tracked transfer custody and reconcile the new staging states before routing this preparation.
 - [x] Isolated owner draft creation/close: exact intent retries, bounded request count, current audience/role and revision checks. Closing releases only unused allowance; staged originals remain charged. D1 rollback test preserves allowance when custody insertion fails.
-- [ ] Route owner creation/revocation/review and recipient-only upload/receipt flows behind a disabled feature flag.
+- [x] Route owner creation/revocation/review and recipient-only upload/receipt flows behind a disabled feature flag; actual built Worker passes with closure tracking.
 - [x] Isolated R2 multipart start/receipt and owner-reviewed streaming checksum acceptance pass. A corrupt hash or owner demotion before commit leaves the file outside the feed; accepted arrivals are idempotent.
 - [x] Generated 250 MiB maximum-size stream verifies in the actual local workerd runtime (2759 ms local wall time); a mismatched hash is rejected without publication. This is not production CPU/latency evidence.
 - [ ] Route bounded multipart capabilities with custody, test expiry/revocation races and integrate shared quota/staging lifecycle inventory before activation.
-- [ ] Build mobile/desktop owner and recipient workflows, interrupted retry/recovery and clear abuse/error states.
+- [x] Build and locally verify mobile/desktop owner creation/review, explicit recipient sign-in/acceptance, receipt states and exact interrupted retry. A tab-local intent precedes reservation; original bytes are never persisted in browser storage.
+- [ ] Complete rejection/cleanup and operational abuse handling before activation.
 - [ ] Extend lifecycle/minimisation/restore contracts and test cross-account, revoked, expired, concurrent and malformed requests.
 - [ ] Hosted verification, independent recovery point, migration, pilot verification and operational limits before activation. General onboarding remains subject to Phase 2 gates.
 
@@ -57,4 +58,10 @@ Current acceptance and submission SQL also carries account-closure admission aut
 
 Unique, at-most-five multipart attempt keys are recorded before provider creation; late attempts cannot install themselves over a newer lease. Unknown creation/abort outcomes retain custody and reserved capacity. Completion records only received-for-review and rechecks current recipient, issuer, destination, expiry and closure authority. Independent verification incrementally hashes the completed immutable object stream without buffering the original. An authorised owner then commits one ready file, same-scope album placement and destination-only arrival event atomically.
 
-Closing collection stops new contributor writes. Already received shared work remains reviewable by a currently authorised owner, who may deliberately accept it after collection closes; this does not reopen the contributor's grant. Unverified/corrupt/unfinished bytes remain outside the feed and continue consuming reserved capacity. Rejection/cleanup, part-capability issuance, route/UI integration and lifecycle disposition remain outstanding. No prototype table or intake state is active in production.
+Closing collection stops new contributor writes. Already received shared work remains reviewable by a currently authorised owner, who may deliberately accept it after collection closes; this does not reopen the contributor's grant. Unverified/corrupt/unfinished bytes remain outside the feed and continue consuming reserved capacity. Part-capability issuance now records exact size/key/upload custody with a 60-second admission window and a 200-capability limit; closure tracking adds independent effect custody. Tests cover late completion after closure, settled admission reuse and restored capability retention. Rejection/cleanup, UI integration and lifecycle disposition remain outstanding. No prototype table or intake state is active in production.
+
+## Gated route and browser verification
+
+The actual production build passes recipient-only intake with closure tracking: owner private destination, CSRF rejection, no membership/feed/download access, bounded capabilities, real multipart receipt, independent acceptance, retained original and closure. Browser checks exercise secret removal from the URL, tab-preserved sign-in handoff, explicit acceptance, failed-part recovery across reload with the same submission ID, honest review receipts and owner confirmation at 390 px and desktop widths. Review caught and corrected a refresh hiding transfer errors and an inherited file-input width overflowing mobile. Hosted core run 35741321353 passed before these route/UI additions; their hosted rerun follows this checkpoint.
+
+The feature remains disabled and prototype SQL remains outside the active migration journal. Existing pilot users cannot create live requests. Lifecycle review, request minimisation, staging inventory, rejection/custody reconciliation and release gates are still outstanding.
