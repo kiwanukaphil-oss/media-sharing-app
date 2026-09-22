@@ -1,3 +1,6 @@
+import {deliveryRecipientRequest} from "@/lib/delivery-recipient-api";
+import {deliveryOwnerAction} from "@/lib/delivery-owner-api";
+import {deliveriesEnabled} from "@/lib/delivery-runtime";
 import {intakeRequest} from "@/lib/intake-api";
 import {uploadRequestAction} from "@/lib/upload-request-api";
 import {intakeEnabled} from "@/lib/intake-runtime";
@@ -109,6 +112,7 @@ async function connectDevice(request: Request, nativeClient = false) {
 // Dispatch metadata, pairing, and multipart actions while enforcing space and device ownership.
 async function routeRequest(request: Request, [resource, id, action, part]: string[]): Promise<Response> {
   const method = request.method;
+  if (resource === "delivery") return deliveryRecipientRequest(request, [resource,id,action,part].filter((value): value is string => value !== undefined));
   if (resource === "intake") return intakeRequest(request, [resource, id, action, part]);
   if (resource === "auth") return accountAction(request, database(), readAuth0Settings(process.env));
   if (resource === "health" && !id && method === "GET") {
@@ -152,6 +156,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
     }
     throw new ApiError(404, "Action not found.");
   }
+  if (resource === "deliveries") return deliveryOwnerAction(request, accountAccess, id, action);
   if (resource === "upload-requests") return uploadRequestAction(request, accountAccess, id, action, storage);
   if (resource === "scope-copies") {
     if (!restrictedScopesEnabled()) throw new ApiError(404, "Restricted audiences are not available yet.");
@@ -210,7 +215,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
   }
   const webResponse = await webAction(request, device, resource, id, action, storage);
   if (webResponse) return webResponse;
-  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, uploadRequests: Boolean(accountAccess && device.space_kind === "shared" && intakeEnabled()), restrictedScopes: Boolean(accountAccess && device.space_kind === "shared" && restrictedScopesEnabled()), transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
+  if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, deliveries: Boolean(accountAccess && deliveriesEnabled()), uploadRequests: Boolean(accountAccess && device.space_kind === "shared" && intakeEnabled()), restrictedScopes: Boolean(accountAccess && device.space_kind === "shared" && restrictedScopesEnabled()), transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });
   if (resource === "session" && !id && method === "DELETE") {
     await changeDeviceAccess(device, device.id);
     return Response.json({ disconnected: true }, { headers: { "Set-Cookie": expiredSessionCookie(request) } });

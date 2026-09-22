@@ -9,7 +9,8 @@
 
 - [x] Isolated named-recipient authority and immutable snapshot labels pass real D1 tests: no membership grant, all-source availability, session/recovery/expiry denial, sticky Trash/source/grant suspension and restored quarantine.
 - [x] Isolated atomic sender drafts, exact retries, stale/mixed-scope denial, explicit issue/reactivation/revocation and rollback checks pass D1.
-- [ ] Recipient routes/UI/downloads, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
+- [x] Gated owner/recipient routes pass actual built-Worker D1/R2 tests with closure tracking, exact original bytes, no membership, captured labels, duplicate-grant handling and source suspension/revocation.
+- [ ] Recipient/sender UI, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
 
 ## Upload-request development acceptance
 
