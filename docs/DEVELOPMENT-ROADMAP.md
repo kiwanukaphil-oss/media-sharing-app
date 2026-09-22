@@ -32,6 +32,8 @@ Counts describe completed parent work items, not effort or percentage of the pro
 
 ## How to keep this document current
 
+**22 September provider rehearsal:** Specific approval and temporary grant setup are complete. The first attempt stopped on a read-only token scope mismatch before writer issuance or account creation; an independent GET confirmed the dummy subject absent. Temporary API and connection access are revoked. The temporary secret appeared in a tool trace and needs owner-performed rotation before reuse. Live creation/removal remains outstanding; see [rehearsal evidence and checkboxes](PROVIDER-ERASURE-REHEARSAL.md#first-live-attempt--22-september-2026). Parent counts remain unchanged.
+
 Update this file in the same change set as meaningful development work, and again after a release. Do not leave the tracker describing the state before the change.
 
 1. At phase start, record approval, scope, owner, branch/change reference and the first active work item. Dates are targets only when explicitly agreed.

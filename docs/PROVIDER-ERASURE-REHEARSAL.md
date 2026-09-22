@@ -1,6 +1,6 @@
 # Provider removal rehearsal
 
-Status: prepared and locally tested; live grant, creation and removal await specific owner approval. This verifies one provider boundary of P2-06, not complete account erasure.
+Status: specifically approved on 22 September 2026; first live attempt held before account creation. Temporary API and database connection access were revoked. Secret rotation is required before reuse. This verifies one provider boundary of P2-06, not complete account erasure.
 
 ## Concrete scope
 
@@ -29,9 +29,19 @@ Sources: [Management API user permissions](https://auth0.com/docs/manage-users/u
 5. Require acknowledged removal and independent GET absence. A timeout, denied request or ambiguous outcome cannot mark success or trigger an automatic repeat.
 6. Record private evidence and remove the temporary grant/connection access. Report the actual token expiry separately. No real-person fulfilled ledger record is produced.
 
-`scripts/provider-erasure-rehearsal.mjs` has no executable CLI or credential discovery. Its exported primitives require operator-supplied transports and durable evidence recording. Tests cover independent reader/writer selection, existing/changed/linked/activated identity refusal, missing durable evidence and ambiguous deletion without blind retries. Live operator wiring and the cloud result remain outstanding.
+`scripts/provider-erasure-rehearsal.mjs` has no executable CLI or credential discovery. Its exported primitives require operator-supplied transports and durable evidence recording. Tests cover independent reader/writer selection, existing/changed/linked/activated identity refusal, missing durable evidence and ambiguous deletion without blind retries. `scripts/run-provider-erasure-rehearsal.mjs` supplies the single-use loopback operator form, memory-only tokens and private stage evidence. The successful cloud result remains outstanding.
 
 - [x] Implement and test the bounded provider adapter without live credentials.
-- [ ] Obtain specific approval and configure the separate grant.
+- [x] Obtain specific approval and configure the separate grant.
 - [ ] Run generated-account creation/removal with independent verification.
-- [ ] Revoke the temporary grant/connection access and record token expiry.
+- [x] Revoke the first attempt's temporary API and database connection access.
+- [ ] Rotate the temporary application secret before reuse; user credential-change handoff required.
+- [ ] Complete the rehearsal and record actual writer-token expiry and final revocation evidence.
+
+## First live attempt — 22 September 2026
+
+The owner explicitly approved the proposal. Client `9HuHPIJEhoFuHHS16CoNAuiv3d6Lp0HL` received only `create:users` and `delete:users`. At 05:53 UTC the runner stopped during reader-token validation: Auth0 returned the monitor's existing `read:users read:logs` grant despite the request asking for `read:users`. No writer-token request, account POST or DELETE was reached. A subsequent independent read returned HTTP 404 for the exact approved subject. The runner now requests and validates the complete existing read-only grant; it does not broaden the monitor's access.
+
+The temporary client secret accidentally appeared in a browser tool trace during setup. Its database connection access was saved off and API Access subsequently showed **0 / 273 permissions granted** and **No per-app authorization grant**. The secret must not be reused; the owner was asked to rotate it because browser rules require credential changes to be performed by the user. Revocation prevents new management tokens but does not invalidate previously issued tokens; this runner did not reach writer issuance, and absence of issuance by other callers is not established. No secret was saved in Git or the private stage evidence. The inactive application is a cleanup candidate, not permission to delete it silently.
+
+Private first-attempt evidence is under `.sites-runtime/operations/provider-erasure-rehearsal/67985336-e179-4145-986e-6729972793fe/`. Preserve it. The command deliberately refuses to overwrite an existing run directory; a reviewed continuation must retain prior evidence and recheck absence before any POST. The live creation/removal milestone remains unchecked.
