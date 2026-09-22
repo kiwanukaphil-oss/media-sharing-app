@@ -72,6 +72,9 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/intake-lifecycle.mjs
       - run: node --disable-warning=ExperimentalWarning tests/intake-migration.mjs
       - run: node --disable-warning=ExperimentalWarning tests/restricted-migration.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/delivery-authority.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/delivery-lifecycle.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/delivery-migration.mjs
       - run: node tests/saved-library-views.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs
       - run: node tests/erasure-rehearsal-scope.mjs
@@ -92,6 +95,7 @@ jobs:
       - run: node scripts/ci-web-integration.mjs --account-access
       - run: node scripts/ci-web-integration.mjs --restricted-scopes --closure-tracking
       - run: node scripts/ci-web-integration.mjs --intake --closure-tracking
+      - run: node scripts/ci-web-integration.mjs --deliveries --closure-tracking
       - run: node scripts/ci-web-integration.mjs --closure-tracking
       - run: node scripts/ci-web-integration.mjs --backup-coordination
   browser:

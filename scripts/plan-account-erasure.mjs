@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { importSnapshot } from './relay-backup.mjs';
+import {inspectDeliverySnapshot} from './delivery-lifecycle.mjs';
 import {inspectIntakeSnapshot} from './intake-lifecycle.mjs';
 import { inspectClosureSnapshot } from './inspect-closure-snapshot.mjs';
 
@@ -75,6 +76,9 @@ export function planAccountErasure(database, requestId) {
   if (ownershipBlockers.length) blockers.push('shared-last-owner-handover-required');
   if (personalMedia.some(row => row.status !== 'ready')) blockers.push('personal-uploads-need-reconciliation');
   if (publications.some(row => !['ready','cancelled'].includes(row.phase))) blockers.push('publication-operations-need-reconciliation');
+  const deliveryReferences=inspectDeliverySnapshot(database,person);
+  if(!deliveryReferences.complete)blockers.push('delivery-schema-inventory-incomplete');
+  if(deliveryReferences.snapshots.some(row=>row.state!=='revoked')||deliveryReferences.recipients.some(row=>row.revoked_at===null))blockers.push('delivery-grants-need-revocation');
   const intakeReferences=inspectIntakeSnapshot(database,person);
   if(!intakeReferences.complete)blockers.push('intake-schema-inventory-incomplete');
   if(intakeReferences.requests.some(row=>row.state!=='closed'&&row.revoked_at===null))blockers.push('intake-requests-need-revocation');
@@ -94,7 +98,7 @@ export function planAccountErasure(database, requestId) {
   }
   const inventory = { request, personalSpaces:spaces, personalMedia, publications, publicationAttempts:attempts,
     accountActors:actors, linkedDevices, sharedMediaToPreserve:sharedMedia, backupContent, ownershipBlockers, metadataReferences,
-    closureReferences, intakeReferences };
+    closureReferences, intakeReferences, deliveryReferences };
   return { formatVersion:1, mode:'review-only', executable:false, inventoryFingerprint:digest(inventory), blockers, inventory };
 }
 

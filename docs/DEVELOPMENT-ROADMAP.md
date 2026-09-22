@@ -5,6 +5,13 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Delivery preparation checkpoint
+
+- [x] Isolated named-recipient authority and immutable snapshot labels pass real D1 tests: no membership grant, all-source availability, session/recovery/expiry denial, sticky Trash/source/grant suspension and restored quarantine.
+- [x] Isolated atomic sender drafts, exact retries, stale/mixed-scope denial, explicit issue/reactivation/revocation and rollback checks pass D1.
+- [x] Gated owner/recipient routes pass actual built-Worker D1/R2 tests with closure tracking, exact original bytes, no membership, captured labels, duplicate-grant handling and source suspension/revocation.
+- [ ] Recipient/sender UI, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
+
 ## Upload-request development acceptance
 
 - [x] Bounded named-account intake contract and isolated SQLite/D1 acceptance/authority tests. A recipient gains no membership or file-viewing grant; drafts, expired requests, revoked sessions and rebinding attempts are denied.
@@ -1155,3 +1162,23 @@ Parent counts are now 20/47, including this completed policy-definition item; on
 - [ ] Integrate runtime writes, reads, previews, exports, activity and navigation before enabling restricted albums.
 
 Corrected folder-import CI at `f588c68` includes successful hosted run `35729947615`; earlier `35729466805` verification passed but its browser selector was corrected. Deployment remains held on B06; the new backup is still unverified.
+
+
+### 22 September - delivery sender and recipient workflows
+
+- [x] Build owner-only captured selections, named-recipient draft/issue/revoke and explicit source-audience expansion review; real D1 atomic retry and stale-access tests pass.
+- [x] Build sender review and recipient-only pages, secret-fragment sign-in handoff and captured public sender labels. Mobile/desktop browser checks and screenshot review pass.
+- [x] Verify actual built-Worker recipient boundaries, native original downloads, captured filenames, sticky suspension and explicit reactivation. Client checksum-verified saving remains distinct from a normal download request.
+- [ ] Complete hosted verification and delivery lifecycle/minimisation before adding its migration. Original package jobs and live release acceptance remain outstanding.
+
+[Delivery contract and checked evidence](DELIVERY-CONTRACT.md). Delivery preparation remains feature-gated and outside the active schema journal. No live audience or file changes; parent completion counts remain 22/47.
+
+
+### 22 September - delivery lifecycle and schema preparation
+
+- [x] Integrate delivery identity minimisation and exact-person erasure inventory; preserve shared originals and revoke historical restored links permanently.
+- [x] Prepare migration 0026 and verify local D1 routes, restore triggers, source-removal metadata cleanup and immutable redaction.
+- [x] Rehearse against the private current-production export with all 25 existing tables preserved and no new grants. Type checks, lint and account/intake lifecycle regression checks pass.
+- [ ] Complete hosted verification, original packages and live release acceptance. Delivery remains disabled in production; phase parents remain 22/47.
+
+[Detailed delivery evidence](DELIVERY-CONTRACT.md). Hosted sender/recipient workflow run `35749339230` is in progress; migration/lifecycle changes require a fresh run.

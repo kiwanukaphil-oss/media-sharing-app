@@ -25,7 +25,7 @@ export function libraryRoleDescription(role: string) {
   }
 }
 export type Device = { id: string; name: string; createdAt: number; current: boolean; role: DeviceRole };
-export type Session = { uploadRequests?: boolean; restrictedScopes?: boolean; space: { id: string; name: string; kind?: "personal" | "shared" }; deviceId: string; role: LibraryRole; transport: "local" | "direct" | "unconfigured"; authentication?: "account"; personId?: string };
+export type Session = { uploadRequests?: boolean; deliveries?: boolean; restrictedScopes?: boolean; space: { id: string; name: string; kind?: "personal" | "shared" }; deviceId: string; role: LibraryRole; transport: "local" | "direct" | "unconfigured"; authentication?: "account"; personId?: string };
 export type UploadSession = { id: string; partSize: number; status: string; uploadId?: string };
 export const PART_SIZE = 16 * 1024 * 1024;
 export const MAX_FILE_SIZE = 100 * 1024 * 1024 * 1024;

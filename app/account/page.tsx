@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AccountLibraries from "@/components/account-libraries";
+import DeliveryInvitation from "@/components/delivery-invitation";
 import CollectionInvitation from "@/components/collection-invitation";
 import AccountInvitation from "@/components/account-invitation";
 import AccountDeletion from "@/components/account-deletion";
@@ -77,6 +78,7 @@ export default function AccountPage() {
     </header>
     <AccountInvitation sessionId={state?.account?.sessionId} />
     <CollectionInvitation sessionId={state?.account?.sessionId} />
+    <DeliveryInvitation sessionId={state?.account?.sessionId} />
     {error && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error} <button className="ml-2 underline" onClick={() => { setError(""); setRevision(value => value + 1); }}>Retry</button></div>}
     {!state && !error && <p role="status" className="text-[var(--muted)]">Loading your account…</p>}
     {state && !state.enabled && <section className="rounded-2xl border border-[var(--line)] p-7"><h2 className="font-semibold">Account sign-in is coming soon</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">You can continue using your connected library while we prepare recoverable accounts.</p></section>}

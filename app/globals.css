@@ -353,3 +353,42 @@ main.account-page { max-width: 768px; margin: 0 auto; padding: 64px 32px; }
 
 .intake-file { flex-wrap: wrap; }
 .intake-file > div { flex: 1 1 180px; }
+
+/* Deliveries present a fixed, deliberate handoff rather than exposing the working library. */
+main.delivery-page { max-width: 980px; }
+.delivery-symbol { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 17px; color: var(--accent); background: var(--accent-soft); }
+.delivery-eyebrow { margin: 25px 0 12px; font-size: 10px; letter-spacing: .16em; color: var(--muted); font-weight: 700; }
+.delivery-from { margin-top: 13px; color: var(--muted); }
+.delivery-summary { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 22px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.delivery-summary > div { display: flex; gap: 16px; align-items: baseline; }
+.delivery-summary span, .delivery-summary p { font-size: 12px; color: var(--muted); }
+.delivery-note { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 30px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.delivery-note svg { flex-shrink: 0; margin-top: 2px; }
+.delivery-originals { display: grid; gap: 12px; }
+.delivery-original { display: flex; align-items: center; gap: 18px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.delivery-file-symbol { display: grid; place-items: center; flex: 0 0 54px; height: 64px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); }
+.delivery-file-details { flex: 1; min-width: 0; }
+.delivery-file-details h2 { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.5; }
+.delivery-file-details p { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.delivery-status { padding: 16px; margin-top: 20px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.delivery-footer { margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.8; }
+.delivery-invitation > p { margin-top: 12px; line-height: 1.7; }
+@media(max-width: 560px) { .delivery-original { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; padding: 16px; } .delivery-original > .button { grid-column: 2; justify-self: start; } }
+
+.delivery-selection { border: 1px solid var(--line); border-radius: 12px; padding: 16px; font-size: 13px; }
+.delivery-selection ul { margin-top: 10px; max-height: 150px; overflow-y: auto; color: var(--muted); }
+.delivery-selection li { padding: 4px 0; overflow-wrap: anywhere; }
+.delivery-review-heading { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; }
+.delivery-review-heading h3 { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.delivery-review > p { margin-top: 10px; overflow-wrap: anywhere; line-height: 1.7; }
+.delivery-review h4 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin: 24px 0 10px; }
+.delivery-review-files { max-height: 220px; overflow-y: auto; border-top: 1px solid var(--line); }
+.delivery-review-files li, .delivery-review-recipients li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.delivery-review li span { overflow-wrap: anywhere; min-width: 0; }
+.delivery-review li small { color: var(--muted); flex-shrink: 0; font-size: 11px; }
+.delivery-links { margin-top: 24px; display: grid; gap: 16px; }
+.delivery-links label { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.delivery-links label > div { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.delivery-links input { width: 100%; min-width: 0; height: 44px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; }
+.delivery-links button { flex-shrink: 0; }
+.delivery-manager .intake-toolbar > .workspace-select { flex: 1; min-width: 0; }

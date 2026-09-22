@@ -1,12 +1,12 @@
 import type { ActiveDevice } from "./server";
 import { transferAuthority } from "./transfer-authority";
 
-type ScopeAlias = "media" | "m" | "candidate" | "a" | "albums" | "upload_requests";
+type ScopeAlias = "media" | "m" | "candidate" | "a" | "albums" | "upload_requests" | "delivery_snapshots";
 
 // Every resource query includes current session authority. Scope creation remains disabled until
 // the complete migration/disclosure inventory and release checks have passed.
 export function resourceAudienceAuthority(device: ActiveDevice, alias: ScopeAlias = "media") {
-  if (!["media", "m", "candidate", "a", "albums", "upload_requests"].includes(alias)) throw new Error("Unsupported audience alias.");
+  if (!["media", "m", "candidate", "a", "albums", "upload_requests", "delivery_snapshots"].includes(alias)) throw new Error("Unsupported audience alias.");
   const live = transferAuthority(device, Date.now(), "read");
   const scope = audienceExpression(device, `${alias}.access_scope_id`);
   return { sql: `(${alias}.space_id=? AND ${live.sql} AND ${scope.sql})`, bindings: [device.space_id, ...live.bindings, ...scope.bindings] };

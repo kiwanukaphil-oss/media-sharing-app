@@ -87,6 +87,12 @@ export function sanitizeRestoredAccess(database, now = Date.now()) {
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='person_invitations'").get()) {
       database.prepare('UPDATE person_invitations SET expires_at=0, revoked_at=COALESCE(revoked_at, ?)').run(now);
     }
+    // Delivery grants are independent of membership. Permanently quarantine them too, so later
+    // membership reconciliation cannot revive an old recipient invitation or issued snapshot.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='delivery_snapshots'").get()) {
+      database.prepare("UPDATE delivery_snapshots SET state='revoked',revoked_at=COALESCE(revoked_at,?),revision=revision+1").run(now);
+      database.prepare('UPDATE delivery_recipients SET revoked_at=COALESCE(revoked_at,?)').run(now);
+    }
     // Unfinished cross-space publication must never resume automatically after a historical restore.
     if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='publications'").get()) {
       database.exec("UPDATE publications SET phase='cancelling', lease_expires_at=0 WHERE phase NOT IN ('ready','cancelled')");

@@ -17,6 +17,9 @@ const scopeCopyDigest = '73207a15ec5ef28a6fcc7c485c09e484eae28f29792998daab8e13c
 // Migration 0025 retains shared intake custody and pseudonymous people references; contact/token
 // minimisation closes requests without deleting staged bytes or claiming storage quiescence.
 const intakeDigest = 'f7e4763bf86c309c63a6171100b9562d222b2f83b158af9a90c9aa32a67ade5f';
+// Migration 0026 revokes sender/recipient grants, clears captured sender metadata and contacts,
+// and removes private captured items while preserving shared originals. Restores revoke every link.
+const deliveryDigest = '7e7140a337f88704a4ce4df05807d22010144e600424e03fcc8abfbf365f9495';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 // Review a deliberately narrow activation stage: global backup runs contain only opaque run/snapshot
@@ -26,7 +29,7 @@ export function reviewMinimisationSchema(database, shape) {
   const schemaDigest = createHash('sha256').update(JSON.stringify(shape)).digest('hex');
   if (schemaDigest === baseDigest) return { accepted: true, scope: 'migration-0018', schemaDigest };
   const denied = { accepted: false, scope: 'requires-review', schemaDigest };
-  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest, restrictedDigest, scopeCopyDigest, intakeDigest].includes(schemaDigest)) return denied;
+  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest, restrictedDigest, scopeCopyDigest, intakeDigest, deliveryDigest].includes(schemaDigest)) return denied;
   if (database.prepare(`SELECT (SELECT COUNT(*) FROM closure_fences) +
       (SELECT COUNT(*) FROM closure_storage_effects) + (SELECT COUNT(*) FROM closure_write_admissions
       WHERE kind<>'backup' OR person_id IS NOT NULL OR device_id IS NOT NULL) AS n`).get().n !== 0) return denied;

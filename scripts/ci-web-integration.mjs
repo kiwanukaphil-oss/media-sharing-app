@@ -10,9 +10,10 @@ const servePreview = process.argv.includes('--serve');
 const browserChecks = process.argv.includes('--browser');
 const closureEntryChecks = process.argv.includes('--closure-entrypoints');
 const closureTrackingChecks = process.argv.includes('--closure-tracking') || closureEntryChecks;
+const deliveryChecks=process.argv.includes('--deliveries');
 const intakeChecks=process.argv.includes('--intake');
 const restrictedChecks = process.argv.includes('--restricted-scopes');
-const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks || restrictedChecks || intakeChecks;
+const accountAccessChecks = process.argv.includes('--account-access') || closureTrackingChecks || restrictedChecks || intakeChecks || deliveryChecks;
 const backupCoordinationChecks = process.argv.includes('--backup-coordination');
 const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
 const modules = (await readdir('dist/server', { recursive: true }))
@@ -32,8 +33,9 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
       AUTH0_CLIENT_ID: 'access-test', AUTH0_CLIENT_SECRET: 'isolated-test-only', RELAY_APP_ORIGIN: 'https://localhost',
       AUTH0_RECOVERY_SECRET: 'a'.repeat(64), PERSONAL_STORAGE_BUDGET_BYTES: '2147483648',
       ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}),
-      ...(restrictedChecks || intakeChecks ? {RELAY_RESTRICTED_SCOPES_ENABLED:'true'} : {}),
-      ...(intakeChecks ? {RELAY_INTAKE_ENABLED:'true'} : {}) } } : {}),
+      ...(restrictedChecks || intakeChecks || deliveryChecks ? {RELAY_RESTRICTED_SCOPES_ENABLED:'true'} : {}),
+      ...(intakeChecks ? {RELAY_INTAKE_ENABLED:'true'} : {}),
+      ...(deliveryChecks ? {RELAY_DELIVERIES_ENABLED:'true'} : {}) } } : {}),
     ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
     ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
@@ -59,6 +61,7 @@ try {
       if (statement.trim()) await database.prepare(statement.trim()).run();
     }
   }
+  if(deliveryChecks){const {installDeliveryTestSchema}=await import('./delivery-test-schema.mjs');await installDeliveryTestSchema(database);}
   if(intakeChecks){const {installIntakeTestSchema}=await import('./intake-test-schema.mjs');await installIntakeTestSchema(database);}
   // The additive coordination schema is migration 0019; flags still select isolated activation.
   if (backupCoordinationChecks) {
@@ -67,6 +70,9 @@ try {
   } else if (servePreview) {
     console.log(`Isolated production preview ready at ${origin}; storage is discarded when stopped.`);
     await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve); });
+  } else if (deliveryChecks) {
+    const {verifyDeliveryRoutes}=await import('../tests/delivery-routes.mjs');
+    await verifyDeliveryRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options));
   } else if (intakeChecks) {
     const {verifyIntakeRoutes}=await import('../tests/intake-routes.mjs');
     await verifyIntakeRoutes(database,await emulator.getR2Bucket('BUCKET'),(url,options)=>emulator.dispatchFetch(url,options));
@@ -110,7 +116,7 @@ try {
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');
     await verifySecurityHardening(origin, (url, options) => emulator.dispatchFetch(url, options));
   } else if (browserChecks) {
-    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'space-people-browser', 'publication-browser', 'retrieval-presentation-browser', 'editor-browser', 'favorites-browser', 'activity-browser', 'access-scopes-browser', 'intake-browser', 'metadata-export-browser', 'folder-import-browser']) await runIntegrationTest(name);
+    for (const name of ['web-browser', 'device-access-browser', 'usability-browser', 'media-polish-browser', 'library-organisation-browser', 'album-sections-browser', 'account-browser', 'account-library-browser', 'space-people-browser', 'publication-browser', 'retrieval-presentation-browser', 'editor-browser', 'favorites-browser', 'activity-browser', 'access-scopes-browser', 'intake-browser', 'delivery-browser', 'metadata-export-browser', 'folder-import-browser']) await runIntegrationTest(name);
   } else {
     for (const name of ['transfer-integration', 'web-management', 'device-permissions', 'library-organisation', 'album-sections']) await runIntegrationTest(name);
     const { verifySecurityHardening } = await import('../tests/security-hardening.mjs');

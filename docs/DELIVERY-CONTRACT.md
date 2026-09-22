@@ -62,3 +62,35 @@ Extend backup/export/minimisation schemas before enabling any delivery table. Pr
 - [ ] P5-06: test access loss during reads/jobs, expired capabilities, stale selection, partial failure, restore quarantine, recipient usability and operational costs; record deployed verification.
 
 This contract completes design only. It neither approves a purchase nor marks delivery implementation or Phase 5 complete.
+
+## Isolated implementation checkpoint
+
+Named-recipient authority preparation now passes real D1 tests. The draft grants no access; acceptance binds the invited verified account without membership or source audience grants. Every delivery read requires all captured originals and the sender's current authority. Snapshot labels survive working-file renames; Trash, source removal and sender grant loss suspend the whole issued delivery, with no automatic revival. Revoked/recovered sessions, expired deliveries and reassigned email addresses cannot inherit access. Historical restore quarantines issued deliveries.
+
+Prototype tables remain outside the migration journal. Sender draft/issue/revoke, recipient routes/UI and bounded download capabilities now pass local checks. Lifecycle/minimisation, original packages and live acceptance remain outstanding. This preparation creates no live grants and sends no invitations.
+
+Sender management preparation also passes D1: drafts capture one audience and up to 100 distinct originals, with up to 20 distinct named recipients and at most 100 unexpired drafts/issued/suspended deliveries per source space. Exact concurrent retries create one selection and grant set. Missing/mixed-scope/stale selections are rejected as a whole. Issuance requires the original sender's current Owner/grant authority; suspended snapshots can be explicitly re-reviewed while preserving captured labels. Current owners with the source audience can revoke access, which cannot be silently reopened. Recipient-insert collisions roll back the whole draft.
+
+Disabled owner/recipient routes now pass actual built-Worker D1/R2 tests with closure tracking: explicit issue, hidden restricted source labels, named acceptance without source membership, captured labels after rename, original-byte downloads, whole-snapshot denial after Trash and deliberate reactivation/revocation. Two invitation emails later bound to the same verified person do not duplicate the file selection. Delivery-specific download admission is capped at 60 seconds and the delivery expiry; actual provider signing/live retry evidence remains a release gate. No capability claims instantaneous recall or successful saving.
+
+### Sender and recipient UI checkpoint, 22 September
+
+- [x] Implement selection-based creation, explicit public sender/title labels, complete source/recipient/expiry review, deliberate publication, per-recipient copy links and revoke/reactivation controls.
+- [x] Implement secret-fragment sign-in handoff and explicit named-account acceptance, with no source membership or private working-library labels exposed.
+- [x] Verify mobile and desktop presentation, native download wording, streamed checksum-verified saving and removal of displayed filenames on access loss. Corrected mobile file layout after screenshot inspection.
+- [x] Verify actual built-Worker native and verified-download endpoints, captured attachment names and original bytes. The browser's native-download fixture uses an actual local HTTP server because Chromium bypasses route interception for download navigation; endpoint authorization is independently checked in the Worker suite.
+- [ ] Complete hosted verification, lifecycle/minimisation, schema migration and operational release gates before enabling deliveries.
+
+The public sender label is explicitly reviewed and captured, rather than disclosing the source library's current name. An accepted invitation is labelled as acceptance, never as a read or save receipt. Native downloads say requested; only the supported streamed save reports verified bytes after the writer closes. Delivery tables remain outside the active migration journal, and the feature flag remains absent from production.
+
+### Lifecycle and migration checkpoint, 22 September
+
+- [x] Add prepared migration `0026_motionless_wildside`: three delivery tables and 12 protective triggers, no existing-row mutation or new grants.
+- [x] Revoke every restored delivery and recipient grant permanently. Membership reconciliation cannot revive historical delivery links.
+- [x] Remove captured item metadata when its source is permanently removed. Sender minimisation clears public labels, intent hash, captured items and recipient contacts/tokens; recipient minimisation affects their grant without altering shared originals or other recipients.
+- [x] Integrate exact-person inventory with the read-only erasure plan and the snapshot minimiser. Email matching only clears contacts; it never establishes file ownership. Narrow irreversible redaction exceptions cannot restore contact values or rebind recipients.
+- [x] Verify migration, minimisation, existing intake/account lifecycle, actual built-Worker delivery routes, type checks and lint locally.
+- [x] Rehearse against the private production-schema export: all 25 existing tables preserved, no grants invented, protective triggers and access quarantine retained on restore. Source digest `fe005a714436264b1c0e07c4b22a652627db264389ece63fab93519877272f36`; reviewed schema digest `7e7140a337f88704a4ce4df05807d22010144e600424e03fcc8abfbf365f9495`.
+- [ ] Complete hosted verification, original package jobs and live operational acceptance. No migration or flag has been applied in production.
+
+This checkpoint supersedes the earlier prototype-only status. The prototype remains a historical reference and retirement candidate; the migration journal owns the current schema. Snapshot minimisation still requires the existing global-backup-only protocol restrictions and never authorises real deletion or restore cutover.

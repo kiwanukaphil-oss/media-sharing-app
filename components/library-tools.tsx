@@ -12,6 +12,7 @@ import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contract
 export type LibraryQuery = { scope: string; album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string; type: string; uploader: string; favorites: string };
 export const emptyLibraryQuery: LibraryQuery = { scope: "", album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "", type: "", uploader: "", favorites: "" };
 type Props = {
+  onCreateDelivery?: (files: MediaItem[]) => void;
   accessScopeId?: string | null;
   albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; canOrganise: boolean; canSelectFiles?: boolean; canEditFiles?: boolean; canFavorite?: boolean;
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
@@ -145,7 +146,7 @@ export function LibraryTools(props: Props) {
         {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
         {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy || !editableSelection} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
         <button className="icon-button bulk-trash" title={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} aria-label={selected.every(file => file.archivedAt) ? "Restore selected" : "Move selected to Trash"} disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection(selected.every(file => file.archivedAt) ? "restore" : "trash"))}>{selected.every(file => file.archivedAt) ? <Undo2 size={19} /> : <Trash2 size={19} />}</button>
-        </>}<MetadataExport files={selected} />
+        </>}<MetadataExport files={selected} />{props.onCreateDelivery && <button className="button secondary compact" disabled={busy} onClick={() => props.onCreateDelivery?.(selected)}>Create delivery</button>}
         <button className="icon-button clear-selection" title="Clear selection" aria-label="Clear selection" disabled={busy} onClick={props.onClearSelection}><X size={18} /></button>
       </>}
     </div>}
