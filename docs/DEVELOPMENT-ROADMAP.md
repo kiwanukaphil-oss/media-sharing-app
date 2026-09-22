@@ -1117,3 +1117,11 @@ Cloudflare case 02338622 was rechecked on 22 September during this work: the thr
 - [ ] Implement and verify the complete SQL/API/UI surface inventory before enabling restricted scope creation. No existing audience has changed.
 
 Parent counts are now 20/47, including this completed policy-definition item; only phases 0 and 1 are complete. Restricted albums remain unavailable in production.
+
+### 22 September - restricted-scope SQL preparation
+
+- [x] Verify proposed scope/grant schema and central read/event predicates in SQLite and local D1, including incompatible-reference rejection, owner/legacy denial and restored-trigger grant quarantine.
+- [x] Keep this prototype outside the migration journal and application routing until the entire disclosure inventory is integrated. No live scope/data/audience change is made.
+- [ ] Integrate runtime writes, reads, previews, exports, activity and navigation before enabling restricted albums.
+
+Corrected folder-import CI at `f588c68` includes successful hosted run `35729947615`; earlier `35729466805` verification passed but its browser selector was corrected. Deployment remains held on B06; the new backup is still unverified.

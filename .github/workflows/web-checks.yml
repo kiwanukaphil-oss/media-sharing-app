@@ -65,6 +65,7 @@ jobs:
       - run: node tests/closure-disposition.mjs
       - run: node tests/collaboration-policy.mjs
       - run: node tests/asset-scope-policy.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/asset-scope-authority.mjs
       - run: node tests/saved-library-views.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs
       - run: node tests/erasure-rehearsal-scope.mjs

@@ -44,3 +44,9 @@ Scope never changes by adding/removing an album reference or renaming a section.
 - [ ] Complete hosted, migration, independent restore and live verification. Enable the feature only when the full surface inventory is covered.
 
 The pure policy fixture records expected semantics and is not a substitute for database/route enforcement. P4-01 is a design deliverable; completing it does not complete any of P4-02 through P4-06 or claim deployed privacy.
+
+## Verified isolated schema preparation
+
+`docs/prototypes/restricted-scope-schema.sql` is outside the active migration journal. `lib/asset-scope-authority.ts` is not imported by application routes. The prototype adds immutable asset/album scope references, exact-membership grants, minimal grant events and retained history scopes. Database triggers reject incompatible references and revoke restricted grants on departure.
+
+`tests/asset-scope-authority.mjs` passes with SQLite and Cloudflare's local D1 engine. It verifies owner/legacy denial, explicit Viewer grants, whole-event filtering after the original is removed, leave/rejoin revocation and restore preservation of triggers/quarantine. Existing snapshot tooling preserves triggers after data import. This does not establish runtime coverage: the full inventory above remains the activation gate.
