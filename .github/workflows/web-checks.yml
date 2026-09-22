@@ -70,6 +70,7 @@ jobs:
       - run: node tests/upload-request-authority.mjs
       - run: node tests/intake-verification.mjs
       - run: node --disable-warning=ExperimentalWarning tests/intake-lifecycle.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/intake-migration.mjs
       - run: node --disable-warning=ExperimentalWarning tests/restricted-migration.mjs
       - run: node tests/saved-library-views.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs

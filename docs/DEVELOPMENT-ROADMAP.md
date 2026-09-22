@@ -15,7 +15,8 @@
 - [x] Owner destination/allowance confirmation, secret-fragment sign-in handoff, recipient receipts and exact interrupted-file retry pass rendered mobile/desktop browser checks. Files stay outside the library until verified acceptance.
 - [x] Isolated lifecycle preparation inventories exact contributor/issuer custody, retains accepted shared files, minimises request contact details, prevents reopening and reconciles late multipart/staged bytes.
 - [x] Owner review download and reversible decline/restore pass local built-Worker/browser checks. Full route/UI hosted run 35744040823 passed before this review increment.
-- [ ] Full schema/minimisation acceptance, physical cleanup/disposition and release. Prototype SQL is outside the migration journal and cannot enable live collection. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
+- [x] Migration 0025, populated snapshot minimisation and private-export upgrade rehearsal preserve existing rows, accepted shared originals and exact intake custody. No invitations are invented; restored triggers/quarantine pass.
+- [ ] Physical cleanup/disposition and release. Migration 0025 is prepared locally; the feature remains disabled and no remote intake migration has run. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
 
 ## Restricted-audience development acceptance
 

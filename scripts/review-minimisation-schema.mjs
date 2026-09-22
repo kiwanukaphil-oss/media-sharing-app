@@ -14,6 +14,9 @@ const restrictedDigest = '896bd38831c71628bab581dcd4e661273a23a9dbcf9bc9c5e7331c
 // Migration 0024 retains opaque source/destination scope IDs on existing copy custody records.
 // They carry no names or new identity fields; existing publication minimisation remains applicable.
 const scopeCopyDigest = '73207a15ec5ef28a6fcc7c485c09e484eae28f29792998daab8e13c000f6b2b7';
+// Migration 0025 retains shared intake custody and pseudonymous people references; contact/token
+// minimisation closes requests without deleting staged bytes or claiming storage quiescence.
+const intakeDigest = 'f7e4763bf86c309c63a6171100b9562d222b2f83b158af9a90c9aa32a67ade5f';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 
 // Review a deliberately narrow activation stage: global backup runs contain only opaque run/snapshot
@@ -23,7 +26,7 @@ export function reviewMinimisationSchema(database, shape) {
   const schemaDigest = createHash('sha256').update(JSON.stringify(shape)).digest('hex');
   if (schemaDigest === baseDigest) return { accepted: true, scope: 'migration-0018', schemaDigest };
   const denied = { accepted: false, scope: 'requires-review', schemaDigest };
-  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest, restrictedDigest, scopeCopyDigest].includes(schemaDigest)) return denied;
+  if (![protocolDigest, invitationRoleDigest, favoritesDigest, activityDigest, restrictedDigest, scopeCopyDigest, intakeDigest].includes(schemaDigest)) return denied;
   if (database.prepare(`SELECT (SELECT COUNT(*) FROM closure_fences) +
       (SELECT COUNT(*) FROM closure_storage_effects) + (SELECT COUNT(*) FROM closure_write_admissions
       WHERE kind<>'backup' OR person_id IS NOT NULL OR device_id IS NOT NULL) AS n`).get().n !== 0) return denied;

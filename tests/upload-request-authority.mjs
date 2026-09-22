@@ -17,7 +17,7 @@ const {admitClosureTrackedWrite,settleClosureTrackedWrite}=modules.find(module=>
 const db=new DatabaseSync(':memory:'),now=Date.now();
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
-  db.exec(await readFile('docs/prototypes/upload-request-schema.sql','utf8'));
+  // The prepared journal now installs the reviewed intake schema; the original prototype remains a historical reference.
   db.exec("INSERT INTO spaces VALUES('shared','Receiving studio',1),('foreign','Other',1)");
   for(const person of ['owner','recipient','other']){
     db.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES(?,?,?,?,?,?)').run(person,'https://fixture.invalid',person,person,person+'@example.invalid',now);

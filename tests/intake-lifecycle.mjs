@@ -4,13 +4,15 @@ import {DatabaseSync} from 'node:sqlite';
 import {inspectIntakeSnapshot,minimiseIntakeIdentity} from '../scripts/intake-lifecycle.mjs';
 import {planAccountErasure} from '../scripts/plan-account-erasure.mjs';
 import {reconcileLiveObjectInventory,liveObjectInventoryQuery,liveIntakeObjectInventoryQuery} from '../scripts/reconcile-live-object-inventory.mjs';
-import {sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
+import {minimiseErasedSnapshot,providerIdentityDigest} from '../scripts/minimise-erased-snapshot.mjs';
+import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
+import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
 
 const db=new DatabaseSync(':memory:');
 try{
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
-  assert.equal(inspectIntakeSnapshot(db,'recipient').present,false);
-  db.exec(await readFile('docs/prototypes/upload-request-schema.sql','utf8'));
+  assert.equal(inspectIntakeSnapshot(db,'recipient').present,true);
+  // The prepared journal now installs the reviewed intake schema; the original prototype remains a historical reference.
   db.exec(`INSERT INTO spaces VALUES('shared','Shared',1);
     INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES
     ('owner','fixture','owner','Owner','owner@example.test',1),('recipient','fixture','recipient','Recipient','recipient@example.test',1),('other','fixture','other','Other','other@example.test',1);
@@ -45,6 +47,18 @@ try{
   const reconciled=reconcileLiveObjectInventory(metadata,catalog);
   assert.equal(reconciled.executable,false);assert.deepEqual(reconciled.multipart[0].mediaIds,['staged']);assert.equal(reconciled.anomalies.length,0);
   assert.throws(()=>reconcileLiveObjectInventory({...metadata,intake:undefined},catalog),/custody/);
+  const exportPlan=planReadOnlySnapshot(db.prepare(schemaQuery).all());
+  const sql=restoreReadOnlySnapshot(exportPlan,db.prepare(exportPlan.sql).all());
+  const minimisedSnapshot=minimiseErasedSnapshot(sql,{formatVersion:1,personId:'recipient',identityDigest:providerIdentityDigest('fixture','recipient')},20000);
+  assert.equal(minimisedSnapshot.cloudErasureVerified,false);assert.equal(minimisedSnapshot.cutoverAllowed,false);
+  const restored=importSnapshot(minimisedSnapshot.sql);
+  try{
+    assert.equal(restored.prepare("SELECT recipient_email FROM upload_requests WHERE id='request'").get().recipient_email,'');
+    assert.equal(restored.prepare("SELECT status FROM media WHERE id='accepted'").get().status,'ready');
+    assert.equal(restored.prepare('SELECT COUNT(*) n FROM intake_upload_attempts').get().n,4);
+    assert.equal(restored.prepare('SELECT COUNT(*) n FROM intake_capabilities').get().n,3);
+    assert.equal(restored.prepare("SELECT display_name FROM people WHERE id='recipient'").get().display_name,'Deleted member');
+  }finally{restored.close();}
   const before=JSON.stringify(db.prepare('SELECT * FROM media ORDER BY id').all());
   minimiseIntakeIdentity(db,'recipient','recipient@example.test',20000);
   const minimised=db.prepare("SELECT * FROM upload_requests WHERE id='request'").get();

@@ -1,4 +1,5 @@
--- Isolated schema preparation only: not an active migration or production capability.
+-- Historical prototype / retirement candidate: migration 0025 now owns the schema.
+-- Retained for design comparison; do not apply this file to an existing database.
 CREATE TABLE upload_requests (
   id TEXT PRIMARY KEY NOT NULL,
   token_hash TEXT NOT NULL UNIQUE,
