@@ -9,6 +9,7 @@ const {transferAuthority} = await import(`data:text/javascript;base64,${Buffer.f
 export async function verifyTransferAuthority(database) {
   const now=Date.now(), prefix=crypto.randomUUID(), person=prefix+'-person', space=prefix+'-space';
   const member=prefix+'-member', session=prefix+'-session', legacy=prefix+'-legacy';
+  const protocolPresent=await database.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='closure_write_admissions'").first();
   await database.batch([
     database.prepare('INSERT INTO spaces VALUES (?,?,?)').bind(space,'Authority fixture',now),
     database.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES (?,?,?,?,?,?)')
@@ -32,6 +33,20 @@ export async function verifyTransferAuthority(database) {
       .bind(space,...authority.bindings).run()).meta.changes;
   };
   assert.equal(await write(account),1); assert.equal(await write(device),1);
+  if(protocolPresent) {
+    await database.batch([
+      database.prepare("INSERT INTO closure_write_admissions VALUES(?,'account',?,NULL,0,'active',?,NULL)").bind(prefix+'-account',person,now),
+      database.prepare("INSERT INTO closure_write_admissions VALUES(?,'legacy',NULL,?,0,'active',?,NULL)").bind(prefix+'-legacy',legacy,now),
+    ]);
+    const trackedAccount={...account,closureAdmissionId:prefix+'-account'},trackedDevice={...device,closureAdmissionId:prefix+'-legacy'};
+    assert.equal(await write(trackedAccount),1);assert.equal(await write(trackedDevice),1);
+    assert.equal(await write({...account,closureAdmissionId:prefix+'-legacy'}),0,'A foreign actor admission cannot authorize a commit.');
+    assert.equal(await write({...device,closureAdmissionId:prefix+'-account'}),0);
+    for(const state of ['settled','uncertain']) {
+      await database.prepare('UPDATE closure_write_admissions SET state=? WHERE person_id=? OR device_id=?').bind(state,person,legacy).run();
+      assert.equal(await write(trackedAccount),0);assert.equal(await write(trackedDevice),0);
+    }
+  }
   assert.equal(await write(account,true),1);assert.equal(await write(device,true),0);
   await database.prepare("UPDATE devices SET role='owner' WHERE id=?").bind(legacy).run();assert.equal(await write(device,true),1);
   await database.prepare("UPDATE devices SET role='member' WHERE id=?").bind(legacy).run();assert.equal(await write(device,true),0);
@@ -65,6 +80,7 @@ export async function verifyTransferAuthority(database) {
   console.log('PASS: transfer commits recheck real D1 session, recovery, identity, membership, legacy access and personal ownership after initial authentication.');
   } finally {
     // Remove only this isolated fixture so its personal allocation cannot affect subsequent budget tests.
+    if(protocolPresent)await database.prepare('DELETE FROM closure_write_admissions WHERE person_id=? OR device_id=?').bind(person,legacy).run();
     await database.batch([
       database.prepare('DELETE FROM personal_spaces WHERE space_id=?').bind(space),
       database.prepare('DELETE FROM account_sessions WHERE id=?').bind(session),

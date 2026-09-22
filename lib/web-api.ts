@@ -120,11 +120,18 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
 }
 
 // A tombstone prevents new links during deletion; storage is released only after R2 acknowledges it.
-async function permanentlyDelete(item: UploadRow, storage: R2Bucket) {
+async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: ActiveDevice) {
   if (!item.archived_at) throw new ApiError(409, "Move this file to Trash before deleting it permanently.");
-  await database().prepare("UPDATE media SET status = 'deleting' WHERE id = ?").bind(item.id).run();
+  const authority = transferAuthority(device, Date.now(), true);
+  const deleting = await database().prepare(`UPDATE media SET status = 'deleting' WHERE id = ?
+    AND object_key = ? AND archived_at IS NOT NULL AND status IN ('ready','deleting') AND ${authority.sql}`)
+    .bind(item.id, item.object_key, ...authority.bindings).run();
+  if (!deleting.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before deleting.");
   await storage.delete([item.object_key, `${item.object_key}.preview.jpg`]);
-  await database().prepare("DELETE FROM media WHERE id = ? AND status = 'deleting'").bind(item.id).run();
+  const completion = transferAuthority(device, Date.now(), true);
+  const removed = await database().prepare(`DELETE FROM media WHERE id = ? AND status = 'deleting' AND ${completion.sql}`)
+    .bind(item.id, ...completion.bindings).run();
+  if (!removed.meta.changes) throw new ApiError(409, "Access changed during cleanup. Refresh to review the remaining record.");
   return Response.json({ deleted: true });
 }
 
@@ -155,7 +162,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
   }
   if (resource === "media" && id && !action && method === "DELETE") {
     requireOwner(device);
-    return permanentlyDelete(await requireMedia(device, id), storage);
+    return permanentlyDelete(await requireMedia(device, id), storage, device);
   }
   if (resource === "uploads" && id && !action && method === "DELETE") {
     const item = await requireMedia(device, id);
@@ -165,12 +172,18 @@ export async function webAction(request: Request, device: ActiveDevice, resource
       return Response.json(await cancelPublication(database(), storage, { ...device, personId: device.authentication === "account" ? publisher?.person_id : undefined }, id));
     }
     if (!["uploading", "cancelling"].includes(item.status)) throw new ApiError(409, "This file has already arrived. Refresh your feed.");
-    const cancelled = await database().prepare("UPDATE media SET status = 'cancelling' WHERE id = ? AND status = 'uploading'").bind(id).run();
-    if (item.status === "uploading" && !cancelled.meta.changes) throw new ApiError(409, "This file finished arriving. Refresh the feed.");
+    const authority = transferAuthority(device, Date.now(), item.device_id !== device.id);
+    const cancelled = await database().prepare(`UPDATE media SET status = 'cancelling' WHERE id = ?
+      AND upload_id = ? AND status IN ('uploading','cancelling') AND ${authority.sql}`)
+      .bind(id, item.upload_id, ...authority.bindings).run();
+    if (!cancelled.meta.changes) throw new ApiError(409, "The transfer or library access changed. Refresh before cancelling.");
     try { await storage.resumeMultipartUpload(item.object_key, item.upload_id).abort(); }
     catch (failure) { if (!/NoSuchUpload|does not exist|not found/i.test(String(failure))) throw failure; }
     await storage.delete(item.object_key);
-    await database().prepare("DELETE FROM media WHERE id = ? AND status = 'cancelling'").bind(id).run();
+    const completion = transferAuthority(device, Date.now(), item.device_id !== device.id);
+    const removed = await database().prepare(`DELETE FROM media WHERE id = ? AND status = 'cancelling' AND upload_id = ? AND ${completion.sql}`)
+      .bind(id, item.upload_id, ...completion.bindings).run();
+    if (!removed.meta.changes) throw new ApiError(409, "Access changed during cancellation. Refresh to review the remaining transfer.");
     return Response.json({ cancelled: true });
   }
   if (resource === "uploads" && id && action === "restart" && method === "POST") {

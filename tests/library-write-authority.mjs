@@ -6,11 +6,12 @@ import { Miniflare,convertV4MiniflareOptions } from 'miniflare';
 // Replace only the Workers binding import. Execute real route helpers, body validation and SQL against
 // isolated D1 while retaining the already-authenticated principal across a live authority change.
 globalThis.__libraryAuthorityEnv={};
-const bundle=await build({entryPoints:['lib/library-api.ts'],bundle:true,write:false,platform:'node',format:'esm',plugins:[{
+const bundle=await build({entryPoints:['lib/library-api.ts','lib/web-api.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm',plugins:[{
   name:'isolated-binding',setup(builder){builder.onResolve({filter:/^cloudflare:workers$/},()=>({path:'fixture',namespace:'fixture'}));
     builder.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const env=globalThis.__libraryAuthorityEnv;',loader:'js'}));},
 }]});
-const {libraryAction}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const modules=await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
+const {libraryAction}=modules.find(module=>module.libraryAction),{webAction}=modules.find(module=>module.webAction);
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'library-authority-fixture',modules:true,
   script:'export default {fetch(){return new Response("isolated");}}',d1Databases:['DB']}]}));
 try {
@@ -60,6 +61,34 @@ try {
       await database.prepare(restore).run();
     }
     assert.equal((await invoke()).status,200,'Current owner retains the legitimate workflow');
+  }
+  // Permanent deletion and unfinished-upload cancellation must deny storage dispatch using a stale
+  // resolved actor. Real D1 executes the authority check with the destructive state transition.
+  for(const resource of ['media','uploads']) {
+    await database.prepare('UPDATE media SET status=?,archived_at=? WHERE id=?')
+      .bind(resource==='media'?'ready':'uploading',resource==='media'?1:null,media).run();
+    for(const [deny,restore] of [
+      ['UPDATE people SET disabled_at=1','UPDATE people SET disabled_at=NULL'],
+      ['UPDATE people SET credentials_changed_at=?','UPDATE people SET credentials_changed_at=0'],
+      ['UPDATE account_sessions SET revoked_at=1','UPDATE account_sessions SET revoked_at=NULL'],
+      ["UPDATE space_memberships SET role='member'","UPDATE space_memberships SET role='owner'"],
+    ]) {
+      if(resource==='uploads' && deny.includes("role='member'")) continue; // Upload owners may cancel their own unfinished transfer.
+      await (deny.includes('?')?database.prepare(deny).bind(now+1):database.prepare(deny)).run();
+      const before=await snapshot();let dispatched=false;
+      const storage={delete:async()=>{dispatched=true;},resumeMultipartUpload:()=>{dispatched=true;return {abort:async()=>{}};}};
+      await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,resource,media,undefined,storage),error=>error.status===409);
+      assert.equal(dispatched,false);assert.equal(await snapshot(),before);
+      await database.prepare(restore).run();
+    }
+    const interruptingStorage={
+      delete:async()=>{await database.prepare('UPDATE people SET disabled_at=1 WHERE id=?').bind(person).run();},
+      resumeMultipartUpload:()=>({abort:async()=>{}}),
+    };
+    await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,resource,media,undefined,interruptingStorage),error=>error.status===409);
+    assert.equal((await database.prepare('SELECT status FROM media WHERE id=?').bind(media).first()).status,resource==='media'?'deleting':'cancelling',
+      'Authority loss after storage cleanup preserves a reviewable metadata record.');
+    await database.prepare('UPDATE people SET disabled_at=NULL WHERE id=?').bind(person).run();
   }
   console.log('PASS: real album, rename, capture-date, membership, section create/update/order/template/placement routes reject disabled accounts, stale owner roles and revoked sessions atomically; current owners still succeed.');
 } finally {await runtime.dispose();}

@@ -897,3 +897,13 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Reserve direct part capabilities before signing with the exact recorded signing time/deadline. Issued capabilities and ambiguous effects leave the admission uncertain even when a response is delivered successfully.
 - [x] Verify concurrent request isolation, successful settlement, failed-request retention, native R2 operations and signing timestamp/target/byte binding. Actual built-Worker account/upload/publication tests pass with tracking enabled; add this mode to CI.
 - [ ] Complete metadata-generation and pre-library identity/pairing coverage, capability quiescence, schema minimisation and coordinated backup activation before enabling the flag in production. This source has not been deployed.
+- [x] Hosted CI `35698006146` passed both jobs for request-storage source `04ae515`; adapter CI `35697543942` also passed.
+
+## 22 September 2026 - Request-bound metadata and cleanup
+
+- [x] Bind transfer/library/publication commits to the same actor's active admission when tracking is enabled. Settled, uncertain and foreign admissions cannot be reused; untracked callers do not query prototype tables.
+- [x] Extend admission checks to library people/invitation management, legacy-device revocation and native device administration/pairing invitations. Add the credential watermark to legacy-device review/revocation.
+- [x] Recheck current authority before permanent media cleanup and unfinished-upload cancellation, then again before removing their records. Authority loss during storage work retains a reviewable record. Publication cleanup and retry transitions also recheck authority.
+- [x] Test actual-D1 denied mutations, unchanged stored rows, no premature storage dispatch, mid-cleanup revocation and admission identity/state binding. TypeScript and focused lint pass.
+- [x] Pass the actual built-Worker account suite with tracking enabled, default legacy/API regressions and production build.
+- [ ] Record deployment and hosted verification. Full pre-library identity/claim/pairing coverage and complete erasure execution remain outstanding; tracking stays disabled in production.

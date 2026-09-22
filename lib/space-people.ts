@@ -1,7 +1,8 @@
 import { AccountError, type AccountSession } from "./account-sessions";
+import { accountClosureCommitAuthority } from "./account-closure-fence";
 
 const digest = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))), byte => byte.toString(16).padStart(2, "0")).join("");
-type SpacePersonSession = Pick<AccountSession, "personId" | "sessionId">;
+type SpacePersonSession = Pick<AccountSession, "personId" | "sessionId"> & { closureAdmissionId?: string };
 const inviteLifetime = 7 * 24 * 60 * 60 * 1000;
 const credentialPattern = /^[a-f0-9]{64}$/;
 const liveSession = `EXISTS (SELECT 1 FROM account_sessions a JOIN people p ON p.id = a.person_id
@@ -33,6 +34,7 @@ export async function changeSpacePerson(database: D1Database, session: SpacePers
   targetId: string, action: "owner" | "member" | "remove" | "leave", revision: number, now = Date.now()) {
   const eventId = crypto.randomUUID();
   const removing = action === "remove" || action === "leave";
+  const admission = accountClosureCommitAuthority(session);
   const results = await database.batch([
     database.prepare(`INSERT INTO membership_events (id, space_id, actor_id, membership_id, action, created_at)
       SELECT ?, m.space_id, ?, m.id, ?, ? FROM space_memberships m JOIN people target ON target.id = m.person_id
@@ -41,9 +43,9 @@ export async function changeSpacePerson(database: D1Database, session: SpacePers
       AND ((? = 'leave' AND m.person_id = ?) OR (? <> 'leave' AND EXISTS
         (SELECT 1 FROM space_memberships actor WHERE actor.space_id = m.space_id AND actor.person_id = ? AND actor.role = 'owner' AND actor.revoked_at IS NULL)))
       AND (m.role <> 'owner' OR ? = 'owner' OR EXISTS (SELECT 1 FROM space_memberships remaining JOIN people p ON p.id = remaining.person_id
-        WHERE remaining.space_id = m.space_id AND remaining.id <> m.id AND remaining.role = 'owner' AND remaining.revoked_at IS NULL AND p.disabled_at IS NULL))`)
+        WHERE remaining.space_id = m.space_id AND remaining.id <> m.id AND remaining.role = 'owner' AND remaining.revoked_at IS NULL AND p.disabled_at IS NULL)) AND ${admission.sql}`)
       .bind(eventId, session.personId, action, now, targetId, spaceId, revision, session.sessionId, session.personId, now,
-        action, action, session.personId, action, session.personId, action),
+        action, action, session.personId, action, session.personId, action, ...admission.bindings),
     database.prepare(`UPDATE space_memberships SET role = CASE WHEN ? THEN role ELSE ? END, revoked_at = CASE WHEN ? THEN ? ELSE NULL END,
       revision = revision + 1 WHERE id = ? AND EXISTS (SELECT 1 FROM membership_events WHERE id = ?)`)
       .bind(removing ? 1 : 0, action, removing ? 1 : 0, now, targetId, eventId),
@@ -64,23 +66,25 @@ export async function createPersonInvitation(database: D1Database, session: Spac
   const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
   const id = crypto.randomUUID();
   const normalizedEmail = email.trim().toLowerCase();
+  const admission = accountClosureCommitAuthority(session);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || normalizedEmail.length > 320) throw new AccountError(400, "Enter a valid email address.");
   const result = await database.prepare(`INSERT INTO person_invitations (id, token_hash, space_id, created_by, email, created_at, expires_at)
     SELECT ?, ?, m.space_id, m.id, ?, ?, ? FROM space_memberships m WHERE m.person_id = ? AND m.space_id = ? AND m.role = 'owner'
     AND m.revoked_at IS NULL AND ${sharedSpace} AND ${liveSession}
     AND (SELECT COUNT(*) FROM person_invitations i WHERE i.space_id = m.space_id AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?) < 20
-    AND NOT EXISTS (SELECT 1 FROM person_invitations i WHERE i.space_id = m.space_id AND i.email = ? AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?)`)
-    .bind(id, await digest(token), normalizedEmail, now, now + inviteLifetime, session.personId, spaceId, session.sessionId, session.personId, now, now, normalizedEmail, now).run();
+    AND NOT EXISTS (SELECT 1 FROM person_invitations i WHERE i.space_id = m.space_id AND i.email = ? AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?) AND ${admission.sql}`)
+    .bind(id, await digest(token), normalizedEmail, now, now + inviteLifetime, session.personId, spaceId, session.sessionId, session.personId, now, now, normalizedEmail, now, ...admission.bindings).run();
   if (!result.meta.changes) throw new AccountError(409, "An invitation may already exist, the invitation limit was reached, or your access changed. Refresh and try again.");
   return { id, token, email: normalizedEmail, expiresAt: now + inviteLifetime };
 }
 
 // Revocation is owner-scoped and does not reveal foreign invitation identifiers.
 export async function revokePersonInvitation(database: D1Database, session: SpacePersonSession, spaceId: string, id: string, now = Date.now()) {
+  const admission = accountClosureCommitAuthority(session);
   await database.prepare(`UPDATE person_invitations SET revoked_at = COALESCE(revoked_at, ?) WHERE id = ? AND space_id = ? AND EXISTS
     (SELECT 1 FROM space_memberships m WHERE m.space_id = person_invitations.space_id AND m.person_id = ? AND m.role = 'owner'
-      AND m.revoked_at IS NULL AND ${sharedSpace} AND ${liveSession})`)
-    .bind(now, id, spaceId, session.personId, session.sessionId, session.personId, now).run();
+      AND m.revoked_at IS NULL AND ${sharedSpace} AND ${liveSession}) AND ${admission.sql}`)
+    .bind(now, id, spaceId, session.personId, session.sessionId, session.personId, now, ...admission.bindings).run();
   return { revoked: true };
 }
 

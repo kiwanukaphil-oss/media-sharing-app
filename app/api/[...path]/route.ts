@@ -124,7 +124,8 @@ async function routeRequest(request: Request, [resource, id, action, part]: stri
     const actor = accountAccess ? { kind: "account" as const, session: accountAccess } :
       { kind: "legacy" as const, deviceId: device.id, spaceId: device.space_id };
     return runClosureTrackedRequest(database(), bucket(), actor, (storage, admissionId) =>
-      routeLibraryRequest(request, segments, device, accountAccess, storage, admissionId));
+      routeLibraryRequest(request, segments, { ...device, closureAdmissionId: admissionId },
+        accountAccess ? { ...accountAccess, closureAdmissionId: admissionId } : null, storage, admissionId));
   }
   return routeLibraryRequest(request, segments, device, accountAccess, bucket());
 }
@@ -214,11 +215,12 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
   }
   if (resource === "invitations" && method === "POST") {
     requireOwner(device);
+    const authority = transferAuthority(device, Date.now(), true);
     const token = newToken();
     const expiresAt = Date.now() + 10 * 60 * 1000;
     const created = await database().prepare(`INSERT INTO invitations (token_hash, space_id, created_by, expires_at)
-      SELECT ?, space_id, id, ? FROM devices WHERE id = ? AND role = 'owner' AND revoked_at IS NULL AND expires_at > ?`)
-      .bind(await tokenHash(token), expiresAt, device.id, Date.now()).run();
+      SELECT ?, space_id, id, ? FROM devices WHERE id = ? AND role = 'owner' AND revoked_at IS NULL AND expires_at > ? AND ${authority.sql}`)
+      .bind(await tokenHash(token), expiresAt, device.id, Date.now(), ...authority.bindings).run();
     if (!created.meta.changes) throw new ApiError(403, "Owner access has changed. Refresh this space.");
     return Response.json({ token, expiresAt });
   }

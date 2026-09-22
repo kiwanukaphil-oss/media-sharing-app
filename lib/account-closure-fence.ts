@@ -41,6 +41,16 @@ export function closureAdmissionAuthority(id: string) {
   return { sql: `EXISTS (SELECT 1 FROM closure_write_admissions w WHERE w.id=? AND w.state='active' AND w.generation=0 AND NOT ${admissionHasFence})`, bindings: [id] };
 }
 
+// Account-management helpers carry only person/session identity, not a library compatibility actor.
+// Bind their optional request admission to the same person without querying prototype tables by default.
+export function accountClosureCommitAuthority(session: { personId: string; closureAdmissionId?: string }) {
+  if (!session.closureAdmissionId) return { sql: "1", bindings: [] as string[] };
+  const admission = closureAdmissionAuthority(session.closureAdmissionId);
+  return { sql: `(${admission.sql}) AND EXISTS (SELECT 1 FROM closure_write_admissions
+    WHERE id=? AND kind='account' AND person_id=?)`,
+  bindings: [...admission.bindings, session.closureAdmissionId, session.personId] };
+}
+
 // Settled means the caller awaited all effects; failed/ambiguous work must remain uncertain for review.
 // Time passage never settles a record. No API is provided here to clear uncertain or abandoned work.
 export async function settleClosureTrackedWrite(database: D1Database, id: string, outcome: "settled" | "uncertain", now = Date.now()) {

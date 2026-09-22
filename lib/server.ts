@@ -55,7 +55,8 @@ export async function readJson<T extends z.ZodTypeAny>(request: Request, schema:
   catch { throw new ApiError(400, "Some details are missing or invalid. Please try again."); }
 }
 // Legacy name retained for compatibility; account actors derive authority from live membership.
-export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member"; authentication?: "account"; personId?: string; sessionId?: string; storage_limit_bytes?: number | null; space_kind?: "personal" | "shared" };
+// closureAdmissionId is assigned by the server request boundary, never read from client input.
+export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member"; authentication?: "account"; personId?: string; sessionId?: string; closureAdmissionId?: string; storage_limit_bytes?: number | null; space_kind?: "personal" | "shared" };
 export function requireOwner(device: ActiveDevice) {
   if (device.role !== "owner") throw new ApiError(403, "Only a space owner can do this.");
 }

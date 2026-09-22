@@ -42,6 +42,7 @@ export async function reservePublication(database: D1Database, source: AccountSp
   const existing = await database.prepare("SELECT * FROM publications WHERE id = ?").bind(input.id).first<PublicationRow>();
   if (existing) { assertMatchingPublication(existing, source, input); return existing; }
   const marker = `publication:${crypto.randomUUID()}`;
+  const writeAuthority = transferAuthority(source, now);
   try {
     const results = await database.batch([
       database.prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size,
@@ -51,12 +52,12 @@ export async function reservePublication(database: D1Database, source: AccountSp
         FROM media original WHERE original.id = ? AND original.space_id = ? AND original.revision = ? AND original.status = 'ready'
         AND original.archived_at IS NULL AND original.size <= ? AND ${publicationAuthority} AND ${destinationAvailable}
         AND (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + original.size +
-          CASE WHEN original.preview_ready = 1 THEN original.preview_size ELSE 0 END <= ?`)
+          CASE WHEN original.preview_ready = 1 THEN original.preview_size ELSE 0 END <= ? AND ${writeAuthority.sql}`)
         .bind(input.id, destination.space_id, destination.id, `${destination.space_id}/${input.id}/pending`, marker, now,
           input.sourceId, source.space_id, input.sourceRevision, MAX_PUBLICATION_BYTES,
           source.sessionId, source.personId, now, source.space_id, destination.space_id,
           input.albumId || null, input.albumId || null, destination.space_id, input.sectionId || null, input.sectionId || null, input.albumId || null,
-          destination.space_id, destinationLimit),
+          destination.space_id, destinationLimit, ...writeAuthority.bindings),
       database.prepare(`INSERT INTO publications (id, source_id, source_space_id, destination_space_id, person_id, source_revision, album_id, section_id, created_at)
         SELECT id, ?, ?, space_id, ?, ?, ?, ?, ? FROM media WHERE id = ? AND upload_id = ? AND status = 'publishing'`)
         .bind(input.sourceId, source.space_id, source.personId, input.sourceRevision, input.albumId || null, input.sectionId || null, now, input.id, marker),
@@ -75,11 +76,12 @@ export async function reservePublication(database: D1Database, source: AccountSp
 export async function finishPublication(database: D1Database, bucket: R2Bucket, source: AccountSpaceAccess, job: PublicationRow) {
   if (job.phase === "ready") return { published: true, id: job.id, destinationSpaceId: job.destination_space_id };
   const now = Date.now();
+  const writeAuthority = transferAuthority(source, now);
   const key = `${job.destination_space_id}/${job.id}/publication-${crypto.randomUUID()}/original`;
   const claims = await database.batch([database.prepare(`UPDATE publications SET phase = 'copying', attempt_key = ?, lease_expires_at = ?
     WHERE id = ? AND person_id = ? AND (phase = 'pending' OR (phase = 'copying' AND lease_expires_at <= ?))
-    AND (SELECT COUNT(*) FROM publication_attempts WHERE publication_id = publications.id) < 10 AND ${publicationAuthority}`)
-    .bind(key, now + 5 * 60 * 1000, job.id, source.personId, now, source.sessionId, source.personId, now, job.source_space_id, job.destination_space_id),
+    AND (SELECT COUNT(*) FROM publication_attempts WHERE publication_id = publications.id) < 10 AND ${publicationAuthority} AND ${writeAuthority.sql}`)
+    .bind(key, now + 5 * 60 * 1000, job.id, source.personId, now, source.sessionId, source.personId, now, job.source_space_id, job.destination_space_id, ...writeAuthority.bindings),
     database.prepare("INSERT INTO publication_attempts (object_key, publication_id, created_at) SELECT ?, id, ? FROM publications WHERE id = ? AND attempt_key = ? AND phase = 'copying'")
       .bind(key, now, job.id, key),
   ]);
@@ -109,14 +111,15 @@ export async function finishPublication(database: D1Database, bucket: R2Bucket, 
       } catch { await bucket.delete(`${key}.preview.jpg`); /* A missing derivative does not invalidate verified original bytes. */ }
     }
     const committedAt = Date.now();
+    const commitAuthority = transferAuthority(source, committedAt);
     const committed = await database.batch([
       database.prepare(`UPDATE media SET status = 'ready', object_key = ?, preview_ready = ?, preview_size = ? WHERE id = ? AND status = 'publishing'
         AND EXISTS (SELECT 1 FROM publications WHERE id = ? AND phase = 'copying' AND attempt_key = ?)
         AND EXISTS (SELECT 1 FROM media original WHERE original.id = ? AND original.space_id = ? AND original.revision = ? AND original.status = 'ready' AND original.archived_at IS NULL)
-        AND ${publicationAuthority} AND ${destinationAvailable}`)
+        AND ${publicationAuthority} AND ${destinationAvailable} AND ${commitAuthority.sql}`)
         .bind(key, previewSize > 0 ? 1 : 0, previewSize, job.id, job.id, key, job.source_id, job.source_space_id, job.source_revision,
           source.sessionId, source.personId, committedAt, job.source_space_id, job.destination_space_id,
-          job.album_id, job.album_id, job.destination_space_id, job.section_id, job.section_id, job.album_id),
+          job.album_id, job.album_id, job.destination_space_id, job.section_id, job.section_id, job.album_id, ...commitAuthority.bindings),
       database.prepare(`INSERT INTO album_media (album_id, media_id, section_id) SELECT ?, id, ? FROM media
         WHERE id = ? AND status = 'ready' AND object_key = ? AND ? IS NOT NULL ON CONFLICT DO NOTHING`)
         .bind(job.album_id, job.section_id, job.id, key, job.album_id),
@@ -133,7 +136,9 @@ export async function finishPublication(database: D1Database, bucket: R2Bucket, 
     const visible = await database.prepare("SELECT id FROM media WHERE id = ? AND status = 'ready' AND object_key = ?").bind(job.id, key).first();
     if (visible) return { published: true, id: job.id, destinationSpaceId: job.destination_space_id };
     await bucket.delete([key, `${key}.preview.jpg`]);
-    await database.prepare("UPDATE publications SET phase = 'pending', lease_expires_at = 0 WHERE id = ? AND attempt_key = ? AND phase = 'copying'").bind(job.id, key).run();
+    const retryAuthority = transferAuthority(source);
+    await database.prepare(`UPDATE publications SET phase = 'pending', lease_expires_at = 0
+      WHERE id = ? AND attempt_key = ? AND phase = 'copying' AND ${retryAuthority.sql}`).bind(job.id, key, ...retryAuthority.bindings).run();
     if (failure instanceof AccountError) throw failure;
     throw new AccountError(503, "The copy could not be verified. Retry, or cancel the unfinished publication in Storage.");
   }
@@ -159,9 +164,13 @@ export async function cancelPublication(database: D1Database, bucket: R2Bucket, 
   if (!cancelled.meta.changes && job.phase !== "cancelled") throw new AccountError(409, "The publication or access changed. Refresh its status.");
   const attempts = await database.prepare("SELECT object_key FROM publication_attempts WHERE publication_id = ?").bind(id).all<{ object_key: string }>();
   for (const attempt of attempts.results) await bucket.delete([attempt.object_key, `${attempt.object_key}.preview.jpg`]);
-  await database.batch([
-    database.prepare("DELETE FROM media WHERE id = ? AND status IN ('publishing','cancelling') AND EXISTS (SELECT 1 FROM publications WHERE id = ? AND phase = 'cancelling')").bind(id, id),
-    database.prepare("UPDATE publications SET phase = 'cancelled', lease_expires_at = 0 WHERE id = ? AND phase = 'cancelling'").bind(id),
+  const completion = transferAuthority(access, Date.now(), access.personId !== job.person_id);
+  const completed = await database.batch([
+    database.prepare(`DELETE FROM media WHERE id = ? AND status IN ('publishing','cancelling') AND EXISTS
+      (SELECT 1 FROM publications WHERE id = ? AND phase = 'cancelling') AND ${completion.sql}`).bind(id, id, ...completion.bindings),
+    database.prepare(`UPDATE publications SET phase = 'cancelled', lease_expires_at = 0
+      WHERE id = ? AND phase = 'cancelling' AND ${completion.sql}`).bind(id, ...completion.bindings),
   ]);
+  if (!completed[1].meta.changes && job.phase !== "cancelled") throw new AccountError(409, "Access changed during cancellation. Refresh to review the remaining copy.");
   return { cancelled: true };
 }
