@@ -1,6 +1,6 @@
 # Closure protocol privacy review
 
-Reviewed 22 September 2026. This covers the isolated schema in `deploy/closure-fence-prototype.sql`; it does not authorise production migration, object removal or fulfilled erasure. The snapshot minimiser still accepts only the reviewed migration-0018 schema.
+Reviewed 22 September 2026. This covers the isolated schema in `deploy/closure-fence-prototype.sql`; it does not authorise production migration, object removal or fulfilled erasure. The snapshot minimiser accepts migration 0018 plus the narrowly reviewed global-backup-only stage below. Account/device/storage closure references remain blocked.
 
 ## References and required treatment
 
@@ -28,3 +28,12 @@ Restored databases retain the existing quarantine: active admissions/effects bec
 - [ ] Prove every application/backup writer is covered and verify the generated-person full lifecycle rehearsal before activating production closure.
 
 The new inventory is evidence for review, not a deletion plan or a schema allowlist expansion.
+
+
+## Global-backup-only activation stage
+
+The exact combined schema digest `94b6d4de5174007726b87356cec7f5f54272cc2e9d5b34c941f24c0041ab36e5` is conditionally reviewed, not generally allowlisted. `reviewMinimisationSchema` accepts it only while fences and storage effects are empty and every admission is an unambiguously paired global backup run with no person/device link. IDs, snapshot IDs, receipt digests, states, generations and timestamps are validated. Orphans or private free text cause rejection.
+
+These global run/snapshot IDs and digests are retained to reconcile backup versions; no run is reassigned to the erased person. Historical active runs become uncertain through existing restore quarantine. Settled receipts remain intact. Actual-schema minimisation tests verify private-data minimisation, shared-original preservation, retained completed receipts, quarantine and replay stability. Any account/legacy admission, fence or object reference still refuses transformation pending authenticated disposition treatment. The gate applies to the whole snapshot, so another person's unsupported protocol references also require review.
+
+This permits preparation of backup coordination while application closure tracking remains disabled. It does not authorise full closure, clear uncertainty or enable restored access.

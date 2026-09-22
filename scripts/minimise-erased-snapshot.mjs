@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { importSnapshot, checkDatabase, sanitizeRestoredAccess } from './relay-backup.mjs';
 import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from './backup-d1-readonly.mjs';
+import { reviewMinimisationSchema } from './review-minimisation-schema.mjs';
 
 export const providerIdentityDigest = (issuer, subject) => createHash('sha256').update(JSON.stringify([issuer, subject])).digest('hex');
 
@@ -24,9 +25,9 @@ export function minimiseErasedSnapshot(sql, receipt, now = Date.now()) {
     const shape = database.prepare(`SELECT name FROM sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*'
       AND name NOT GLOB '_cf_*' AND name<>'__drizzle_migrations' ORDER BY name`).all().map(({name}) =>
       [name, database.prepare('SELECT name,type FROM pragma_table_info(?) ORDER BY cid').all(name)]);
-    // Reviewed through migration 0018. A future column may hold personal data and requires an explicit review.
-    if (createHash('sha256').update(JSON.stringify(shape)).digest('hex') !==
-        'b59ead9f977608a709cc1569f7fa90b6427f18b12908bb3babc57dad12902201') throw new Error('Snapshot schema requires erasure review.');
+    // Protocol tables are accepted only in the reviewed global-backup-only stage, with no account,
+    // device, fence or storage-effect references. All other additions still require explicit review.
+    if (!reviewMinimisationSchema(database, shape).accepted) throw new Error('Snapshot schema requires erasure review.');
     database.exec('BEGIN');
     const personId = receipt.personId;
     const personal = 'SELECT space_id FROM personal_spaces WHERE person_id=?';

@@ -107,5 +107,43 @@ try {
   assert.throws(()=>minimiseErasedSnapshot(sql,{...receipt,personId:'missing'}),/not found/);
   assert.throws(()=>minimiseErasedSnapshot(sql+'\nCREATE TABLE future_identity(value TEXT);',receipt),/schema/);
   assert.throws(()=>minimiseErasedSnapshot(sql+'\nALTER TABLE people ADD private_note TEXT;',receipt),/schema/);
+  // The first activation stage has only global backup bookkeeping, never account/device/storage references.
+  const protocolSql = sql + '\n' + await readFile('deploy/closure-fence-prototype.sql','utf8');
+  const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const backupSql = protocolSql + `
+    INSERT INTO closure_write_admissions(id,kind,generation,state,started_at) VALUES('${runId}','backup',0,'active',1);
+    INSERT INTO closure_backup_runs(id,snapshot_id,created_at) VALUES('${runId}','${manifest.snapshotId}',1);`;
+  const backupReview = inspectHistoricalSnapshot(backupSql);
+  assert.equal(backupReview.minimisationSchemaReviewed,true);
+  assert.equal(backupReview.minimisationReviewScope,'global-backup-only');
+  const backupMinimised = minimiseErasedSnapshot(backupSql,receipt,1000);
+  const backupRestored = importSnapshot(backupMinimised.sql);
+  try {
+    assert.equal(backupRestored.prepare('SELECT state FROM closure_write_admissions').get().state,'uncertain');
+    assert.equal(backupRestored.prepare('SELECT receipt_digest FROM closure_backup_runs').get().receipt_digest,null);
+    assert.equal(backupRestored.prepare("SELECT object_key FROM media WHERE id='published'").get().object_key,'shared/keep');
+  } finally { backupRestored.close(); }
+  assert.equal(minimiseErasedSnapshot(backupMinimised.sql,receipt,1000).sql,backupMinimised.sql);
+  const completedBackup = minimiseErasedSnapshot(backupSql + `UPDATE closure_write_admissions SET state='settled',settled_at=2;
+    UPDATE closure_backup_runs SET receipt_digest='${'d'.repeat(64)}';`,receipt,1000);
+  const completedRestored = importSnapshot(completedBackup.sql);
+  try {
+    assert.equal(completedRestored.prepare('SELECT state FROM closure_write_admissions').get().state,'settled');
+    assert.equal(completedRestored.prepare('SELECT receipt_digest FROM closure_backup_runs').get().receipt_digest,'d'.repeat(64));
+  } finally { completedRestored.close(); }
+
+  for (const extra of [
+    "INSERT INTO closure_write_admissions(id,kind,person_id,generation,state,started_at) VALUES('account','account','gone',0,'settled',1);",
+    "INSERT INTO closure_write_admissions(id,kind,device_id,generation,state,started_at) VALUES('legacy','legacy','shared-device',0,'settled',1);",
+    `INSERT INTO closure_storage_effects(id,admission_id,object_key,operation,state,started_at) VALUES('effect','${runId}','private/key','put','acknowledged',1);`,
+    `INSERT INTO closure_fences VALUES('fence','gone','request',1,1,'draining','${'a'.repeat(64)}','${'b'.repeat(64)}','${'c'.repeat(64)}',1);`,
+    `UPDATE closure_backup_runs SET snapshot_id='private@example.test';`,
+    `UPDATE closure_backup_runs SET receipt_digest='private@example.test';`,
+    `UPDATE closure_write_admissions SET state='settled';`,
+    `INSERT INTO closure_write_admissions(id,kind,generation,state,started_at) VALUES('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','backup',0,'active',1);`,
+  ]) {
+    assert.throws(()=>minimiseErasedSnapshot(backupSql+extra,receipt,1000),/schema/);
+    assert.equal(inspectHistoricalSnapshot(backupSql+extra).minimisationSchemaReviewed,false);
+  }
   console.log('PASS: isolated snapshot minimisation, identity binding, private content removal, shared/other originals, access quarantine and replay stability.');
 } finally { database.close(); }

@@ -7,8 +7,8 @@ import { authorizeBackupRole, downloadBackupFile, operationsDirectory, storageRe
 import { completedOriginals, importSnapshot } from './relay-backup.mjs';
 import { providerIdentityDigest } from './minimise-erased-snapshot.mjs';
 import { inspectClosureSnapshot } from './inspect-closure-snapshot.mjs';
+import { reviewMinimisationSchema } from './review-minimisation-schema.mjs';
 
-const reviewedSchemaDigest = 'b59ead9f977608a709cc1569f7fa90b6427f18b12908bb3babc57dad12902201';
 const snapshotName = /^relay\/snapshots\/\d{4}-\d{2}-\d{2}T[\d-]+Z-[a-f0-9-]{36}\/database\.sql$/;
 
 // Inspect only downloaded, digest-verified SQL in a fresh in-memory database. Older schemas are inventoried
@@ -20,6 +20,7 @@ export function inspectHistoricalSnapshot(sql) {
       AND name NOT GLOB '_cf_*' AND name<>'__drizzle_migrations' ORDER BY name`).all();
     const shape = tables.map(({name}) => [name, database.prepare('SELECT name,type FROM pragma_table_info(?) ORDER BY cid').all(name)]);
     const schemaDigest = createHash('sha256').update(JSON.stringify(shape)).digest('hex');
+    const minimisationReview = reviewMinimisationSchema(database, shape);
     const hasPeople = tables.some(table => table.name === 'people');
     const hasPersonalSpaces = tables.some(table => table.name === 'personal_spaces');
     const people = hasPeople ? database.prepare('SELECT id,issuer,subject FROM people ORDER BY id').all().map(person => ({
@@ -37,7 +38,7 @@ export function inspectHistoricalSnapshot(sql) {
         personalOwner:personalOwners.get(ownership.get(original.id)) ?? null});
       content.set(original.sha256,entry);
     }
-    return {schemaDigest, minimisationSchemaReviewed:schemaDigest === reviewedSchemaDigest,
+    return {schemaDigest, minimisationSchemaReviewed:minimisationReview.accepted, minimisationReviewScope:minimisationReview.scope,
       identityTablesPresent:hasPeople, personalOwnershipTablePresent:hasPersonalSpaces,
       closureProtocol:inspectClosureSnapshot(database),
       people, personalSpaces, completedOriginalReferences:completed.length,

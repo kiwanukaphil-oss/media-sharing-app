@@ -948,3 +948,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Add read-only completion inspection using an independently supplied live coordinator reader and complete B2 version catalog. Verify every retained copy-receipt version against the current digest and its exact manifest version, then reread current run state within 30 seconds.
 - [x] Reject incomplete/wrong-bucket catalogs, conflicting or hidden receipt versions, unfinished snapshot uploads, missing manifest versions, altered bytes and changed/stale coordinator observations. Matching repeated versions is allowed only when each verifies. Tests and focused lint pass.
 - [ ] Wire the authenticated live read/download adapters and collect a hosted coordinated receipt after schema/secret activation. The checker is locally verified; no production activation or quiescence claim.
+
+
+## 22 September 2026 - Backup-only schema minimisation review
+
+- [x] Review the exact protocol schema only for global backup bookkeeping: require no fences, account/device admissions or storage effects, validate every global run and reject orphan links/private free text. The full closure schema is not generally approved.
+- [x] Verify actual-schema minimisation preserves shared originals and completed receipt evidence, quarantines an exported active run, and remains repeat-safe. Unsupported account/legacy/storage/fence references still block transformation. Historical inventory reports the precise review scope.
+- [ ] Promote the reviewed additive schema into migrations, rehearse upgrade/recovery, configure the dedicated coordinator secret, then observe a hosted coordinated backup and independent completion readback. Account closure tracking remains disabled throughout this stage.
