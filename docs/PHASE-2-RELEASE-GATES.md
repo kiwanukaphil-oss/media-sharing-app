@@ -30,7 +30,8 @@ Updated 21 September 2026. Phase 2 is deployed as a restricted designated-accoun
 - [x] Configure external aggregate-health monitor 4956708 and verify Up on the Free plan. Missing/failed/stale reports fail closed; tests cover 90-minute expiry.
 - [x] Configure combined monitoring at minutes 13 and 43 UTC each hour; GitHub scheduling is best effort.
 - [x] Observe independent Cloudflare scheduled combined runs at 15:19 and 15:49 UTC on 21 September, with signed delivery and healthy public readback; optimised CPU sample is 8 ms on Free.
-- [ ] Verify the already-sent test-alert receipt and continued coverage/capacity before expansion.
+- [x] Verify the already-sent identity/recovery test-alert receipt: Gmail Inbox inspected 22 September; message dated 21 September at 11:57 a.m. EAT.
+- [ ] Verify continued monitoring coverage/capacity before expansion.
 - [x] Rehearse operator repair with designated synthetic identities in isolated actual-schema D1: monitor detection, signed replay, independent watermark readback, old-session revocation, newer/unrelated-session preservation, library fingerprints and replay ordering passed. Real provider/receiver verification is recorded separately.
 - [x] Send the explicitly authorised recovery email; user completes password change. Gmail Inbox label and SPF/DKIM/DMARC PASS verified. Old browser is signed out before any fresh login; D1 records notification-driven revocation 416 ms after reset.
 - [x] Verify fresh sign-in with the changed password (09:53:27 Nairobi). Signed authentication is newer than the reset watermark.

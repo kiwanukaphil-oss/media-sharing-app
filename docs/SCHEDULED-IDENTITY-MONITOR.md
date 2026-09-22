@@ -1,12 +1,12 @@
 # Independent scheduled identity monitor
 
-Status: activated on 21 September 2026 at 15:03 UTC following explicit user approval. Dedicated Worker `relay-identity-monitor` runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Initial version `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2` passed its first actual cron at 15:19 UTC, including signed health delivery. Current leaner version: `49576315-efae-4b4d-b815-29532e4aac8d` (see below). All four required secret names were read back after encrypted installation. **Free-plan CPU headroom remains a release concern; external alert receipt is still pending.**
+Status: activated on 21 September 2026 at 15:03 UTC following explicit user approval. Dedicated Worker `relay-identity-monitor` runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Initial version `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2` passed its first actual cron at 15:19 UTC, including signed health delivery. Current leaner version: `49576315-efae-4b4d-b815-29532e4aac8d` (see below). All four required secret names were read back after encrypted installation. **Free-plan CPU headroom remains a release concern; external test-alert Inbox receipt was verified on 22 September.**
 
 ## Reason for the change
 
 GitHub's twice-hourly combined monitor did not dispatch on schedule. At approximately 11:54 UTC the latest successful check was from 09:05; Relay correctly returned HTTP 503 for stale evidence. Manual run 35596479265 passed and restored HTTP 200. GitHub [documents delayed or dropped scheduled events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule). Do not weaken the freshness check to conceal missed executions.
 
-Use a dedicated [Cloudflare Cron Trigger](https://developers.cloudflare.com/workers/configuration/cron-triggers/) at minutes 19 and 49 UTC as an independent execution path. GitHub remains a separate diagnostic/redundant runner. Better Stack continues checking the existing aggregate health endpoint; neither runner can report success without completing both checks. Hosted cron execution and alert receipt still need verification.
+Use a dedicated [Cloudflare Cron Trigger](https://developers.cloudflare.com/workers/configuration/cron-triggers/) at minutes 19 and 49 UTC as an independent execution path. GitHub remains a separate diagnostic/redundant runner. Better Stack continues checking the existing aggregate health endpoint; neither runner can report success without completing both checks. Hosted cron execution and alert receipt are now verified as recorded below.
 
 ## Exact access and data boundaries
 
@@ -31,7 +31,7 @@ The browser requires approval before copying the existing provider secret into a
 - [x] Observe a real cron execution and verify signed health delivery. At 15:19 UTC, live tail recorded cron `19,49 * * * *`, outcome `ok`, static success log and no exceptions. R2 readback confirms success with `eventAt=1790003947351` and `receivedAt=1790003949249`; public health returned HTTP 200.
 - [x] Inspect initial hosted timing: wall time 3,225 ms; CPU time 10 ms. Actual account dashboard confirms **Workers Free**. This is one successful execution, not capacity proof.
 - [ ] Establish CPU headroom and continued scheduled coverage before general release. The initial sample is at the documented Free 10 ms CPU limit. Do not treat the 40-identity subrequest guard as a CPU capacity guarantee. Reconcile the earlier note about an existing $5 subscription before any new paid-plan decision; no purchase made.
-- [ ] Confirm the already-sent Better Stack test alert arrived; do not send another without permission.
+- [x] Confirm the already-sent Better Stack test alert arrived. Open Gmail inspected with user authorisation on 22 September: identity/recovery test message in Inbox, dated 21 September at 11:57 a.m. EAT. No additional email sent.
 
 If credential installation or checks fail, keep the Worker disabled and use the existing manual combined workflow while investigating. Do not claim unattended monitoring is complete until hosted scheduled execution has been observed.
 
@@ -47,4 +47,4 @@ Provider regressions, independent Node-HMAC signature comparisons, R2 delivery t
 - [x] Independently read back the delivered R2 report: `eventAt=1790005747336`, `receivedAt=1790005748922`, status success. The actual external-monitor endpoint `/api/operations/health` returns HTTP 200 with `status: ok`.
 - [ ] Collect continued coverage/capacity evidence before broadening the pilot. The observed post-change samples remain limited evidence, not a capacity guarantee for additional identities. No billing change has been made.
 
-At **16:19 UTC**, the same optimised version passed a second real cron: **5 ms CPU**, **3,113 ms wall time**, outcome `ok`, no exceptions. Independent R2 readback reports success with `eventAt=1790007547320` and `receivedAt=1790007549049`; the external health endpoint again returns 200. There are now three observed scheduled successes, with optimised samples of 8 ms and 5 ms. This supports continuing the existing restricted pilot on the verified Free plan; broader identity capacity and external alert receipt remain separate gates.
+At **16:19 UTC**, the same optimised version passed a second real cron: **5 ms CPU**, **3,113 ms wall time**, outcome `ok`, no exceptions. Independent R2 readback reports success with `eventAt=1790007547320` and `receivedAt=1790007549049`; the external health endpoint again returns 200. There are now three observed scheduled successes, with optimised samples of 8 ms and 5 ms. This supports continuing the existing restricted pilot on the verified Free plan; broader identity capacity remains a separate gate. External test-alert receipt was subsequently verified on 22 September.
