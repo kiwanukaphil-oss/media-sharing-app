@@ -62,3 +62,6 @@ Workers Paid is recommended at [a $5/month minimum plus usage](https://developer
 On 22 September the user explicitly approved $5/month plus usage, then separately approved the checkout terms and recurring charges. Cloudflare displayed **Purchase complete** and **subscription is active**. The earlier Free observations remain historical evidence. No further purchase is required for this transition.
 
 A 1,000 ms monitor CPU limit is prepared and passes Wrangler deployment dry run. This is substantially above the observed 5?10 ms, while keeping a finite per-invocation budget. The 40-identity guard, response/deadline bounds, exact provider permissions, private trigger and external stale-report alert remain unchanged. Deployment and a subsequent actual scheduled execution must be recorded before checking post-upgrade verification.
+
+
+The bounded Paid configuration is deployed as `679cc9bd-a536-448e-a4fd-d34db1be5420` at **100%**, 08:32 UTC. Independent version readback confirms usage model `standard` and `limits.cpu_ms=1000`; the twice-hourly `19,49` schedule is installed. A transient deployment-status network error succeeded on retry. The next actual cron is still required for post-upgrade execution evidence; deployment alone is not that evidence.
