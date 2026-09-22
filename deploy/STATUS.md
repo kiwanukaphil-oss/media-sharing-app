@@ -1,5 +1,9 @@
 # Direct Cloudflare deployment
 
+## Account browser-session feedback - 22 September 2026
+
+Worker `dc3a0d93-4903-4075-a235-6c69be3af11f` is at **100%**, deployed 09:04 UTC from `390140a`. Account now distinguishes loading, sign-out progress, completed revocation and refresh failure; stale controls are hidden after failed refresh. Duplicate email subtitles are omitted. TypeScript, focused lint, build, dry run and delayed/error-response mobile browser tests pass; rendering inspected. Fresh signed-in account, personal/shared links and both retained browser sessions verified live without revoking either. No authentication, schema, quota or permission changes. Hosted CI is pending.
+
 ## Publication recovery clarity - 22 September 2026
 
 Worker `70b02d61-1fa7-4d99-8197-93e467b9fa45` is at **100%**, deployed 08:46 UTC from `fa55b93`. The dialog waits for publication history before showing editable controls and distinguishes Previously published from a new completion. Fresh sign-in, personal preview, shared switching and People & access were verified. Independent D1 readback confirms 25 ready files and one publication, unchanged from before this review. No duplicate copy was created.

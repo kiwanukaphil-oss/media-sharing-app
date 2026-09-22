@@ -54,6 +54,7 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/historical-snapshot-inventory.mjs
       - run: node --disable-warning=ExperimentalWarning tests/closure-snapshot-inventory.mjs
       - run: node tests/closure-disposition.mjs
+      - run: node tests/collaboration-policy.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs
       - run: node tests/erasure-rehearsal-scope.mjs
       - run: node tests/scheduled-identity-monitor.mjs

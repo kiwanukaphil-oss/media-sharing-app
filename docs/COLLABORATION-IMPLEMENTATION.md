@@ -57,3 +57,15 @@ Expiry/revocation is enforced at upload initialisation, part signing and finalis
 6. Add private favourites and scoped in-app history after the access foundation. Favourites do not alter public approval, sorting or other people's activity.
 
 Release needs hosted representative-role checks, independent backup/restore of membership decisions and an operational intake-abuse response. No guest link is published and no member role is changed by this design document.
+
+
+## Prepared policy module - 22 September
+
+`lib/collaboration-policy.ts` is a pure, unused-by-production reference for the agreed shared-role policy. It does not add database roles, alter invitations or change any current user's permissions. Integration/release remains dependent on Phase 2.
+
+- [x] Evaluate complete selections atomically at the policy level; mixed ownership never silently becomes a permitted subset. Account attribution is the exact stable membership ID, so a new membership after rejoining does not inherit old editing rights. Legacy cancellation uses the exact device ID.
+- [x] Preserve compatibility Member and legacy Owner/Member; reject account-only roles on legacy actors. Editor cannot administer access or permanently delete files.
+- [x] Deny inactive/unknown roles, cross-space resources and narrower-audience denial even for an owner. Adversarial fixtures pass; hosted test step added.
+- [ ] Build route-specific attribution adapters and transactional authority predicates, then integrate every API/UI path after the Phase 2 gate. This preflight function alone is never sufficient mutation authority.
+
+Actor `id` must be populated from a verified membership (account) or device (legacy), never a client-provided identity or email. `audienceAllowed` must come from server-side audience evaluation. Personal-space policy remains separate.
