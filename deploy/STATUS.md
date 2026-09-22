@@ -225,3 +225,11 @@ Migrations `0014_bizarre_bloodscream.sql` and `0015_romantic_riptide.sql` add du
 - Both origins returned health/operational-health 200 and anonymous feed 401. Primary hosted sections passed create/upload/move/Undo/remove/restore/deep-link/exact-byte download. One tiny generated original remains in Relay verification; no user original was removed.
 - Pilot audience, 1 GiB personal budget, existing secrets and migrations through 0018 remain unchanged. Closure/backup-coordinator prototypes are not activated. Provider removal rehearsal awaits the specific owner approval described in `docs/PROVIDER-ERASURE-REHEARSAL.md`.
 - Independent backup refresh `35663011013` passed inventory, copy and separate Backblaze restoration. Snapshot `2026-09-21T22-31-05-943Z-8d72d96c-46cb-402f-a6f5-57c8e8bad75b` protects all 25 originals (321,680,743 bytes); one content object uploaded and 24 reused. Hash/relationship/access-revocation verification passed; failure reporting was correctly skipped.
+
+## 22 September 2026 - Account metadata recovery authority
+
+- Source `591d2ab` deployed as Worker `aa104f6e-586e-47d5-9d28-a06e0a44f26b`, confirmed at 100% at 06:14 UTC.
+- Attribution writes use current profile/authority inside the D1 batch. Claim previews, confirmations and people-management mutations reject authentication predating recovery. Deterministic actual-D1 race tests, local legacy/account integration, TypeScript, focused lint, production build and deployment dry run passed.
+- Both origins return 200 for health and operational health and 401 for anonymous feed. The owner browser session expired; fresh signed-in verification awaits owner login. CI `35693941086` passed its verification job; the browser job is still running.
+- Database migrations remain through 0018, pilot audience and 1 GiB budget unchanged; closure coordinator/executor not activated.
+- Separate approved Auth0 rehearsal passed creation/exact-profile/removal/independent absence. Temporary API/connection access is revoked; writer token expiry approximately 23 September 06:08 UTC. No real account or media was removed.

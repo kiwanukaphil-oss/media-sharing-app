@@ -77,7 +77,7 @@ Restore sanitisation now recognises the complete protocol table family: fences r
 
 ### Remaining metadata review targets
 
-The next 22 September correction is locally implemented and tested: compatibility attribution inserts recheck live membership/session/person/recovery authority inside the atomic D1 batch and use the current profile name. Claim preview insertion repeats live device/account checks; claim confirmation and people-management writes enforce the credential watermark. Actual-schema tests force recovery/revocation between the initial read and mutation and confirm that rejected effects are absent. Production deployment is recorded separately. This closes these stale-authority gaps, but does not complete closure-generation admission or the full writer audit.
+The 22 September correction is implemented, tested and deployed in source `591d2ab`: compatibility attribution inserts recheck live membership/session/person/recovery authority inside the atomic D1 batch and use the current profile name. Claim preview insertion repeats live device/account checks; claim confirmation and people-management writes enforce the credential watermark. Actual-schema tests force recovery/revocation between the initial read and mutation and confirm that rejected effects are absent. Production deployment and pending fresh signed-in verification are recorded in `deploy/STATUS.md`. This closes these stale-authority gaps, but does not complete closure-generation admission or the full writer audit.
 
 ### Provider component rehearsal
 
