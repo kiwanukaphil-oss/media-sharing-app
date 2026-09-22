@@ -95,7 +95,7 @@ export async function readFeed(request: Request, device: ActiveDevice) {
     } catch { throw new ApiError(400, "This page link is invalid. Refresh the feed."); }
   }
   const editable = fileEditAuthority(device);
-  const result = await database().prepare(`SELECT EXISTS (SELECT 1 FROM personal_favorites favorite WHERE favorite.media_id=media.id AND favorite.person_id=?) AS isFavorite, (${editable.sql}) AS canEdit, media.id, media.name, media.mime, media.size, media.sha256, media.category,
+  const result = await database().prepare(`SELECT EXISTS (SELECT 1 FROM personal_favorites favorite WHERE favorite.media_id=media.id AND favorite.person_id=?) AS isFavorite, (${editable.sql}) AS canEdit, media.access_scope_id AS accessScopeId, media.id, media.name, media.mime, media.size, media.sha256, media.category,
     COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
     FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(device.authentication === "account" ? device.personId || "" : "", ...editable.bindings, ...values, limit + 1).all<MediaItem & { sortValue: number }>();
   const items = result.results.slice(0, limit);

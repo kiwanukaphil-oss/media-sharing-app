@@ -5,6 +5,12 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Restricted disclosure review checkpoint
+
+- [x] Actual route/query review covers feed, albums/covers, bytes/capabilities, exports/history, administrative exceptions, local queue semantics and restore/rollback. Fixed missing source-scope DTO and stale open dialogs after remote revocation; D1 and browser regressions pass.
+- [x] Built-Worker audience/copy suite passes with account-closure tracking enabled. Existing erasure-plan custody fixture updated for the new insertion invariant.
+- [ ] Hosted rerun and production backup/release acceptance remain open. No restricted-feature parent is marked deployed or complete.
+
 ## Cross-audience copy checkpoint
 
 - [x] Local explicit owner-reviewed general/restricted copy flow, checksum-verified independent bytes, durable retry/recovery, destination-only history and grant-loss commit safeguards.

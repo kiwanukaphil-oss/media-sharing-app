@@ -32,7 +32,8 @@ export async function verifyRestrictedRoutes(db,bucket,dispatch) {
   await db.prepare("INSERT INTO media(id,space_id,device_id,name,mime,size,sha256,category,object_key,upload_id,part_size,status,created_at,access_scope_id) VALUES(?,?,?,'Secret original.bin','application/octet-stream',4,?,'original',?,'complete',4,'ready',?,?)").bind(file,space,owner.member,createHash('sha256').update(bytes).digest('hex'),key,now,scope).run();
   await db.prepare('INSERT INTO album_media(album_id,media_id) VALUES(?,?)').bind(album.data.id,file).run();
   for(const person of people)assert.equal((await request(person,'feed')).data.total,0,'General browsing excludes restricted assets.');
-  assert.equal((await request(owner,'feed?scope='+scope)).data.total,1);
+  const scopedFeed=(await request(owner,'feed?scope='+scope)).data;
+  assert.equal(scopedFeed.total,1);assert.equal(scopedFeed.items[0].accessScopeId,scope,'The copy dialog receives the actual immutable source audience.');
   assert.equal((await request(viewer,'feed?scope=accessible')).data.total,1);
   assert.equal((await request(ungranted,'feed?scope=accessible')).data.total,0);
   const catalog=await request(ungranted,'access-scopes?administration=1');assert.equal(catalog.status,200);

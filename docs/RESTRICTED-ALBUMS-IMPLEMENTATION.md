@@ -92,3 +92,25 @@ Owners may see aggregate billed storage across scopes for administration; file l
 - [ ] Finish final disclosure/lifecycle review, hosted verification, independent backup/restore gate and deployed acceptance. Neither migration 0023/0024 nor the activation flag has been applied remotely.
 
 Retention review: scope references are opaque identifiers. Existing publication custody inventories include same-space jobs; unfinished jobs still block erasure, restored jobs quarantine to cancelling, and minimisation retains shared originals while revoking membership/grants. No new deletion authority is implied. The existing 1 GiB per-copy limit applies. Current named recipients are a review of a managed audience, not an immutable recipient snapshot; the dialog explicitly states owners can change that audience later.
+
+
+### Disclosure review and corrections
+
+Review performed against the actual route/query implementations, not only the UI policy:
+
+| Surface | Enforcement and evidence |
+| --- | --- |
+| Feed/search/date/type/favourites/counts | Current audience predicate precedes ordering/pagination; explicit combined scope. Feed now returns the authorised file's immutable `accessScopeId`, asserted by real D1 route tests. |
+| Albums/sections/covers/references | Current album audience and immutable same-scope database triggers. A second album cannot broaden a file's scope; removing an album preserves file scope. |
+| Bytes/links/parts/commit | `requireMedia` plus resource-bound write/capability guards; explicit scoped reservations and final visibility rechecks. Existing signed URLs remain bounded bearer capabilities, never claimed recallable. |
+| Exports/history/bookmarks | Whole-selection current-authority guards; compatible references only; retained event scopes after removal; person-private bookmarks never grant access. Copy arrivals contain only destination references. |
+| Storage/admin | Explicit owner aggregate billing exception; filename/unfinished-transfer lists stay scoped. Owner catalog exposes only opaque management IDs unless a separate content grant exists. |
+| Browser dialogs/caches | Authoritative feed refresh now clears inaccessible open previews/copy/edit surfaces and selection, including combined browsing. Regression simulates remote revocation while a combined-view preview is open. Grants are not a promise of instantaneous remote erasure from a browser: visible polling is bounded to ten seconds and new requests enforce current authority. |
+| Local transfer queue | A user's own selected local files and captured destinations may remain in their local queue; no new server metadata is fetched without current access. Resuming/retrying still checks the exact audience. Navigation never silently retargets uploads. |
+| Copy/account closure | New scope-copy routes pass the common tracked-request wrapper; built-Worker copy tests pass with both restriction and closure tracking enabled. Pending custody remains a reconciliation blocker, not an erasure-success claim. |
+| Migration/restore/rollback | Additive 0023/0024, no inferred grants, original-field fingerprints and restored trigger/quarantine checks pass. Once restricted records exist, rollback to any pre-scope reader is prohibited; rollback must keep enforcement. |
+
+- [x] Correct missing feed audience DTO and cached combined-view dialog revocation, with real-route and browser regression tests.
+- [x] Correct the erasure-plan fixture to create a valid reservation before simulating historical removal, preserving the same custody/reconciliation scenario under the new trigger.
+- [x] Copy routes pass with closure tracking enabled. Latest published Workers types `5.20260922.1` and current R2 Workers API reviewed; original copies remain streamed in production, with tiny test-only bridge buffering.
+- [ ] Final hosted rerun and production backup/deployment acceptance remain required. No unrestricted creation, account closure or external recipient feature is activated by this review.

@@ -156,6 +156,15 @@ function RelayWorkspace() {
       if (signal?.aborted || revision !== feedRevision.current || libraryAccessLost.current) return;
       setLoadedQuery(query); setFeedFailure(null);
       setItems(collected); setCounts(result!.counts); setTotal(result!.total); setNextCursor(cursor); setOnline(true);
+      // A refreshed authoritative page may remove a revoked restricted item even in combined browsing.
+      // Close cached detail/action surfaces as well as the gallery; old modal state is not an access grant.
+      const currentItems = new Map(collected.map(item => [item.id, item]));
+      setModal(current => current && typeof current === "object" ? currentItems.get(current.id) ?? null : current);
+      setScopeCopyItem(current => current ? currentItems.get(current.id) ?? null : null);
+      setPublicationItem(current => current ? currentItems.get(current.id) ?? null : null);
+      setRenameItems(current => current.filter(item => currentItems.has(item.id)));
+      setDateItem(current => current ? currentItems.get(current.id) ?? null : null);
+      setSelectedIds(current => new Set([...current].filter(id => currentItems.has(id))));
       setSession(current => current && current.role !== result!.role ? { ...current, role: result!.role } : current);
     } catch (failure) {
       if (signal?.aborted || revision !== feedRevision.current) return;

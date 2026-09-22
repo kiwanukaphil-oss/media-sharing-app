@@ -79,6 +79,13 @@ try {
   await choose('Browse audience','Everything I can access');
   await expect(page.getByRole('button',{name:'Add files',exact:true})).toHaveCount(0);
   await expect(page.getByText(/Choose one audience before adding files/)).toBeVisible();
+  // A remote revocation while the combined-view preview is open must clear the cached modal.
+  await page.getByRole('button',{name:`Preview ${file.name}`,exact:true}).click();
+  granted=false;
+  await page.evaluate(()=>{window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new Event('focus'));});
+  await expect(page.getByRole('button',{name:'Copy to another audience',exact:true})).toHaveCount(0);
+  await expect(page.getByText(file.name,{exact:true})).toHaveCount(0);
+  granted=true;
   await choose('Browse audience','Client private');
   await page.getByRole('button',{name:'Manage audiences',exact:true}).click();
   const manager=page.getByRole('dialog',{name:'Audiences',exact:true});await expect(manager).toBeVisible();
