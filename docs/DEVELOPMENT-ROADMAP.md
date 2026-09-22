@@ -129,7 +129,8 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
   - [x] Register Relay Web, save exact callback/logout URLs and securely supply the client secret. **Configured.**
   - [x] Connect `relayalbums.com`, verify HTTPS and update exact-origin R2 access. **Live.**
   - [x] Verify the Resend sender, connect Auth0, deliver a test email and confirm inbox receipt. **Verified with the user.**
-  - [ ] Finalise production sign-in methods and confirm post-trial/free-plan suitability, including social-provider configuration.
+  - [x] Finalise initial sign-in as verified email/password; disable Google development keys for Relay Web. Confirm baseline Free-plan inclusion of database login, native Resend provider and the two required Actions from published capabilities and signed-in subscription readback. **Configured and reviewed; social/passkey expansion deferred.**
+  - [ ] Verify actual post-trial operation when the Auth0 trial ends. Trial-only template customisation and the temporary 30-Action allowance are not production dependencies; keep the current free entitlement review distinct from future operational evidence.
   - [x] Implement authenticated recovery events, monotonic password-change tracking and signed-login reconciliation; revoke older sessions without changing library membership. **Locally tested; migrations 0016-0017 and Auth0 Action sources prepared.**
   - [x] Verify real password recovery, pre-login notification-driven revocation, fresh sign-in and provider logout. **Live designated-account verification complete; automated failure monitoring remains a separate release gate.**
 

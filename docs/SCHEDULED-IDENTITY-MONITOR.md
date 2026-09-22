@@ -1,6 +1,6 @@
 # Independent scheduled identity monitor
 
-Status: activated on 21 September 2026 at 15:03 UTC following explicit user approval. Dedicated Worker `relay-identity-monitor` runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Initial version `7c5a2bcd-ae1a-47b8-bd0c-8f0cb859a7e2` passed its first actual cron at 15:19 UTC, including signed health delivery. Current leaner version: `49576315-efae-4b4d-b815-29532e4aac8d` (see below). All four required secret names were read back after encrypted installation. **Free-plan CPU headroom remains a release concern; external test-alert Inbox receipt was verified on 22 September.**
+Current status, 22 September: dedicated Worker `relay-identity-monitor` version `679cc9bd-a536-448e-a4fd-d34db1be5420` is deployed at 100% on the explicitly approved Workers Paid plan. It runs at minutes 19 and 49 UTC, without a preview URL or workers.dev endpoint. Actual 08:49 UTC execution and independent signed-report delivery passed at 8 ms CPU against the configured 1,000 ms limit. External test-alert Inbox receipt is verified. Current-pilot headroom is established; broader identity capacity remains unvalidated. The earlier Free-plan versions and measurements below are historical evidence, not the current configuration.
 
 ## Reason for the change
 
