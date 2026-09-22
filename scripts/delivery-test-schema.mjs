@@ -1,8 +1,8 @@
 import {DatabaseSync} from 'node:sqlite';
 import {readFile} from 'node:fs/promises';
 
-// Install only the isolated prototype's new schema in disposable Miniflare D1. Production migrations
-// are deliberately unchanged; use SQLite's parsed schema to preserve complete trigger statements.
+// Retirement candidate: retained for isolated older branches. Migration 0026 now owns this schema.
+// Use SQLite parsed statements to preserve complete protective triggers.
 export async function installDeliveryTestSchema(database){
   if(await database.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='delivery_snapshots'").first())return;
   const source=new DatabaseSync(':memory:');

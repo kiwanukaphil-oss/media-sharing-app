@@ -1172,3 +1172,13 @@ Corrected folder-import CI at `f588c68` includes successful hosted run `35729947
 - [ ] Complete hosted verification and delivery lifecycle/minimisation before adding its migration. Original package jobs and live release acceptance remain outstanding.
 
 [Delivery contract and checked evidence](DELIVERY-CONTRACT.md). Delivery preparation remains feature-gated and outside the active schema journal. No live audience or file changes; parent completion counts remain 22/47.
+
+
+### 22 September - delivery lifecycle and schema preparation
+
+- [x] Integrate delivery identity minimisation and exact-person erasure inventory; preserve shared originals and revoke historical restored links permanently.
+- [x] Prepare migration 0026 and verify local D1 routes, restore triggers, source-removal metadata cleanup and immutable redaction.
+- [x] Rehearse against the private current-production export with all 25 existing tables preserved and no new grants. Type checks, lint and account/intake lifecycle regression checks pass.
+- [ ] Complete hosted verification, original packages and live release acceptance. Delivery remains disabled in production; phase parents remain 22/47.
+
+[Detailed delivery evidence](DELIVERY-CONTRACT.md). Hosted sender/recipient workflow run `35749339230` is in progress; migration/lifecycle changes require a fresh run.

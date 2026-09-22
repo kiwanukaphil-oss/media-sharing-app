@@ -357,3 +357,28 @@ export const intakeCapabilities=sqliteTable("intake_capabilities",{
   issuedAt:integer("issued_at").notNull(),expiresAt:integer("expires_at").notNull(),admissionId:text("admission_id").references(()=>closureWriteAdmissions.id),
 },table=>[index("idx_intake_capabilities_submission").on(table.submissionId),check("intake_part_number",sql`${table.partNumber} BETWEEN 1 AND 16`),
   check("intake_part_size",sql`${table.expectedBytes} BETWEEN 1 AND 16777216`),check("intake_capability_expiry",sql`${table.expiresAt}>${table.issuedAt} AND ${table.expiresAt}<=${table.issuedAt}+60000`)]);
+
+// Reviewed snapshots contain immutable labels and references, never duplicate original bytes.
+export const deliverySnapshots=sqliteTable("delivery_snapshots",{
+  id:text("id").primaryKey().notNull(),spaceId:text("space_id").notNull().references(()=>spaces.id),
+  issuerMembershipId:text("issuer_membership_id").notNull().references(()=>spaceMemberships.id),accessScopeId:text("access_scope_id").references(()=>assetScopes.id),
+  title:text("title").notNull(),senderName:text("sender_name").notNull().default("Relay member"),intentHash:text("intent_hash").notNull(),
+  fileCount:integer("file_count").notNull(),totalBytes:integer("total_bytes").notNull(),createdAt:integer("created_at").notNull(),expiresAt:integer("expires_at").notNull(),
+  state:text("state",{enum:["draft","issued","suspended","revoked"]}).notNull().default("draft"),revision:integer("revision").notNull().default(0),revokedAt:integer("revoked_at"),
+},table=>[index("idx_delivery_snapshot_space").on(table.spaceId,table.createdAt,table.id),
+  check("delivery_file_count",sql`${table.fileCount} BETWEEN 1 AND 100`),check("delivery_total_bytes",sql`${table.totalBytes}>0`),
+  check("delivery_expiry",sql`${table.expiresAt}>${table.createdAt} AND ${table.expiresAt}<=${table.createdAt}+2592000000`),
+  check("delivery_state",sql`${table.state} IN ('draft','issued','suspended','revoked')`)]);
+
+export const deliveryItems=sqliteTable("delivery_items",{
+  deliveryId:text("delivery_id").notNull().references(()=>deliverySnapshots.id),mediaId:text("media_id").notNull(),
+  position:integer("position").notNull(),sourceRevision:integer("source_revision").notNull(),name:text("name").notNull(),mime:text("mime").notNull(),
+  size:integer("size").notNull(),sha256:text("sha256").notNull(),capturedAt:text("captured_at"),
+},table=>[primaryKey({columns:[table.deliveryId,table.mediaId]}),uniqueIndex("idx_delivery_item_position").on(table.deliveryId,table.position),
+  index("idx_delivery_item_media").on(table.mediaId),check("delivery_item_position",sql`${table.position} BETWEEN 0 AND 99`),check("delivery_item_size",sql`${table.size}>0`)]);
+
+export const deliveryRecipients=sqliteTable("delivery_recipients",{
+  id:text("id").primaryKey().notNull(),deliveryId:text("delivery_id").notNull().references(()=>deliverySnapshots.id),
+  email:text("email").notNull(),tokenHash:text("token_hash").notNull().unique(),acceptedBy:text("accepted_by").references(()=>people.id),acceptedAt:integer("accepted_at"),revokedAt:integer("revoked_at"),
+},table=>[index("idx_delivery_recipient_delivery").on(table.deliveryId),uniqueIndex("idx_delivery_recipient_email").on(table.deliveryId,table.email).where(sql`${table.email}<>''`),
+  check("delivery_recipient_binding",sql`(${table.acceptedBy} IS NULL)=(${table.acceptedAt} IS NULL)`)]);

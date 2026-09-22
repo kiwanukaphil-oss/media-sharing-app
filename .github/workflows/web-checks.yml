@@ -73,6 +73,8 @@ jobs:
       - run: node --disable-warning=ExperimentalWarning tests/intake-migration.mjs
       - run: node --disable-warning=ExperimentalWarning tests/restricted-migration.mjs
       - run: node --disable-warning=ExperimentalWarning tests/delivery-authority.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/delivery-lifecycle.mjs
+      - run: node --disable-warning=ExperimentalWarning tests/delivery-migration.mjs
       - run: node tests/saved-library-views.mjs
       - run: node --disable-warning=ExperimentalWarning tests/erased-snapshot.mjs
       - run: node tests/erasure-rehearsal-scope.mjs

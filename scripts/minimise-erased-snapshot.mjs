@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { importSnapshot, checkDatabase, sanitizeRestoredAccess } from './relay-backup.mjs';
 import { planReadOnlySnapshot, restoreReadOnlySnapshot, schemaQuery } from './backup-d1-readonly.mjs';
+import {minimiseDeliveryIdentity} from './delivery-lifecycle.mjs';
 import {minimiseIntakeIdentity} from './intake-lifecycle.mjs';
 import { reviewMinimisationSchema } from './review-minimisation-schema.mjs';
 
@@ -32,6 +33,7 @@ export function minimiseErasedSnapshot(sql, receipt, now = Date.now()) {
     database.exec('BEGIN');
     const personId = receipt.personId;
     minimiseIntakeIdentity(database,personId,person.verified_email,now);
+    minimiseDeliveryIdentity(database,personId,person.verified_email,now);
     const personal = 'SELECT space_id FROM personal_spaces WHERE person_id=?';
     const actors = `SELECT device_id FROM account_space_actors WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)
       UNION SELECT device_id FROM legacy_owner_claims WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)`;

@@ -13,7 +13,7 @@ const {createDeliveryDraft,issueDelivery,revokeDelivery}=modules.find(module=>mo
 const db=new DatabaseSync(':memory:'),now=Date.now();
 try{
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
-  db.exec(await readFile('docs/prototypes/delivery-schema.sql','utf8'));
+  // Migration 0026 installs the reviewed schema and protective triggers.
   db.exec("INSERT INTO spaces VALUES('shared','Studio',1)");
   for(const person of ['owner','recipient','other']){
     db.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES(?,?,?,?,?,?)').run(person,'fixture',person,person,person+'@example.test',now);
@@ -68,7 +68,7 @@ try{
     await d1.prepare("UPDATE scope_grants SET revoked_at=NULL WHERE scope_id='scope'").run();assert.equal(await readable(),null);
     await d1.prepare("UPDATE delivery_snapshots SET state='issued' WHERE id='delivery'").run();
     await d1.prepare("DELETE FROM media WHERE id='file'").run();assert.equal(await readable(),null);
-    assert.equal((await d1.prepare('SELECT COUNT(*) n FROM delivery_items').first()).n,2,'Retained IDs do not block legitimate source removal');
+    assert.equal((await d1.prepare('SELECT COUNT(*) n FROM delivery_items').first()).n,0,'Permanent source removal also removes captured metadata');
     // All-or-nothing sender drafting, exact concurrent retry and explicit issue/reactivation.
     await d1.prepare("UPDATE devices SET token_hash='account-attribution:owner',role='owner' WHERE id='actor'").run();
     await d1.prepare("INSERT INTO account_space_actors VALUES('owner','actor')").run();
@@ -111,6 +111,6 @@ try{
 
 
   }finally{await runtime.dispose();}
-  sanitizeRestoredAccess(db,now);assert.equal(db.prepare("SELECT state FROM delivery_snapshots WHERE id='delivery'").get().state,'suspended');
+  sanitizeRestoredAccess(db,now);assert.equal(db.prepare("SELECT state FROM delivery_snapshots WHERE id='delivery'").get().state,'revoked');
   console.log('PASS delivery authority: named-person binding without membership, immutable labels, all-source availability, session/recovery denial, sticky Trash/grant suspension, atomic drafting/rollback, explicit issue/review/revoke and restored quarantine');
 }finally{db.close();}

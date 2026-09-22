@@ -82,3 +82,15 @@ Disabled owner/recipient routes now pass actual built-Worker D1/R2 tests with cl
 - [ ] Complete hosted verification, lifecycle/minimisation, schema migration and operational release gates before enabling deliveries.
 
 The public sender label is explicitly reviewed and captured, rather than disclosing the source library's current name. An accepted invitation is labelled as acceptance, never as a read or save receipt. Native downloads say requested; only the supported streamed save reports verified bytes after the writer closes. Delivery tables remain outside the active migration journal, and the feature flag remains absent from production.
+
+### Lifecycle and migration checkpoint, 22 September
+
+- [x] Add prepared migration `0026_motionless_wildside`: three delivery tables and 12 protective triggers, no existing-row mutation or new grants.
+- [x] Revoke every restored delivery and recipient grant permanently. Membership reconciliation cannot revive historical delivery links.
+- [x] Remove captured item metadata when its source is permanently removed. Sender minimisation clears public labels, intent hash, captured items and recipient contacts/tokens; recipient minimisation affects their grant without altering shared originals or other recipients.
+- [x] Integrate exact-person inventory with the read-only erasure plan and the snapshot minimiser. Email matching only clears contacts; it never establishes file ownership. Narrow irreversible redaction exceptions cannot restore contact values or rebind recipients.
+- [x] Verify migration, minimisation, existing intake/account lifecycle, actual built-Worker delivery routes, type checks and lint locally.
+- [x] Rehearse against the private production-schema export: all 25 existing tables preserved, no grants invented, protective triggers and access quarantine retained on restore. Source digest `fe005a714436264b1c0e07c4b22a652627db264389ece63fab93519877272f36`; reviewed schema digest `7e7140a337f88704a4ce4df05807d22010144e600424e03fcc8abfbf365f9495`.
+- [ ] Complete hosted verification, original package jobs and live operational acceptance. No migration or flag has been applied in production.
+
+This checkpoint supersedes the earlier prototype-only status. The prototype remains a historical reference and retirement candidate; the migration journal owns the current schema. Snapshot minimisation still requires the existing global-backup-only protocol restrictions and never authorises real deletion or restore cutover.
