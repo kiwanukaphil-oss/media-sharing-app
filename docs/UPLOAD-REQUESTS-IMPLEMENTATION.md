@@ -82,3 +82,5 @@ Hosted route/UI source `cd01dcd` passed both jobs in run 35744040823. Subsequent
 The private current-schema export (digest `fe005a714436264b1c0e07c4b22a652627db264389ece63fab93519877272f36`) rehearsed through 0021-0025: all original columns/rows in 25 tables are unchanged, no invitations are created, and triggers/quarantine survive export and restore. Synthetic 0020 and 0024 baseline rehearsals provide hosted regression coverage. No remote migration or production activation occurred.
 
 Owner refreshes now discard superseded request responses, and expiry uses server-reported time plus elapsed browser time. Browser coverage includes a clock five minutes ahead with the seven-day limit, avoiding an invalid request caused by workstation clock skew.
+
+Full hosted source `269c1ef` passed both verify and browser jobs in run 35745353865, including migration 0025 and intake lifecycle/review changes. The subsequent server-clock and superseded-refresh correction `1000fd7` passes local lint, TypeScript and browser checks. Ready for integration with activation disabled; physical-cleanup and independent-backup release gates remain open.

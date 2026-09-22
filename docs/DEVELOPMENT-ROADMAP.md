@@ -16,11 +16,12 @@
 - [x] Isolated lifecycle preparation inventories exact contributor/issuer custody, retains accepted shared files, minimises request contact details, prevents reopening and reconciles late multipart/staged bytes.
 - [x] Owner review download and reversible decline/restore pass local built-Worker/browser checks. Full route/UI hosted run 35744040823 passed before this review increment.
 - [x] Migration 0025, populated snapshot minimisation and private-export upgrade rehearsal preserve existing rows, accepted shared originals and exact intake custody. No invitations are invented; restored triggers/quarantine pass.
+- [x] Full hosted migration/review/lifecycle source `269c1ef` passed both jobs in [35745353865](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35745353865). Subsequent refresh/clock correction `1000fd7` passes local lint, TypeScript and browser checks.
 - [ ] Physical cleanup/disposition and release. Migration 0025 is prepared locally; the feature remains disabled and no remote intake migration has run. [Implementation contract](UPLOAD-REQUESTS-IMPLEMENTATION.md).
 
 ## Restricted-audience development acceptance
 
-**22 September:** Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0024 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
+**22 September:** Runtime/UI source `3daf07a` passed both hosted jobs in [35738388665](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35738388665) and is merged into main. Production remains on schema 0020; migrations 0021 through 0025 await the independent backup release gate. Restricted creation remains disabled in deployment configuration.
 
 - [x] Current audience enforcement, retained activity privacy, same-scope album references, explicit upload destinations and retry integrity pass local D1/route tests.
 - [x] Private-export rehearsal preserves all original fields/rows in 25 tables through schema 0024, invents no grants, and retains restored triggers/quarantine. Populated-scope minimisation retains shared originals and revokes grants.
