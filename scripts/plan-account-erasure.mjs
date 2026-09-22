@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { importSnapshot } from './relay-backup.mjs';
+import {inspectIntakeSnapshot} from './intake-lifecycle.mjs';
 import { inspectClosureSnapshot } from './inspect-closure-snapshot.mjs';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -74,6 +75,14 @@ export function planAccountErasure(database, requestId) {
   if (ownershipBlockers.length) blockers.push('shared-last-owner-handover-required');
   if (personalMedia.some(row => row.status !== 'ready')) blockers.push('personal-uploads-need-reconciliation');
   if (publications.some(row => !['ready','cancelled'].includes(row.phase))) blockers.push('publication-operations-need-reconciliation');
+  const intakeReferences=inspectIntakeSnapshot(database,person);
+  if(!intakeReferences.complete)blockers.push('intake-schema-inventory-incomplete');
+  if(intakeReferences.requests.some(row=>row.state!=='closed'&&row.revoked_at===null))blockers.push('intake-requests-need-revocation');
+  if(intakeReferences.attempts.length||intakeReferences.capabilities.length)blockers.push('intake-storage-disposition-required');
+  if(intakeReferences.submissions.some(row=>row.phase!=='accepted'))blockers.push('intake-staged-originals-need-reconciliation');
+  const preservedIds=new Set(sharedMedia.map(row=>row.id));
+  for(const row of intakeReferences.sharedMediaToPreserve)if(!preservedIds.has(row.id)){sharedMedia.push(row);preservedIds.add(row.id);}
+  sharedMedia.sort((left,right)=>left.id.localeCompare(right.id));
   const closureReferences = inventoryClosureReferences(database, person);
   if (!closureReferences.complete) blockers.push('closure-protocol-inventory-incomplete');
   else {
@@ -85,7 +94,7 @@ export function planAccountErasure(database, requestId) {
   }
   const inventory = { request, personalSpaces:spaces, personalMedia, publications, publicationAttempts:attempts,
     accountActors:actors, linkedDevices, sharedMediaToPreserve:sharedMedia, backupContent, ownershipBlockers, metadataReferences,
-    closureReferences };
+    closureReferences, intakeReferences };
   return { formatVersion:1, mode:'review-only', executable:false, inventoryFingerprint:digest(inventory), blockers, inventory };
 }
 

@@ -107,10 +107,12 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   return Response.json({ items, role: device.role, total: total?.count || 0, counts, nextCursor: result.results.length > limit && last ? btoa(JSON.stringify({ createdAt: last.sortValue, id: last.id })) : null });
 }
 
+// Count every staged intake byte and unused allowance in reserved billing. Pending collection
+// filenames stay in the owner review surface instead of ordinary cancellable upload lists.
 export async function readStorage(device: ActiveDevice) {
   const audience = resourceAudienceAuthority(device), owner = transferAuthority(device, Date.now(), true);
   const usage = await database().prepare(`SELECT (${owner.sql}) AS allScopeBilling, COALESCE(SUM(size + preview_size),0) AS used,
-    COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling','publishing') THEN size + preview_size ELSE 0 END),0) AS reserved,
+    COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling','publishing','collecting','receiving','pending-review','intake-rejected') THEN size + preview_size ELSE 0 END),0) AS reserved,
     COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ? AND ((${owner.sql}) OR ${audience.sql})`).bind(...owner.bindings, device.space_id, ...owner.bindings, ...audience.bindings).first();
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
     (? <> 'viewer' AND (media.device_id = ? OR ? = 'owner' OR (? = 1 AND ? = 'editor'))) AS canCancel, (media.status = 'publishing') AS publication

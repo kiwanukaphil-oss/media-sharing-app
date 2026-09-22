@@ -16,6 +16,10 @@ export const liveObjectInventoryQuery = `SELECT json_object(
     'personId',p.person_id,'phase',p.phase)) FROM publication_attempts a JOIN publications p ON p.id=a.publication_id))
 ) AS inventory`;
 const fingerprint = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+export const liveIntakeObjectInventoryQuery=`SELECT json_object(
+  'attempts',json((SELECT json_group_array(json_object('objectKey',a.object_key,'uploadId',a.upload_id,'submissionId',a.submission_id,'personId',i.person_id,'state',a.state)) FROM intake_upload_attempts a JOIN intake_submissions i ON i.id=a.submission_id)),
+  'capabilities',json((SELECT json_group_array(json_object('objectKey',c.object_key,'uploadId',c.upload_id,'submissionId',c.submission_id,'expiresAt',c.expires_at)) FROM intake_capabilities c))
+) AS inventory`;
 
 // Match exact database keys and upload IDs, including Trash and publication attempts. Unknown objects
 // are review candidates only, never inferred to belong to an account or treated as deletion targets.
@@ -29,19 +33,27 @@ export function reconcileLiveObjectInventory(metadata, catalog) {
   const addReference = (key,reference) => {const entries = expected.get(key) ?? []; entries.push(reference); expected.set(key,entries);};
   for (const media of metadata.media) {
     if (typeof media.id !== 'string' || !media.id || mediaIds.has(media.id) || typeof media.objectKey !== 'string' || !media.objectKey ||
-        typeof media.spaceId !== 'string' || !media.spaceId || !['uploading','publishing','ready','deleting','cancelling'].includes(media.status) ||
+        typeof media.spaceId !== 'string' || !media.spaceId || !['uploading','publishing','ready','deleting','cancelling','collecting','receiving','pending-review','intake-rejected'].includes(media.status) ||
         !Number.isSafeInteger(media.size) || media.size < 0 || ![0,1].includes(media.previewReady) ||
         !Number.isSafeInteger(media.previewSize) || media.previewSize < 0) throw new Error('Invalid media inventory.');
     mediaIds.add(media.id);
     const reference = {mediaId:media.id,personalOwner:owners.get(media.spaceId) ?? null,spaceId:media.spaceId,
       archived:media.archivedAt !== null,status:media.status};
-    addReference(media.objectKey,{...reference,kind:'original',size:media.size,required:media.status === 'ready'});
+    if(['collecting','receiving','pending-review','intake-rejected'].includes(media.status)&&!metadata.intake)throw new Error('Intake custody inventory is required.');
+    addReference(media.objectKey,{...reference,kind:media.status==='collecting'?'allowance-marker':'original',size:media.size,required:['ready','pending-review','intake-rejected'].includes(media.status)});
     addReference(`${media.objectKey}.preview.jpg`,{...reference,kind:'preview',size:media.previewSize,required:media.previewReady === 1});
   }
   for (const attempt of metadata.attempts) {
     if (typeof attempt.objectKey !== 'string' || !attempt.objectKey) throw new Error('Invalid publication attempt inventory.');
     addReference(attempt.objectKey,{kind:'publication-attempt',publicationId:attempt.publicationId,personId:attempt.personId,required:false});
     addReference(`${attempt.objectKey}.preview.jpg`,{kind:'publication-attempt-preview',publicationId:attempt.publicationId,personId:attempt.personId,required:false});
+  }
+  if(metadata.intake){
+    if(!Array.isArray(metadata.intake.attempts)||!Array.isArray(metadata.intake.capabilities))throw new Error('Complete intake custody is required.');
+    for(const record of [...metadata.intake.attempts,...metadata.intake.capabilities]){
+      if(typeof record.objectKey!=='string'||!record.objectKey||typeof record.submissionId!=='string'||!record.submissionId||!(record.uploadId===null||typeof record.uploadId==='string'))throw new Error('Invalid intake custody.');
+      addReference(record.objectKey,{kind:'intake-custody',submissionId:record.submissionId,personId:record.personId??null,required:false});
+    }
   }
   const objectKeys = new Set();
   for (const object of catalog.objects) {
@@ -54,6 +66,7 @@ export function reconcileLiveObjectInventory(metadata, catalog) {
     for (const reference of references) {
       if (reference.required && reference.size !== object.size) anomalies.push({kind:'object-size-mismatch',key:object.key,mediaId:reference.mediaId});
       if (reference.kind === 'preview' && !reference.required) anomalies.push({kind:'uncommitted-preview-review',key:object.key,mediaId:reference.mediaId});
+      if(reference.kind==='allowance-marker')anomalies.push({kind:'unexpected-allowance-object-review',key:object.key});
     }
   }
   for (const [key,references] of expected) {
@@ -61,8 +74,10 @@ export function reconcileLiveObjectInventory(metadata, catalog) {
   }
   const multipart = catalog.unfinishedUploads.map(upload => {
     const references = metadata.media.filter(media => media.objectKey === upload.key && media.uploadId === upload.uploadId && media.status !== 'ready');
-    if (references.length !== 1) anomalies.push({kind:'multipart-ownership-review',key:upload.key,uploadId:upload.uploadId});
-    return {...upload,mediaIds:references.map(media => media.id)};
+    const intake=(metadata.intake?[...metadata.intake.attempts,...metadata.intake.capabilities]:[]).filter(record=>record.objectKey===upload.key&&record.uploadId===upload.uploadId);
+    const mediaIds=[...new Set([...references.map(media=>media.id),...intake.map(record=>record.submissionId)])];
+    if (mediaIds.length !== 1) anomalies.push({kind:'multipart-ownership-review',key:upload.key,uploadId:upload.uploadId});
+    return {...upload,mediaIds};
   });
   return {formatVersion:1,mode:'review-only',executable:false,atomicSnapshot:false,writeFreezeVerified:false,
     metadataFingerprint:fingerprint(metadata),catalogFingerprint:catalog.fingerprint,matches,multipart,anomalies};
@@ -78,7 +93,15 @@ async function saveLiveObjectReconciliation() {
   const readMetadata = async () => {
     const rows = await queryReadOnlyDatabase(source,token,liveObjectInventoryQuery);
     if (rows.length !== 1 || typeof rows[0].inventory !== 'string') throw new Error('Invalid live metadata result.');
-    return JSON.parse(rows[0].inventory);
+    const metadata=JSON.parse(rows[0].inventory);
+    const tables=await queryReadOnlyDatabase(source,token,"SELECT name FROM sqlite_schema WHERE type='table' AND name IN ('upload_requests','intake_submissions','intake_upload_attempts','intake_capabilities')");
+    if(tables.length&&tables.length!==4)throw new Error('Incomplete intake schema.');
+    if(tables.length){
+      const intake=await queryReadOnlyDatabase(source,token,liveIntakeObjectInventoryQuery);
+      if(intake.length!==1||typeof intake[0].inventory!=='string')throw new Error('Invalid intake inventory.');
+      metadata.intake=JSON.parse(intake[0].inventory);
+    }
+    return metadata;
   };
   const request = createReadOnlyR2InventoryRequest(await loadR2InventoryCredential());
   const metadata = await readMetadata(), before = await inventoryR2Objects(request);
