@@ -10,7 +10,7 @@ type Matches={source:DuplicateFile;candidates:DuplicateFile[];hasMore:boolean};
 // Duplicate assistance never deletes or merges originals. It offers an explicit, independently
 // verified existing original for a same-audience album reference, retaining all prior relationships.
 export function DuplicateReview({source,albums,canOrganise,refresh}:{source:MediaItem;albums:Album[];canOrganise:boolean;refresh:()=>Promise<void>}){
-  const {requestJson}=useLibraryApi(),dialog=useRef<HTMLDialogElement>(null),title=useId(),controller=useRef<AbortController|null>(null);
+  const {requestJson}=useLibraryApi(),dialog=useRef<HTMLDialogElement>(null),opener=useRef<HTMLButtonElement>(null),title=useId(),controller=useRef<AbortController|null>(null);
   const [open,setOpen]=useState(false),[matches,setMatches]=useState<Matches|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const [verified,setVerified]=useState<string[]>([]),[verifying,setVerifying]=useState(false),[progress,setProgress]=useState(0),[albumId,setAlbumId]=useState('');
   const [undo,setUndo]=useState<{id:string;expectedRevision:number;albumId:string}|null>(null);
@@ -51,8 +51,8 @@ export function DuplicateReview({source,albums,canOrganise,refresh}:{source:Medi
     try{await requestJson('library/organise',{method:'POST',body:JSON.stringify({action:'remove',albumId:undo.albumId,files:[{id:undo.id,expectedRevision:undo.expectedRevision}]})});setUndo(null);setNotice('Album reference removed. Original files are unchanged.');await refresh();}
     catch(failure){setError(failure instanceof Error?failure.message:'This reference changed and could not be undone.');}finally{setBusy(false);}
   }
-  return <><button className="icon-button" aria-label="Find duplicate originals" title="Find duplicate originals" onClick={()=>{setMatches(null);setVerified([]);setNotice('');setError('');setOpen(true);}}><CopyCheck size={18}/></button>
-    {open&&<dialog ref={dialog} className="modal library-dialog" aria-labelledby={title} onCancel={event=>{if(busy)event.preventDefault();}} onClose={()=>setOpen(false)}>
+  return <><button ref={opener} className="icon-button" aria-label="Find duplicate originals" title="Find duplicate originals" onClick={()=>{setMatches(null);setVerified([]);setNotice('');setError('');setOpen(true);}}><CopyCheck size={18}/></button>
+    {open&&<dialog ref={dialog} className="modal library-dialog" aria-labelledby={title} onCancel={event=>{if(busy)event.preventDefault();}} onClose={()=>{setOpen(false);opener.current?.focus({preventScroll:true});}}>
       <div className="modal-heading"><h2 id={title}>Duplicate originals</h2><button className="icon-button" aria-label="Close duplicate review" disabled={busy} onClick={()=>dialog.current?.close()}><X size={20}/></button></div>
       <p className="small-muted">Matches stay within this file&apos;s library and audience. Recorded fingerprints suggest candidates; Verify checks both original files. Nothing is deleted or merged.</p>
       {!matches&&!error&&<p role="status">Finding matching originals...</p>}

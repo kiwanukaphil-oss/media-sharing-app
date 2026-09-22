@@ -12,7 +12,7 @@ let packageInProgress=false;
 // The foreground job streams directly to a chosen file where supported, with a strictly bounded
 // fallback. Selection, access and metadata are rechecked before final commit; a retry starts fresh.
 export function OriginalPackage({files,deliveryId}:{files:Pick<MediaItem,'id'|'name'|'size'|'sha256'|'revision'>[];deliveryId?:string}){
-  const {requestJson}=useLibraryApi(),title=useId(),dialog=useRef<HTMLDialogElement>(null),controller=useRef<AbortController|null>(null);
+  const {requestJson}=useLibraryApi(),title=useId(),dialog=useRef<HTMLDialogElement>(null),opener=useRef<HTMLButtonElement>(null),controller=useRef<AbortController|null>(null);
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[progress,setProgress]=useState(0),[notice,setNotice]=useState(''),[error,setError]=useState('');
   useEffect(()=>{if(open)dialog.current?.showModal();},[open]);
   useEffect(()=>()=>controller.current?.abort(),[]);
@@ -42,12 +42,12 @@ export function OriginalPackage({files,deliveryId}:{files:Pick<MediaItem,'id'|'n
         onProgress:(bytes,total)=>setProgress(Math.min(99,Math.round(bytes/total*100)))});
       setProgress(100);
       if(handle)setNotice('Package saved. Every original verified.');
-      else{const url=URL.createObjectURL(new Blob(chunks,{type:'application/zip'})),anchor=document.createElement('a');anchor.href=url;anchor.download='relay-originals.zip';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),60000);setNotice('Package verified; download requested. Check your browser\'s downloads.');}
+      else{const url=URL.createObjectURL(new Blob(chunks,{type:'application/zip'})),anchor=document.createElement('a');anchor.href=url;anchor.download='relay-originals.zip';document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);setNotice('Package verified; download requested. Check your browser\'s downloads.');}
     }catch(failure){await sink?.abort().catch(()=>{});if(abort.signal.aborted||failure instanceof DOMException&&failure.name==='AbortError')setNotice('Package cancelled. No complete package was saved.');else setError(failure instanceof Error?failure.message:'The package could not be created.');}
     finally{packageInProgress=false;controller.current=null;setBusy(false);}
   }
-  return <><button className="button secondary compact" onClick={()=>{setError('');setNotice('');setOpen(true);}}><Download size={16}/>Download originals</button>
-    {open&&<dialog ref={dialog} className="modal library-dialog" aria-labelledby={title} onCancel={event=>{if(busy)event.preventDefault();}} onClose={()=>setOpen(false)}>
+  return <><button ref={opener} className="button secondary compact" onClick={()=>{setError('');setNotice('');setOpen(true);}}><Download size={16}/>Download originals</button>
+    {open&&<dialog ref={dialog} className="modal library-dialog" aria-labelledby={title} onCancel={event=>{if(busy)event.preventDefault();}} onClose={()=>{setOpen(false);opener.current?.focus({preventScroll:true});}}>
       <div className="modal-heading"><h2 id={title}>Download originals</h2><button className="icon-button" aria-label="Close original package" disabled={busy} onClick={()=>dialog.current?.close()}><X size={20}/></button></div>
       <p>{files.length} selected {files.length===1?'original':'originals'} &middot; {formatBytes(files.reduce((sum,file)=>sum+file.size,0))}</p>
       <div className="delivery-selection"><strong>Selected originals</strong><ul>{files.map(file=><li key={file.id}>{file.name}</li>)}</ul></div>

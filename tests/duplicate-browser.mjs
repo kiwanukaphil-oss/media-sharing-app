@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {mkdir} from 'node:fs/promises';
-import {chromium,expect} from '@playwright/test';
+import {chromium,firefox,webkit,expect} from '@playwright/test';
 const origin=process.env.RELAY_TEST_ORIGIN||'http://127.0.0.1:8795';
 assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
-const browser=await chromium.launch(process.env.CI?{}:{channel:'chrome'});
+for(const engineName of ['chromium','firefox','webkit']){
+const browser=await ({chromium,firefox,webkit}[engineName]).launch(engineName==='chromium'&&!process.env.CI?{channel:'chrome'}:{});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const space=crypto.randomUUID(),actor=crypto.randomUUID();
 const item={id:crypto.randomUUID(),name:'Shared original.jpg',mime:'image/jpeg',size:4,sha256:createHash('sha256').update('tiny').digest('hex'),category:'original',createdAt:Date.now(),deviceName:'Another member',hasPreview:false,revision:0};
@@ -38,8 +39,10 @@ try {
   await dialog.getByRole('combobox',{name:'Album for existing original',exact:true}).click();await page.getByRole('option',{name:'Reviewed album',exact:true}).click();
   await dialog.getByRole('button',{name:'Add existing to album',exact:true}).click();await expect(dialog.getByText('Existing original added to the album. Both files remain intact.',{exact:true})).toBeVisible();assert.equal(added,true);
   await dialog.getByRole('button',{name:'Undo album addition',exact:true}).click();await expect(dialog.getByText('Album reference removed. Original files are unchanged.',{exact:true})).toBeVisible();assert.equal(added,false);
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await mkdir('outputs/duplicates',{recursive:true});await page.screenshot({path:'outputs/duplicates/mobile.png',fullPage:true});
-  await page.keyboard.press('Escape');denied=true;await page.getByRole('button',{name:'Find duplicate originals',exact:true}).click();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await mkdir('outputs/duplicates',{recursive:true});await page.screenshot({path:`outputs/duplicates/${engineName}-mobile.png`,fullPage:true});
+  await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Find duplicate originals',exact:true})).toBeFocused();denied=true;await page.getByRole('button',{name:'Find duplicate originals',exact:true}).click();
   await expect(dialog.getByRole('alert')).toContainText('access changed');await expect(dialog.getByText('Existing original.jpg',{exact:true})).toHaveCount(0);
-  console.log('PASS duplicate browser: candidate wording, independent verification, deliberate album reuse and Undo, mobile layout and revoked-name clearing');
+  console.log('PASS '+engineName+' duplicate browser: candidate wording, independent verification, deliberate album reuse and Undo, mobile layout and revoked-name clearing');
 } finally {await browser.close();}
+
+}

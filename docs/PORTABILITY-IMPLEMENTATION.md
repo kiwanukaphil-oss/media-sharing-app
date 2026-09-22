@@ -34,3 +34,5 @@ Local evidence: `tests/folder-import.mjs`, `tests/import-layout.mjs`, `tests/fol
 Hosted folder-import run `35729466805` passed verification. An older account-library browser test selected the first hidden file input instead of the original-file control; it now uses the explicit accessible label. Corrected hosted browser coverage passes in `35729947615` and `35730541652`. Production release remains pending.
 
 The bounded first package implementation streams in the open tab (2 GiB direct-save limit; 64 MiB fallback), with full-selection revalidation and fresh retries. See [package decision and checked evidence](DELIVERY-CONTRACT.md).
+
+Hosted main run `35752821086` repeated an intermittent Cancel/reselect folder-import failure. Each new selection now receives a fresh native file input; the browser test repeats cancel/reselect three times before verifying lost-response retry, exact uploaded bytes and section mapping. Local acceptance passes; failure screenshots/state are retained by hosted CI for further diagnosis if needed.

@@ -22,6 +22,11 @@ try {
   await expect(dialog.getByText(/Nested folders become section labels/)).toBeVisible();
   assert.equal((await (await page.request.get(origin+'/api/albums')).json()).albums.length,0,'Preview creates nothing.');
   await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+  for(let repeat=0;repeat<3;repeat++){
+    await page.getByLabel('Choose folder to import',{exact:true}).setInputFiles(root);
+    await expect(dialog.getByLabel('Section for Edits/Day 1',{exact:true})).toBeVisible();
+    await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+  }
   await page.getByLabel('Choose folder to import',{exact:true}).setInputFiles(root);
   await dialog.getByLabel('Section for Edits/Day 1',{exact:true}).fill('Originals');
   await expect(dialog.getByRole('button',{name:'Create album and queue files'})).toBeDisabled();
@@ -57,4 +62,9 @@ try {
   await fallback.getByLabel('Choose files to import',{exact:true}).setInputFiles({name:'plain.bin',mimeType:'application/octet-stream',buffer:Buffer.from('plain')});
   await expect(fallback.getByText('This browser does not supply folder structure. Selected files will go directly into the new album.')).toBeVisible();
   console.log('PASS: real folder preview/cancel, collision edits, lost-response retry, single layout, exact-byte uploads with sections, mobile width and plain-file browser fallback.');
+} catch(error){
+  await mkdir('.sites-runtime/browser-results',{recursive:true});
+  await page.screenshot({path:'.sites-runtime/browser-results/folder-import-failure.png',fullPage:true}).catch(()=>{});
+  await writeFile('.sites-runtime/browser-results/folder-import-failure.json',JSON.stringify({dialogs:await page.getByRole('dialog').allTextContents(),alerts:await page.getByRole('alert').allTextContents(),errors}));
+  throw error;
 } finally {await browser.close();}

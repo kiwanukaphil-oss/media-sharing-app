@@ -1211,3 +1211,11 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [x] Verify the actual built Worker with closure tracking, staged-capacity preservation and no new multipart attempts; owner/recipient pause browser checks pass.
 - [x] Document bounded abuse response, private incident evidence, containment, resume conditions and admitted-capability limitations in the [intake operations runbook](INTAKE-OPERATIONS.md).
 - [ ] Complete hosted pause verification, independent backup and provider-disposition/live release gates. Production flags are unchanged; P3-05 remains open for disposition and deployed acceptance.
+
+
+### 22 September - browser compatibility and file-writer acceptance
+
+- [x] Verify actual disk-backed browser package commit and aborted-replacement preservation at 80 MiB and 2 GiB, using generated originals and a separate temporary profile.
+- [x] Verify package and duplicate workflows in Chromium, Firefox and WebKit; fix explicit focus return and fallback download anchoring.
+- [x] Strengthen folder Cancel/reselect with a fresh native input and repeated-selection browser coverage; local exact-byte import/retry checks pass.
+- [ ] Complete the final hosted regression and merge. Live release remains gated on independently verified backup and the feature-specific operational conditions.
