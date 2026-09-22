@@ -117,6 +117,21 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.equal((await request(alice, `uploads?space=${otherSpace}`, 'POST', upload)).status, 409, 'Upload IDs cannot move between authorised spaces');
   assert.equal((await request(alice, `media/${upload.id}/link?space=${otherSpace}`)).status, 404);
   assert.equal((await request(alice, `feed?space=${otherSpace}`)).data.total, 0);
+  // An account Editor organises another contributor's original without receiving access administration
+  // or the ability to replace bytes. All requests still cross the actual built Worker boundary.
+  await database.prepare("UPDATE space_memberships SET role='editor' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
+  assert.equal((await request(bob,scoped('session'))).data.role,'editor');
+  assert.equal((await request(bob,scoped('albums'),'POST',{name:'Editor organised album'})).status,200);
+  assert.equal((await request(bob,scoped(`media/${upload.id}/archive`),'POST')).status,200);
+  assert.equal((await request(bob,scoped(`media/${upload.id}`),'DELETE')).status,403);
+  assert.equal((await request(bob,scoped(`media/${upload.id}/restore`),'POST')).status,200);
+  assert.equal((await request(bob,scoped('person-invitations'),'POST',{email:'editor-cannot-invite@example.test'})).status,409);
+  assert.equal((await request(bob,scoped(`people/${membership}`),'PUT',{action:'remove',revision:0})).status,409);
+  assert.equal((await request(bob,scoped(`uploads/${upload.id}/part`),'POST',{number:1})).status,404);
+  assert.equal((await request(bob,scoped(`media/${upload.id}/thumbnail`),'PUT',{})).status,404);
+  await database.prepare("UPDATE space_memberships SET role='unrecognised-role' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
+  assert.equal((await request(bob,scoped('feed'))).status,403);
+  await database.prepare("UPDATE space_memberships SET role='member' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
   assert.equal((await request(bob, scoped(`media/${upload.id}/archive`), 'POST')).status, 403);
   assert.equal((await request(alice, scoped(`media/${upload.id}/archive`), 'POST')).status, 200);
   assert.equal((await request(alice, scoped(`media/${upload.id}/restore`), 'POST')).status, 200);

@@ -16,7 +16,7 @@ const publicationAuthority = `EXISTS (SELECT 1 FROM account_sessions a JOIN peop
   WHERE a.id = ? AND p.id = ? AND a.revoked_at IS NULL AND a.expires_at > ? AND p.disabled_at IS NULL
   AND a.authenticated_at >= p.credentials_changed_at
   AND own.space_id = ? AND own.role = 'owner' AND own.revoked_at IS NULL
-  AND destination.space_id = ? AND destination.revoked_at IS NULL
+  AND destination.space_id = ? AND destination.revoked_at IS NULL AND destination.role IN ('owner','member','editor')
   AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = destination.space_id))`;
 const destinationAvailable = `(? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND deleted_at IS NULL AND archived_at IS NULL))
   AND (? IS NULL OR EXISTS (SELECT 1 FROM album_sections WHERE id = ? AND album_id = ? AND deleted_at IS NULL))`;
@@ -148,11 +148,11 @@ export async function finishPublication(database: D1Database, bucket: R2Bucket, 
 export async function cancelPublication(database: D1Database, bucket: R2Bucket, access: ActiveDevice & { personId?: string }, id: string) {
   const job = await database.prepare("SELECT * FROM publications WHERE id = ?").bind(id).first<PublicationRow>();
   if (!job || !((access.personId === job.person_id && access.space_id === job.source_space_id) ||
-      (access.space_id === job.destination_space_id && (access.role === "owner" || access.personId === job.person_id)))) {
+      (access.space_id === job.destination_space_id && (access.role === "owner" || (access.authentication === "account" && access.role === "editor") || access.personId === job.person_id)))) {
     throw new AccountError(404, "This publication is not available.");
   }
   if (job.phase === "ready") throw new AccountError(409, "This copy is already published. Manage it in the shared library.");
-  const authority = transferAuthority(access, Date.now(), access.personId !== job.person_id);
+  const authority = transferAuthority(access, Date.now(), access.personId !== job.person_id ? "organiser" : false);
   if (job.phase === "cancelled") {
     const allowed = await database.prepare(`SELECT 1 WHERE ${authority.sql}`).bind(...authority.bindings).first();
     if (!allowed) throw new AccountError(409, "Access changed. Refresh the publication status.");
@@ -164,7 +164,7 @@ export async function cancelPublication(database: D1Database, bucket: R2Bucket, 
   if (!cancelled.meta.changes && job.phase !== "cancelled") throw new AccountError(409, "The publication or access changed. Refresh its status.");
   const attempts = await database.prepare("SELECT object_key FROM publication_attempts WHERE publication_id = ?").bind(id).all<{ object_key: string }>();
   for (const attempt of attempts.results) await bucket.delete([attempt.object_key, `${attempt.object_key}.preview.jpg`]);
-  const completion = transferAuthority(access, Date.now(), access.personId !== job.person_id);
+  const completion = transferAuthority(access, Date.now(), access.personId !== job.person_id ? "organiser" : false);
   const completed = await database.batch([
     database.prepare(`DELETE FROM media WHERE id = ? AND status IN ('publishing','cancelling') AND EXISTS
       (SELECT 1 FROM publications WHERE id = ? AND phase = 'cancelling') AND ${completion.sql}`).bind(id, id, ...completion.bindings),

@@ -23,7 +23,7 @@ try {
   await database.batch([
     database.prepare('INSERT INTO spaces VALUES(?,?,?)').bind(space,'Fixture',now),
     database.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES(?,?,?,?,?,?)').bind(person,'https://fixture.invalid/',person,'Fixture','fixture@example.invalid',now),
-    database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'owner',?)").bind(member,person,space,now),
+    database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'editor',?)").bind(member,person,space,now),
     database.prepare('INSERT INTO devices(id,space_id,name,token_hash,created_at,expires_at) VALUES(?,?,?,?,?,0)').bind(member,space,'Fixture',`account-attribution:${member}`,now),
     database.prepare('INSERT INTO account_space_actors VALUES(?,?)').bind(member,member),
     database.prepare('INSERT INTO account_sessions(id,person_id,token_hash,configuration_hash,created_at,expires_at,authenticated_at) VALUES(?,?,?,?,?,?,?)').bind(session,person,session,'fixture',now,now+3600000,now),
@@ -32,7 +32,7 @@ try {
     database.prepare("INSERT INTO media(id,space_id,device_id,name,mime,size,sha256,category,object_key,upload_id,part_size,status,created_at) VALUES(?,?,?,'fixture.jpg','image/jpeg',4,?,'original',?,'fixture',4,'ready',?)").bind(media,space,member,'a'.repeat(64),`${space}/${media}/original`,now),
     database.prepare('INSERT INTO album_media(album_id,media_id,section_id) VALUES(?,?,?)').bind(album,media,section),
   ]);
-  const actor={id:member,space_id:space,role:'owner',authentication:'account',personId:person,sessionId:session};
+  const actor={id:member,space_id:space,role:'editor',authentication:'account',personId:person,sessionId:session};
   const mediaRevision=async()=>(await database.prepare('SELECT revision FROM media WHERE id=?').bind(media).first()).revision;
   const albumRevision=async()=>(await database.prepare('SELECT revision FROM albums WHERE id=?').bind(album).first()).revision;
   const calls=[
@@ -52,7 +52,7 @@ try {
     const invoke=async()=>libraryAction(new Request('https://fixture.invalid/api',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(await input())}),actor,resource,id);
     for(const [deny,restore] of [
       ["UPDATE people SET disabled_at=1","UPDATE people SET disabled_at=NULL"],
-      ["UPDATE space_memberships SET role='member'","UPDATE space_memberships SET role='owner'"],
+      ["UPDATE space_memberships SET role='member'","UPDATE space_memberships SET role='editor'"],
       ["UPDATE account_sessions SET revoked_at=1","UPDATE account_sessions SET revoked_at=NULL"],
     ]){
       await database.prepare(deny).run();const before=await snapshot();
@@ -60,8 +60,24 @@ try {
       assert.equal(await snapshot(),before,'Denied route must leave all metadata unchanged');
       await database.prepare(restore).run();
     }
-    assert.equal((await invoke()).status,200,'Current owner retains the legitimate workflow');
+    assert.equal((await invoke()).status,200,'Current account Editor retains the legitimate workflow');
   }
+  // Editor cancellation of another device's unfinished transfer uses current organiser authority.
+  const otherDevice=crypto.randomUUID(),otherUpload=crypto.randomUUID();
+  await database.prepare('INSERT INTO devices(id,space_id,name,token_hash,created_at,expires_at) VALUES(?,?,?,?,?,?)').bind(otherDevice,space,'Other contributor',otherDevice,now,now+3600000).run();
+  await database.prepare("INSERT INTO media(id,space_id,device_id,name,mime,size,sha256,category,object_key,upload_id,part_size,status,created_at) VALUES(?,?,?,'unfinished.jpg','image/jpeg',4,?,'original',?,'unfinished',4,'uploading',?)").bind(otherUpload,space,otherDevice,'b'.repeat(64),`${space}/${otherUpload}/original`,now).run();
+  let dispatched=0;
+  const cancellationStorage={delete:async()=>{dispatched++;},resumeMultipartUpload:()=>({abort:async()=>{dispatched++;}})};
+  await database.prepare("UPDATE space_memberships SET role='member'").run();
+  await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,'uploads',otherUpload,undefined,cancellationStorage),error=>error.status===409);
+  assert.equal(dispatched,0);
+  await database.prepare("UPDATE space_memberships SET role='editor'").run();
+  assert.equal((await webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,'uploads',otherUpload,undefined,cancellationStorage)).status,200);
+  assert.equal(dispatched,2);
+  assert.equal(await database.prepare('SELECT id FROM media WHERE id=?').bind(otherUpload).first(),null);
+  await assert.rejects(webAction(new Request('https://fixture.invalid/api',{method:'DELETE'}),actor,'media',media,undefined,cancellationStorage),error=>error.status===403);
+  actor.role='owner';
+  await database.prepare("UPDATE space_memberships SET role='owner'").run();
   // Permanent deletion and unfinished-upload cancellation must deny storage dispatch using a stale
   // resolved actor. Real D1 executes the authority check with the destructive state transition.
   for(const resource of ['media','uploads']) {
@@ -90,5 +106,5 @@ try {
       'Authority loss after storage cleanup preserves a reviewable metadata record.');
     await database.prepare('UPDATE people SET disabled_at=NULL WHERE id=?').bind(person).run();
   }
-  console.log('PASS: real album, rename, capture-date, membership, section create/update/order/template/placement routes reject disabled accounts, stale owner roles and revoked sessions atomically; current owners still succeed.');
+  console.log('PASS: real album, rename, capture-date, membership, section create/update/order/template/placement routes reject disabled accounts, stale owner roles and revoked sessions atomically; current account Editors organise; owner-only destructive boundaries remain enforced.');
 } finally {await runtime.dispose();}

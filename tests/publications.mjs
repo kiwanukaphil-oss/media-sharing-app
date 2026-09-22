@@ -168,5 +168,29 @@ export async function verifyPublications(database, bucket, dispatch) {
   } });
   await publications.finishPublication(database, bridgeBucket, sourceAccess, lateJob);
   assert.equal((await database.prepare('SELECT preview_size FROM media WHERE id=?').bind(lateIntent.id).first()).preview_size, 0);
+  // A separate destination Editor may cancel an unfinished publication through either route;
+  // cached Editor authority must fail before storage dispatch after demotion.
+  const editorLogin=await accounts.createAccountSession(database,settings,{...identity,subject:'publication-editor',displayName:'Editor',verifiedEmail:'editor@example.test'},null);
+  const editorAccount=await accounts.readAccountSession(database,settings,editorLogin.token);
+  const editorMembership=crypto.randomUUID();
+  await database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'editor',?)").bind(editorMembership,editorAccount.personId,shared,Date.now()).run();
+  const editorRequest=async(path,method='GET')=>dispatch(`${settings.appOrigin}/api/${path}?space=${shared}`,{method,headers:{Cookie:`__Host-relay_account=${editorLogin.token}`,Origin:settings.appOrigin}});
+  const editorSession=await (await editorRequest('session')).json();
+  const editorAccess={id:editorSession.deviceId,space_id:shared,role:'editor',authentication:'account',personId:editorAccount.personId,sessionId:editorAccount.sessionId};
+  for(const route of ['publications','uploads']) {
+    const original=await createOriginal();
+    const intent={id:crypto.randomUUID(),sourceId:original.id,sourceRevision:0,destinationSpaceId:shared};
+    await publications.reservePublication(database,sourceAccess,destinationAccess,intent,100*1024**3);
+    await database.prepare("UPDATE space_memberships SET role='member' WHERE id=?").bind(editorMembership).run();
+    let touched=false;
+    const guardedStorage={delete:async()=>{touched=true;}};
+    await assert.rejects(publications.cancelPublication(database,guardedStorage,editorAccess,intent.id),error=>error.status===409);
+    assert.equal(touched,false);
+    await database.prepare("UPDATE space_memberships SET role='editor' WHERE id=?").bind(editorMembership).run();
+    const cancelled=await editorRequest(`${route}/${intent.id}`,'DELETE');
+    assert.equal(cancelled.status,200,await cancelled.clone().text());
+    assert.equal((await database.prepare('SELECT phase FROM publications WHERE id=?').bind(intent.id).first()).phase,'cancelled');
+    assert.ok(await bucket.head(original.key),'Cancelling a shared copy preserves the personal original.');
+  }
   console.log('PASS: checksum-verified independent publication, previews/metadata/sections, idempotence, source deletion independence, corrupt bytes, quota races, cancellation and authority/source changes before visibility.');
 }

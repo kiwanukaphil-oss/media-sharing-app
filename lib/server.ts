@@ -4,6 +4,8 @@ import { z } from "zod";
 import { validCaptureDate } from "./library-names";
 import { MAX_FILE_SIZE, PART_SIZE, formatBytes } from "./contracts";
 import { transferAuthority } from "./transfer-authority";
+import { reviewSharedAction } from "./collaboration-policy";
+import type { LibraryRole } from "./contracts";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -56,9 +58,15 @@ export async function readJson<T extends z.ZodTypeAny>(request: Request, schema:
 }
 // Legacy name retained for compatibility; account actors derive authority from live membership.
 // closureAdmissionId is assigned by the server request boundary, never read from client input.
-export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: "owner" | "member"; authentication?: "account"; personId?: string; sessionId?: string; closureAdmissionId?: string; storage_limit_bytes?: number | null; space_kind?: "personal" | "shared" };
+export type ActiveDevice = { id: string; space_id: string; name: string; space_name: string; role: LibraryRole; authentication?: "account"; personId?: string; sessionId?: string; closureAdmissionId?: string; storage_limit_bytes?: number | null; space_kind?: "personal" | "shared" };
 export function requireOwner(device: ActiveDevice) {
   if (device.role !== "owner") throw new ApiError(403, "Only a space owner can do this.");
+}
+// Shared Editor is account-only. This is preflight; each mutation also uses current SQL authority.
+export function requireOrganiser(device: ActiveDevice) {
+  const actor = { kind: device.authentication === "account" ? "account" as const : "legacy" as const,
+    id: device.id, spaceId: device.space_id, role: device.role, active: true };
+  if (!reviewSharedAction(actor, "organise-albums").allowed) throw new ApiError(403, "An owner or editor can organise this library.");
 }
 // Authenticate every API request against a revocable, hashed device credential.
 export async function requireDevice(request: Request): Promise<ActiveDevice> {
@@ -67,7 +75,7 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
   if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new ApiError(401, "Connect this device to continue.");
   const device = await database().prepare(`SELECT devices.id, devices.space_id, devices.name, devices.role, spaces.name AS space_name
     FROM devices JOIN spaces ON spaces.id = devices.space_id
-    WHERE devices.token_hash = ? AND devices.revoked_at IS NULL AND devices.expires_at > ?
+    WHERE devices.token_hash = ? AND devices.role IN ('owner','member') AND devices.revoked_at IS NULL AND devices.expires_at > ?
     AND NOT EXISTS (SELECT 1 FROM personal_spaces WHERE space_id = devices.space_id)`)
     .bind(await tokenHash(token), Date.now()).first<ActiveDevice>();
   if (!device) throw new ApiError(401, "This device has been disconnected. Pair it again to continue.");

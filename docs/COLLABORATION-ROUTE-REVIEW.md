@@ -1,6 +1,6 @@
 # Collaboration route integration review
 
-Reviewed 22 September 2026 against source `66a14ba`. This is an integration checklist, not a statement that new roles are active. The prepared policy has no production caller. Phase 2 release dependencies still apply.
+Reviewed 22 September 2026 against source `66a14ba`. This is an integration checklist, not a statement that new roles are active. At that review point the prepared policy had no production caller. The subsequent additive Editor increment is tracked in [the implementation contract](COLLABORATION-IMPLEMENTATION.md); general-release dependencies still apply.
 
 ## Authority boundaries
 

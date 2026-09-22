@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError, database, readJson, requireOwner, type ActiveDevice } from "./server";
+import { ApiError, database, readJson, requireOrganiser, type ActiveDevice } from "./server";
 import { splitFilename, validCaptureDate, validFilename } from "./library-names";
 import type { Album } from "./contracts";
 import { sectionAction, placeInSections } from "./sections-api";
@@ -39,11 +39,11 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
       WHERE a.space_id = ? AND a.deleted_at IS NULL AND s.deleted_at IS NULL GROUP BY s.album_id, s.id ORDER BY s.position, s.id`).bind(device.space_id).all();
     return Response.json({ albums: albums.results, sections: sections.results });
   }
-  requireOwner(device);
+  requireOrganiser(device);
   if (request.method === "POST" && !id) {
     const input = await readJson(request, z.object(albumFields));
     const albumId = crypto.randomUUID();
-    const authority = transferAuthority(device, Date.now(), true);
+    const authority = transferAuthority(device, Date.now(), "organiser");
     const inserted = await database().prepare(`INSERT INTO albums (id, space_id, name, description, created_at) SELECT ?, ?, ?, ?, ? WHERE ${authority.sql}`)
       .bind(albumId, device.space_id, input.name, input.description, Date.now(), ...authority.bindings).run();
     if (!inserted.meta.changes) throw new ApiError(409, "Library access changed. Refresh before creating an album.");
@@ -51,7 +51,7 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
   }
   if (request.method === "PUT" && id) {
     const input = await readJson(request, z.object({ ...albumFields, expectedRevision: z.number().int().nonnegative(), archived: z.boolean(), deleted: z.boolean() }));
-    const authority = transferAuthority(device, Date.now(), true);
+    const authority = transferAuthority(device, Date.now(), "organiser");
     const result = await database().prepare(`UPDATE albums SET name = ?, description = ?, archived_at = ?, deleted_at = ?, revision = revision + 1
       WHERE id = ? AND space_id = ? AND revision = ? AND ${authority.sql}`).bind(input.name, input.description, input.archived ? Date.now() : null, input.deleted ? Date.now() : null, id, device.space_id, input.expectedRevision, ...authority.bindings).run();
     if (!result.meta.changes) throw new ApiError(409, "This album changed. Refresh before trying again.");
@@ -62,7 +62,7 @@ async function manageAlbums(request: Request, device: ActiveDevice, id?: string)
 
 // Renames are one conditional SQL update: stale selections never produce a partially renamed batch.
 async function renameFiles(request: Request, device: ActiveDevice) {
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ files: z.array(z.object({ id: z.string().uuid(), name: z.string().refine(validFilename), expectedRevision: z.number().int().nonnegative() })).min(1).max(100) }));
   if (new Set(input.files.map(file => file.id)).size !== input.files.length) throw new ApiError(400, "Select each file once.");
   const json = JSON.stringify(input.files);
@@ -80,7 +80,7 @@ async function renameFiles(request: Request, device: ActiveDevice) {
     WHERE lower(COALESCE(json_extract(sibling.value, '$.name'), m.name)) = lower(json_extract(proposed.value, '$.name')) LIMIT 1`;
   const conflicts = await database().prepare(conflictsQuery).bind(json, json).first();
   if (conflicts) throw new ApiError(409, "A filename already exists in one of these albums. Choose another name or a different starting number.");
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   const result = await database().prepare(`UPDATE media SET original_name = COALESCE(original_name, name),
     name = (SELECT json_extract(value, '$.name') FROM json_each(?) WHERE json_extract(value, '$.id') = media.id), revision = revision + 1
     WHERE space_id = ? AND archived_at IS NULL AND id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard("active")}
@@ -92,12 +92,12 @@ async function renameFiles(request: Request, device: ActiveDevice) {
 
 // Membership and trash edits use the same optimistic revision guard within one D1 transaction.
 async function organiseFiles(request: Request, device: ActiveDevice) {
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ files: selectionSchema, action: z.enum(["add", "remove", "trash", "restore"]), albumId: z.string().uuid().optional() }));
   const json = JSON.stringify(input.files);
   let selected = `media.space_id = ? AND media.status = 'ready' AND media.id IN (SELECT json_extract(value, '$.id') FROM json_each(?)) AND ${selectionGuard(input.action === "restore" ? "trashed" : input.action === "remove" ? "any" : "active")}`;
   const selectionValues: (string | number)[] = [device.space_id, json, json, device.space_id, input.files.length];
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   selected += ` AND ${authority.sql}`; selectionValues.push(...authority.bindings);
   if (input.action === "add" || input.action === "remove") {
     if (!input.albumId) throw new ApiError(400, "Choose an album.");
@@ -126,9 +126,9 @@ async function organiseFiles(request: Request, device: ActiveDevice) {
 
 // Capture-date corrections are metadata-only and reject stale writes from another browser.
 async function changeCaptureDate(request: Request, device: ActiveDevice) {
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ id: z.string().uuid(), capturedAt: z.string().refine(validCaptureDate).nullable(), expectedRevision: z.number().int().nonnegative() }));
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   const result = await database().prepare(`UPDATE media SET captured_at = ?, revision = revision + 1 WHERE id = ? AND space_id = ? AND status = 'ready' AND revision = ? AND ${authority.sql}`)
     .bind(input.capturedAt, input.id, device.space_id, input.expectedRevision, ...authority.bindings).run();
   if (!result.meta.changes) throw new ApiError(409, "This file changed. Refresh before correcting its date.");

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError, database, readJson, requireOwner, type ActiveDevice } from "./server";
+import { ApiError, database, readJson, requireOrganiser, type ActiveDevice } from "./server";
 import type { AlbumSection } from "./contracts";
 import { transferAuthority } from "./transfer-authority";
 
@@ -25,7 +25,7 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
       GROUP BY s.id ORDER BY s.position, s.id`).bind(albumId).all<AlbumSection>();
     return Response.json({ sections: sections.results, revision: album.revision });
   }
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), expectedRevision: revision, name: sectionName,
     position: z.number().int().min(-1000000).max(1000000).default(0), deleted: z.boolean().default(false), coverMediaId: z.string().uuid().nullable().optional() }));
   if (input.coverMediaId) {
@@ -34,7 +34,7 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
       AND m.archived_at IS NULL AND m.preview_ready = 1`).bind(input.albumId, id || null, input.coverMediaId, device.space_id).first();
     if (!cover) throw new ApiError(409, "Choose a file with a preview in this section for its cover.");
   }
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   const liveAlbumGuard = `${albumGuard} AND ${authority.sql}`;
   const guardValues = [input.albumId, device.space_id, input.expectedRevision, ...authority.bindings];
   const sectionId = id || crypto.randomUUID();
@@ -59,11 +59,11 @@ export async function sectionAction(request: Request, device: ActiveDevice, id?:
 
 // Reordering the complete active list keeps positions stable after repeated keyboard moves.
 async function reorderSections(request: Request, device: ActiveDevice) {
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), expectedRevision: revision,
     ids: z.array(z.string().uuid()).min(1).max(500).refine(ids => new Set(ids).size === ids.length) }));
   const json = JSON.stringify(input.ids);
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   const guard = `${albumGuard} AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL) = ?
     AND (SELECT COUNT(*) FROM album_sections WHERE album_id = ? AND deleted_at IS NULL AND id IN (SELECT value FROM json_each(?))) = ? AND ${authority.sql}`;
   const values = [input.albumId, device.space_id, input.expectedRevision, input.albumId, input.ids.length, input.albumId, json, input.ids.length, ...authority.bindings];
@@ -78,7 +78,7 @@ async function reorderSections(request: Request, device: ActiveDevice) {
 
 // Template placement is limited to the exact previewed selection; future uploads are never reclassified.
 async function applySectionTemplate(request: Request, device: ActiveDevice) {
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), expectedRevision: revision,
     files: z.array(z.object({ id: z.string().uuid(), expectedRevision: revision })).max(100)
       .refine(files => new Set(files.map(file => file.id)).size === files.length) }));
@@ -90,7 +90,7 @@ async function applySectionTemplate(request: Request, device: ActiveDevice) {
   const selectionValues = [json, input.albumId, device.space_id, input.files.length];
   const created = "EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ?)";
   const createdValues = [input.albumId, originalId];
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   const results = await database().batch([
     database().prepare(`INSERT INTO album_sections (album_id, id, name, position) SELECT ?, ?, 'Originals', 10
       WHERE ${albumGuard} AND NOT EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND deleted_at IS NULL)
@@ -108,12 +108,12 @@ async function applySectionTemplate(request: Request, device: ActiveDevice) {
 
 // A single transactional guard covers the entire selection, including all destinations and revisions.
 export async function placeInSections(request: Request, device: ActiveDevice) {
-  requireOwner(device);
+  requireOrganiser(device);
   const input = await readJson(request, z.object({ albumId: z.string().uuid(), files: z.array(z.object({
     id: z.string().uuid(), expectedRevision: revision, sectionId: z.string().uuid().nullable(),
   })).min(1).max(100).refine(files => new Set(files.map(file => file.id)).size === files.length) }));
   const json = JSON.stringify(input.files);
-  const authority = transferAuthority(device, Date.now(), true);
+  const authority = transferAuthority(device, Date.now(), "organiser");
   const guard = `(SELECT COUNT(*) FROM json_each(?) chosen JOIN media m ON m.id = json_extract(chosen.value, '$.id')
     JOIN album_media am ON am.media_id = m.id AND am.album_id = ? JOIN albums a ON a.id = am.album_id
     WHERE m.space_id = ? AND a.space_id = m.space_id AND a.deleted_at IS NULL AND a.archived_at IS NULL

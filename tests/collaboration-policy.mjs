@@ -42,4 +42,4 @@ for (const action of ['continue-upload','create-preview']) {
 assert.equal(reviewSharedAction(legacy,'cancel-upload',[own]).allowed,true);
 assert.equal(reviewSharedAction(legacy,'cancel-upload',[own,others]).allowed,false);
 assert.equal(reviewSharedAction(legacy,'trash-files',[own]).allowed,false);
-console.log('PASS: prepared shared-role policy denies mixed/cross-space/rejoined/revoked access, preserves legacy Member limits and prevents Editor administration. No live route uses this policy yet.');
+console.log('PASS: prepared shared-role policy denies mixed/cross-space/rejoined/revoked access, preserves legacy Member limits and prevents Editor administration. Database integration must also enforce current authority.');

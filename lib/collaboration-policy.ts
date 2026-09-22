@@ -1,5 +1,5 @@
-// Prepared Phase 3 policy only: not imported by live routes. Database mutations must recheck these
-// capabilities against current membership, resource attribution, audience and revision in their transaction.
+// Shared-role preflight. The additive Editor routes use organiser decisions; remaining role actions
+// are prepared policy. Database mutations must recheck current membership, attribution and audience.
 export type SharedAction = "read" | "upload" | "continue-upload" | "create-preview" | "organise-albums" | "edit-files" | "trash-files" |
   "restore-files" | "cancel-upload" | "manage-access" | "delete-permanently";
 export type SharedActor = { kind: "account" | "legacy"; id: string; spaceId: string; role: string; active: boolean };

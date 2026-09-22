@@ -1,6 +1,6 @@
 # Collaboration implementation contract
 
-Status: preparation under standing project authority, 21 September 2026. Phase 3 implementation/release remains gated by Phase 2. This contract does not change live permissions. The current owner/member policy was checked against `server.ts`, `web-api.ts`, `library-api.ts`, `sections-api.ts`, `space-people.ts` and the legacy permission contract.
+Status: additive Editor implementation in progress, 22 September 2026, under the instruction to complete unblocked work. The verified identity/access foundation supports local implementation and restricted-pilot verification independently of the multipart erasure question. General collaboration release remains subject to its lifecycle and operational gates. This contract does not change live permissions. The current owner/member policy was checked against `server.ts`, `web-api.ts`, `library-api.ts`, `sections-api.ts`, `space-people.ts` and the legacy permission contract.
 
 ## First useful increment
 
@@ -62,13 +62,28 @@ Release needs hosted representative-role checks, independent backup/restore of m
 
 ## Prepared policy module - 22 September
 
-`lib/collaboration-policy.ts` is a pure, unused-by-production reference for the agreed shared-role policy. It does not add database roles, alter invitations or change any current user's permissions. Integration/release remains dependent on Phase 2.
+`lib/collaboration-policy.ts` is the pure preflight reference for shared roles. The additive Editor increment now uses its organiser decision; Contributor/Viewer decisions remain prepared policy. Mutation SQL independently rechecks current authority. No existing membership is changed by code deployment.
 
 - [x] Evaluate complete selections atomically at the policy level; mixed ownership never silently becomes a permitted subset. Account attribution is the exact stable membership ID, so a new membership after rejoining does not inherit old editing rights. Legacy cancellation uses the exact device ID.
 - [x] Preserve compatibility Member and legacy Owner/Member; reject account-only roles on legacy actors. Editor cannot administer access or permanently delete files.
 - [x] Deny inactive/unknown roles, cross-space resources and narrower-audience denial even for an owner. Adversarial fixtures pass; hosted test step added.
-- [ ] Build route-specific attribution adapters and transactional authority predicates, then integrate every API/UI path after the Phase 2 gate. This preflight function alone is never sufficient mutation authority.
+- [ ] Build route-specific attribution adapters and transactional authority predicates, then integrate every API/UI path with its feature-specific dependencies satisfied. This preflight function alone is never sufficient mutation authority.
 
 Actor `id` must be populated from a verified membership (account) or device (legacy), never a client-provided identity or email. `audienceAllowed` must come from server-side audience evaluation. Personal-space policy remains separate.
 
 The [route integration review](COLLABORATION-ROUTE-REVIEW.md) maps both web and compatibility paths, SQL authority, publication destinations, claimed devices and UI assumptions. Prepared `continue-upload` and `create-preview` decisions preserve exact contribution ownership even for Owner/Editor; these actions also require route-specific state, upload identity, checksum and quota checks. Demotion to Viewer denies further byte-producing operations. Hosted CI `35708556464` passed both jobs for the initial policy; the follow-up adds these transfer-specific adversarial cases.
+
+
+## Additive Editor increment - implementation and local verification
+
+- [x] Permit account Editors to organise albums/sections/files and restore or move shared files to Trash. Metadata routes repeat current Owner/Editor authority in SQL; demotion, disabled identity and revoked-session fixtures leave metadata unchanged.
+- [x] Preserve owner-only access administration and permanent deletion. Upload continuation and initial preview creation still require the exact contributing actor; Editor cannot replace someone else's bytes.
+- [x] Align unfinished transfer and publication cancellation, including both publication API entry points, with current organiser authority. Cleanup retains reviewable state after authority loss.
+- [x] Add owner-controlled named Editor changes, last-owner protection, visible Editor labels and role-aware file controls. Claimed legacy credentials map to Member, never Owner; pending invitations issued under old authority expire. Existing invitations still grant Member.
+- [x] Deny unknown account/device roles rather than treating them as upload-capable defaults. No schema migration is required for the additive Editor value; legacy role responses remain Owner/Member.
+- [ ] Complete full hosted and restricted-production verification before describing Editor as live. No production role was changed for these tests.
+- [ ] Add Contributor/Viewer persistence and enforcement, role-aware invitations, private favourites/history and bounded intake; this increment does not complete Phase 3.
+
+The existing invitation flow reactivates an existing membership ID as Member. Future Contributor work must explicitly explain what a subsequent own-contribution grant restores; the pure policy never infers attribution from a person's email or a newly allocated membership ID.
+
+Local release checks: production build, TypeScript, web lint, normal API suite, account API suite, Editor browser and People browser checks passed on 22 September. Hosted verification and production deployment remain outstanding.

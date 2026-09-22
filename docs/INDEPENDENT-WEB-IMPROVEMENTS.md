@@ -13,6 +13,6 @@
 - [x] Verify actual-schema account/legacy attribution, cross-space isolation, positive/negative type queries and invalid filters. Browser checks cover scoped URL restoration, recent-album navigation, narrow layout, focus, reload concealment and a real upload completing behind the cover. Mobile screenshots inspected.
 - [x] Add up to eight named saved views per verified library/actor in tab storage. Save search, category and validated filters only; never cache results, credentials, permissions or arbitrary URLs. Reload and filter restoration pass browser checks. Malformed/oversized/duplicate records and injected scope/URL fields are rejected or stripped. Storage failures never claim success. This first version is explicitly tab-local, not account-synchronised bookmarks.
 - [x] Initial retrieval/presentation hosted CI `35713851326` passed verification and browser jobs.
-- [ ] Complete saved-view hosted checks and deployed verification before marking the corresponding roadmap parents complete.
+- [x] Saved-view CI `35714352811` and final responsive CI `35715410132` passed both jobs. Runtime `ebf5e35f-a289-4ec8-ae5e-51b430f8f7d2`, source `c4c999d`, is at 100% (10:20 UTC). Both-origin health/access and signed-in live controls verified. The 320px regression in `35714770629` was corrected before parent acceptance. P7-01 and P7-04 are complete for the documented scope.
 
 No new privacy claims are inferred for stored originals. Their existing metadata/location disclosure and verified-vs-browser-download distinctions remain in force.

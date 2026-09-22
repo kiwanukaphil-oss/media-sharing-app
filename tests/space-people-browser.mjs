@@ -71,6 +71,11 @@ try {
   await expect(page.getByRole('dialog')).toContainText('including native apps');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   assert.equal(disconnected, 0);
+  await page.locator('li').filter({hasText:'Sam Reed'}).getByRole('button',{name:'Make editor',exact:true}).click();
+  await expect(page.getByRole('dialog')).toContainText('cannot manage access or permanently delete');
+  await expect(page.getByRole('dialog')).toContainText('Linked paired devices have Member access');
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  assert.equal(mutations,0);
   await page.getByRole('button', { name: 'Make owner', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('Make Sam Reed an owner?');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();

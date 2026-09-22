@@ -50,6 +50,7 @@ export async function verifySpacePeople(database, dispatch) {
   assert.equal((await request(guest, scoped('person-invitations'), 'POST', { email: stranger.verifiedEmail })).status, 409);
   assert.equal((await request(guest, scoped(`people/${ownerMembership}`), 'PUT', { action: 'remove', revision: 0 })).status, 409);
   assert.equal((await request(owner, scoped(`people/${ownerMembership}`), 'PUT', { action: 'leave', revision: 0 })).status, 409);
+  assert.equal((await request(owner,scoped(`people/${ownerMembership}`),'PUT',{action:'editor',revision:0})).status,409,'The last owner cannot demote themselves to Editor.');
   const guestMembership = roster.data.members.find(member => member.id !== ownerMembership);
   assert.equal((await request(owner, scoped(`people/${guestMembership.id}`), 'PUT', { action: 'owner', revision: 0 })).status, 200);
   assert.equal((await request(owner, scoped(`people/${guestMembership.id}`), 'PUT', { action: 'remove', revision: 0 })).status, 409, 'Stale actions cannot overwrite role changes');
@@ -80,6 +81,11 @@ export async function verifySpacePeople(database, dispatch) {
     database.prepare('INSERT INTO legacy_owner_claims(device_id,membership_id,session_id,claimed_at) VALUES(?,?,?,?)').bind(legacyId, restored.id, departed.sessionId, now),
     database.prepare('INSERT INTO invitations(token_hash,space_id,created_by,expires_at) VALUES(?,?,?,?)').bind('e'.repeat(64), space, legacyId, now + 604800000),
   ]);
+  assert.equal((await request(remaining,scoped(`people/${restored.id}`),'PUT',{action:'editor',revision:restored.revision})).status,200);
+  restored.revision++;
+  assert.equal((await database.prepare('SELECT role FROM devices WHERE id=?').bind(legacyId).first()).role,'member','Account Editor must never become a legacy Owner.');
+  assert.equal((await request(departed,'feed','GET',undefined,{Cookie:`relay_device=${credential}`})).status,200);
+  assert.equal((await request(departed,'invitations','POST',undefined,{Cookie:`relay_device=${credential}`})).status,403);
   const mediaBefore = await database.prepare('SELECT COUNT(*) AS n FROM media').first();
   assert.equal((await request(remaining, scoped(`people/${restored.id}`), 'PUT', { action: 'remove', revision: restored.revision })).status, 200);
   assert.equal((await request(departed, 'feed', 'GET', undefined, { Cookie: `relay_device=${credential}` })).status, 401, 'Claimed legacy cookie must not bypass removal');

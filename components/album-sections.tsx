@@ -9,12 +9,12 @@ import { WorkspaceSelect } from "./workspace-select";
 
 type Props = {
   album: Album; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void;
-  selected: MediaItem[]; isOwner: boolean; refresh: () => Promise<void>; clearSelection: () => void;
+  selected: MediaItem[]; canOrganise: boolean; refresh: () => Promise<void>; clearSelection: () => void;
   feedback: { setMessage: (message: string) => void; setUndo: (undo: (() => () => Promise<unknown>) | null) => void };
 };
 
 // Sections are album-local placement controls, not access settings or creative approval states.
-export function AlbumSections({ album, sections, query, onQuery, selected, isOwner, refresh, clearSelection, feedback }: Props) {
+export function AlbumSections({ album, sections, query, onQuery, selected, canOrganise, refresh, clearSelection, feedback }: Props) {
   const { requestJson, apiUrl } = useLibraryApi();
   const [editor, setEditor] = useState<AlbumSection | "new" | "move" | "template" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -25,7 +25,7 @@ export function AlbumSections({ album, sections, query, onQuery, selected, isOwn
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const active = sections.find(section => section.id === query.section);
-  const canEdit = isOwner && !album.archivedAt;
+  const canEdit = canOrganise && !album.archivedAt;
   useEffect(() => { const current = dialog.current; if (editor) current?.showModal(); return () => current?.close(); }, [editor]);
 
   // Record successful mutation feedback before refresh, so network failures do not discard Undo.

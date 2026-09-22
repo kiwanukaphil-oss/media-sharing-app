@@ -8,11 +8,13 @@ export type MediaItem = {
 export type Album = { id: string; name: string; description: string; createdAt: number; latestUploadAt?: number; archivedAt: number | null; deletedAt: number | null; revision: number; count: number };
 export type AlbumSection = { id: string; albumId: string; name: string; position: number; count: number; coverMediaId?: string | null };
 export type RenameEntry = { id: string; name: string; expectedRevision: number };
-export type FeedPage = { items: MediaItem[]; nextCursor: string | null; counts: { all: number; original: number; final: number; trash: number }; total: number; role: DeviceRole };
+export type FeedPage = { items: MediaItem[]; nextCursor: string | null; counts: { all: number; original: number; final: number; trash: number }; total: number; role: LibraryRole };
 export type StorageUsage = { used: number; reserved: number; trash: number; limit: number; uploads: { id: string; name: string; size: number; createdAt: number; deviceName: string; canCancel: boolean; publication?: boolean }[] };
 export type DeviceRole = "owner" | "member";
+export type LibraryRole = DeviceRole | "editor";
+export function libraryRoleLabel(role: string) { return role === "owner" ? "Owner" : role === "editor" ? "Editor" : role === "member" ? "Member" : "Unavailable"; }
 export type Device = { id: string; name: string; createdAt: number; current: boolean; role: DeviceRole };
-export type Session = { space: { id: string; name: string; kind?: "personal" | "shared" }; deviceId: string; role: DeviceRole; transport: "local" | "direct" | "unconfigured"; authentication?: "account"; personId?: string };
+export type Session = { space: { id: string; name: string; kind?: "personal" | "shared" }; deviceId: string; role: LibraryRole; transport: "local" | "direct" | "unconfigured"; authentication?: "account"; personId?: string };
 export type UploadSession = { id: string; partSize: number; status: string; uploadId?: string };
 export const PART_SIZE = 16 * 1024 * 1024;
 export const MAX_FILE_SIZE = 100 * 1024 * 1024 * 1024;

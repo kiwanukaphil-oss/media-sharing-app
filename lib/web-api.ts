@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { libraryAction, requireAlbum } from "./library-api";
-import { ApiError, bucket, database, requireMedia, requireOwner, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
+import { ApiError, bucket, database, requireMedia, requireOwner, requireOrganiser, spaceLimitBytes, type ActiveDevice, type UploadRow } from "./server";
 import type { MediaItem } from "./contracts";
 import { cancelPublication } from "./publications";
 import { transferAuthority } from "./transfer-authority";
@@ -92,8 +92,8 @@ export async function readStorage(device: ActiveDevice) {
     COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling','publishing') THEN size + preview_size ELSE 0 END),0) AS reserved,
     COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ?`).bind(device.space_id).first();
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
-    (media.device_id = ? OR ? = 'owner') AS canCancel, (media.status = 'publishing') AS publication
-    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.space_id).all();
+    (media.device_id = ? OR ? = 'owner' OR (? = 1 AND ? = 'editor')) AS canCancel, (media.status = 'publishing') AS publication
+    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.authentication === "account" ? 1 : 0, device.role, device.space_id).all();
   return Response.json({ ...usage, limit: spaceLimitBytes(device), uploads: uploads.results });
 }
 
@@ -167,10 +167,10 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     return new Response(object.body, { headers: { "Content-Type": "image/jpeg", "Content-Length": String(object.size) } });
   }
   if (resource === "media" && id && (action === "archive" || action === "restore") && method === "POST") {
-    requireOwner(device);
+    requireOrganiser(device);
     const item = await requireMedia(device, id);
     if (item.status !== "ready") throw new ApiError(409, "This transfer is not ready.");
-    const authority = transferAuthority(device, Date.now(), true);
+    const authority = transferAuthority(device, Date.now(), "organiser");
     const changed = await database().prepare(`UPDATE media SET archived_at = ?, revision = revision + 1 WHERE id = ? AND status = 'ready' AND ${authority.sql}`)
       .bind(action === "archive" ? Date.now() : null, id, ...authority.bindings).run();
     if (!changed.meta.changes) throw new ApiError(409, "The file or library access changed. Refresh before trying again.");
@@ -182,13 +182,13 @@ export async function webAction(request: Request, device: ActiveDevice, resource
   }
   if (resource === "uploads" && id && !action && method === "DELETE") {
     const item = await requireMedia(device, id);
-    if (item.device_id !== device.id) requireOwner(device);
+    if (item.device_id !== device.id) requireOrganiser(device);
     if (item.status === "publishing" || (item.status === "cancelling" && await database().prepare("SELECT id FROM publications WHERE id = ?").bind(id).first())) {
       const publisher = await database().prepare("SELECT person_id FROM space_memberships WHERE id = ?").bind(device.id).first<{ person_id: string }>();
       return Response.json(await cancelPublication(database(), storage, { ...device, personId: device.authentication === "account" ? publisher?.person_id : undefined }, id));
     }
     if (!["uploading", "cancelling"].includes(item.status)) throw new ApiError(409, "This file has already arrived. Refresh your feed.");
-    const authority = transferAuthority(device, Date.now(), item.device_id !== device.id);
+    const authority = transferAuthority(device, Date.now(), item.device_id !== device.id ? "organiser" : false);
     const cancelled = await database().prepare(`UPDATE media SET status = 'cancelling' WHERE id = ?
       AND upload_id = ? AND status IN ('uploading','cancelling') AND ${authority.sql}`)
       .bind(id, item.upload_id, ...authority.bindings).run();
@@ -196,7 +196,7 @@ export async function webAction(request: Request, device: ActiveDevice, resource
     try { await storage.resumeMultipartUpload(item.object_key, item.upload_id).abort(); }
     catch (failure) { if (!/NoSuchUpload|does not exist|not found/i.test(String(failure))) throw failure; }
     await storage.delete(item.object_key);
-    const completion = transferAuthority(device, Date.now(), item.device_id !== device.id);
+    const completion = transferAuthority(device, Date.now(), item.device_id !== device.id ? "organiser" : false);
     const removed = await database().prepare(`DELETE FROM media WHERE id = ? AND status = 'cancelling' AND upload_id = ? AND ${completion.sql}`)
       .bind(id, item.upload_id, ...completion.bindings).run();
     if (!removed.meta.changes) throw new ApiError(409, "Access changed during cancellation. Refresh to review the remaining transfer.");

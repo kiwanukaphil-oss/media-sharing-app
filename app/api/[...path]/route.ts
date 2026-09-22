@@ -173,7 +173,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
     if (!accountAccess) throw new ApiError(403, "Sign in with your account to manage people.");
     if (resource === "people" && !id && method === "GET") return Response.json(await listSpacePeople(database(), accountAccess, device.space_id));
     if (resource === "people" && id && !action && method === "PUT") {
-      const input = await readJson(request, z.object({ action: z.enum(["owner", "member", "remove", "leave"]), revision: z.number().int().nonnegative() }));
+      const input = await readJson(request, z.object({ action: z.enum(["owner", "member", "editor", "remove", "leave"]), revision: z.number().int().nonnegative() }));
       return Response.json(await changeSpacePerson(database(), accountAccess, device.space_id, id, input.action, input.revision));
     }
     if (resource === "person-invitations" && !id && method === "POST") {

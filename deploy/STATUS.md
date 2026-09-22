@@ -1,5 +1,12 @@
 # Direct Cloudflare deployment
 
+## Scoped retrieval and presentation - 22 September 2026
+
+Worker `ebf5e35f-a289-4ec8-ae5e-51b430f8f7d2` is at **100%**, deployed 10:20 UTC from `c4c999d`. Adds file-type/own-upload filters, validated tab-local saved views, recent albums/interrupted-transfer shortcuts and a presentation cover that preserves ongoing transfers. No schema, access, budget or closure-flag change. Migration 0019 and coordinated backups remain active.
+
+Local actual-schema API/authority checks, Chrome/Edge/Firefox/WebKit album workflows, focused presentation/retrieval browser tests, TypeScript, lint, build and dry run pass. Hosted `35715410132` passed both jobs, including the corrected 320px layout; earlier failed `35714770629` is superseded. Both origins return health/operations 200, anonymous feed 401 and unauthenticated coordinator 403. Signed-in filters, recent albums and hide/reveal verified without changing files or memberships. [Scope and evidence](../docs/INDEPENDENT-WEB-IMPROVEMENTS.md).
+
+
 ## Account browser-session feedback - 22 September 2026
 
 Worker `dc3a0d93-4903-4075-a235-6c69be3af11f` is at **100%**, deployed 09:04 UTC from `390140a`. Account now distinguishes loading, sign-out progress, completed revocation and refresh failure; stale controls are hidden after failed refresh. Duplicate email subtitles are omitted. TypeScript, focused lint, build, dry run and delayed/error-response mobile browser tests pass; rendering inspected. Fresh signed-in account, personal/shared links and both retained browser sessions verified live without revoking either. No authentication, schema, quota or permission changes. Hosted CI `35708279076` passed both jobs. Subsequent preparation-only CI `35708556464` also passed both jobs; it changes no live permissions.

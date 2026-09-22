@@ -9,9 +9,9 @@
 
 Autonomous implementation, verification, commits, pushes and phase progression are authorised through project completion; stop only for a blocker requiring the user. The latest standing instruction is preserved in [AGENTS.md](../AGENTS.md). Phases 0 and 1 are complete. Custom album sections are live. Phase 2 has tested Auth0 protocol and one-time D1 transaction adapters; the Relay Web application is created and its exact redirect URLs are saved; secure local credential handoff is complete; account/session routes, person persistence and a responsive account screen are implemented and locally tested. Memberships, explicit legacy owner claims and account-scoped library access are live for the designated-account pilot; live sign-in/recovery/claim checks passed. General release and remaining operational gates are outstanding. Existing functionality is recorded separately below; its presence does not mean the proposed identity, privacy or collaboration model is already implemented.
 
-**At a glance:** 2 phases complete; 15/47 parent work items complete. Phase 2 remains a restricted designated-account pilot with a 1 GiB total personal allocation; general onboarding and account closure are not enabled. Live Worker `dc3a0d93-4903-4075-a235-6c69be3af11f` is at 100%, including delayed recovery identity protection. Migration 0019 preserved every existing row across all 21 prior application tables. Global backup coordination is enabled and verified: run `35703394048` independently restored all 25 originals (321,680,743 bytes), and separate D1/B2 readers verified its archived completion receipt against the live settled run. Both-origin health/access checks pass. Fresh read-only storage reconciliation recorded 33 objects, zero unfinished uploads and zero anomalies. Hosted recovery CI `35704906771` and follow-up CI `35705343640` passed verification and browser jobs. Fresh sign-in, personal preview, recovered-publication history and shared-library switching are verified on 22 September; the database still contains 25 ready files and one publication. No user original was removed.
+**At a glance:** 2 phases complete; 17/47 parent work items complete. Phase 2 remains a restricted designated-account pilot with a 1 GiB total personal allocation; general onboarding and account closure are not enabled. Live Worker `ebf5e35f-a289-4ec8-ae5e-51b430f8f7d2` is at 100%, including delayed recovery identity protection. Migration 0019 preserved every existing row across all 21 prior application tables. Global backup coordination is enabled and verified: run `35703394048` independently restored all 25 originals (321,680,743 bytes), and separate D1/B2 readers verified its archived completion receipt against the live settled run. Both-origin health/access checks pass. Fresh read-only storage reconciliation recorded 33 objects, zero unfinished uploads and zero anomalies. Hosted recovery CI `35704906771` and follow-up CI `35705343640` passed verification and browser jobs. Fresh sign-in, personal preview, recovered-publication history and shared-library switching are verified on 22 September; the database still contains 25 ready files and one publication. No user original was removed.
 
-**Next action:** Continue account lifecycle execution and remote multipart reconciliation, with backup coordination now verified; collect continued monitoring capacity evidence. The Better Stack identity/recovery test email is confirmed in Gmail Inbox (21 September, 11:57 a.m. EAT; inspected 22 September). Independent scheduled checks passed at 15:19, 15:49 and 16:19 UTC; optimised runs used 8 ms and 5 ms CPU on Workers Free; the 22 September 08:19 run reached 10 ms. Workers Paid is now explicitly approved and active, with the bounded monitor deployed; the 08:49 UTC Paid cron and independent report delivery passed at 8 ms CPU against its 1,000 ms limit. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
+**Next action:** Complete the additive Editor increment and other dependency-ready roadmap work while remote multipart reconciliation remains pending. Keep account closure/general release gated on actual lifecycle evidence; backup coordination and current-pilot monitoring are already verified. The Better Stack identity/recovery test email is confirmed in Gmail Inbox (21 September, 11:57 a.m. EAT; inspected 22 September). Independent scheduled checks passed at 15:19, 15:49 and 16:19 UTC; optimised runs used 8 ms and 5 ms CPU on Workers Free; the 22 September 08:19 run reached 10 ms. Workers Paid is now explicitly approved and active, with the bounded monitor deployed; the 08:49 UTC Paid cron and independent report delivery passed at 8 ms CPU against its 1,000 ms limit. Live personal upload, deliberate publication and independent backup verification passed. Isolated cloud interruption/retry, revocation and cancellation checks also passed; the rehearsal endpoint is disabled. The designated-account pilot remains restricted while lifecycle and general-release gates remain open. See [Phase 2 release gates](PHASE-2-RELEASE-GATES.md).
 
 **Recovery custody verified:** Owner submission completed; the encrypted cloud vault was independently downloaded, decrypted and checked. The single-operator intent synchronization command now reads live requests, signs permitted intent changes and independently verifies immutable archive publication; real empty revision 2 and both retained versions passed readback. Continue lifecycle and backup-writer fencing; no real deletion decision or restore cutover is authorised.
 
@@ -22,11 +22,11 @@ Autonomous implementation, verification, commits, pushes and phase progression a
 | 0 | Agreed product contract and measurable baseline | Done | 5/5 | [Implementation contract](ALBUM-SECTIONS-IMPLEMENTATION.md) |
 | 1 | Albums with custom sections | Done | 6/6 | Live; hosted and recovery checks passed |
 | 2 | People, recoverable accounts and personal/shared spaces | In progress | 4/7 complete features in restricted pilot | Deletion/retention execution and remaining operational gates |
-| 3 | Useful collaboration and upload requests | Not started | 0/6 | Phase 2 |
+| 3 | Useful collaboration and upload requests | In progress | 0/6 | Verified identity/access foundation; general release gates remain |
 | 4 | Restricted albums with consistent access enforcement | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation |
 | 5 | Deliberate deliveries and portable exports | Not started | 0/6 | Phase 2 and Phase 3 role/access foundation; Phase 4 integration if present |
 | 6 | Versions, comparison and review | Not started | 0/5 | Phase 5; validated creative-team demand |
-| 7 | Retrieval, media breadth and validated expansion | Not started | 0/6 | Dependencies recorded per work item |
+| 7 | Retrieval, media breadth and validated expansion | In progress | 2/6 | Dependencies recorded per work item |
 
 Counts describe completed parent work items, not effort or percentage of the product delivered. Phase 7 is a prioritised expansion backlog, not a commitment to build everything. Phases 4 and 5 can be reordered by explicit decision: useful deliveries need not wait for restricted albums, but must respect them if they exist.
 
@@ -190,12 +190,13 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Collaborators can contribute and organise without becoming administrators; occasional contributors can submit without browsing the library.
 **Entry:** Phase 2; approved role matrix and guest intake policy.
-**Status:** Implementation not started; [role and intake contract](COLLABORATION-IMPLEMENTATION.md) prepared under standing authority. Owner: Codex. Phase 2 remains the implementation/release dependency; preparation does not satisfy the role-delivery acceptance criteria.
+**Status:** Implementation in progress under the 22 September instruction to complete unblocked work. Bring forward the additive account Editor increment using the verified identity/access foundation; general collaboration release remains gated separately. Owner: Codex. Existing memberships are unchanged. [Role and intake contract](COLLABORATION-IMPLEMENTATION.md).
 
 - [ ] **P3-01 — Deliver scoped roles.** Owner, Editor, Contributor and Viewer have server-enforced capabilities; prioritise Editor. Distinguish viewing, downloading, contribution, organisation and access administration without exposing a complex matrix on every menu.
 
   - [x] Prepare a source-reviewed role/intake contract, explicit invitation defaults and compatibility rules. Existing Member must not be silently upgraded to Contributor or Editor; live permissions are unchanged.
-  - [ ] Implement and verify central server capabilities, additive person roles and every affected API/UI path after Phase 2 gates.
+  - [x] Implement additive account Editor organiser checks, current-role SQL, owner-only administration/deletion, claimed-device Member mapping and web controls; focused local API/authority/browser checks pass. No existing membership changes.
+  - [ ] Complete Editor hosted/pilot verification and remaining Contributor/Viewer/invitation integration; general collaboration acceptance remains outstanding.
 - [ ] **P3-02 — Make access understandable.** Invitations, member management, audience summaries and previews of consequential changes explain who gains access. Removing members preserves space-owned work and ends future authorised access.
 - [ ] **P3-03 — Build private favourites and scoped activity.** Person-owned bookmarks do not act as public approval. Durable action history includes actor/time and distinguishes reversible, conflicting and irreversible events. Start notifications in-app with privacy-safe text.
 - [ ] **P3-04 — Build bounded upload requests.** Explicit destination, expiry, revocation, file/size/storage limits and invited or passcode-protected intake. Show recipient and limits before upload; provide a receipt without library access. Mark unverified contributor names as self-reported.
@@ -256,19 +257,19 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 **Outcome:** Improve discovery and media handling based on observed needs without weakening the core product.
 **Entry:** Prioritise each item after its prerequisites under standing execution authority; unresolved consent, purchasing or account-access requirements still need user input.
-**Status:** Not started. Owner: unassigned. Approval: not recorded.
+**Status:** In progress, 2/6 complete. Owner: Codex under standing execution authority. Retrieval and presentation were brought forward because they preserve existing scopes, schema and permissions.
 
-- [ ] **P7-01 — Better retrieval.** Permission-aware type/uploader/date/album/section filters and useful saved views. Requires identity/access foundations; may be brought forward after Phase 2 by recorded decision.
+- [x] **P7-01 — Better retrieval.** Permission-aware type/uploader/date/album/section filters and useful saved views. Requires identity/access foundations; may be brought forward after Phase 2 by recorded decision.
 
   - [x] Bring forward scope-preserving type/uploader filters under the 22 September instruction to complete unblocked work. Existing account/legacy access foundations are verified; no dependency on multipart deletion guarantees. API and browser checks pass locally. [Evidence and remaining release checks](INDEPENDENT-WEB-IMPROVEMENTS.md).
   - [x] Implement eight named tab-local views per verified library/actor, with validated filters, no cached results, reload restoration and explicit storage-failure feedback. Unit and local browser checks pass; initial retrieval CI `35713851326` passed both jobs.
-  - [ ] Complete saved-view hosted checks and deployed verification.
+  - [x] Hosted saved-view CI `35714352811` and final responsive CI `35715410132` passed both jobs. Deployed as `ebf5e35f` at 100%; signed-in scoped retrieval/presentation and both-origin health/access checks verified. Saved views are explicitly tab-local.
 - [ ] **P7-02 — Exact duplicate assistance.** Scope-safe verified-hash matching with reuse choices, no cross-account existence disclosure and no automatic deletion. Requires settled access-scope rules.
 - [ ] **P7-03 — Broader media relationships and previews.** Prioritise RAW/JPEG companions, sidecars, Live Photo components and unsupported-format fallbacks from real demand. Bound preview costs and preserve bytes; disclose import/export limitations.
-- [ ] **P7-04 — Focused home and presentation privacy.** Current-space recent albums and interrupted transfers; evaluate deliberate thumbnail/name concealment for presentations. Concealment is a presentation feature, not authorisation.
+- [x] **P7-04 — Focused home and presentation privacy.** Current-space recent albums and interrupted transfers; evaluate deliberate thumbnail/name concealment for presentations. Concealment is a presentation feature, not authorisation.
 
   - [x] Implement current-space recent albums, interrupted-transfer shortcut and full-page presentation cover. Local browser checks and mobile visual inspection pass; transfers continue behind the cover.
-  - [ ] Complete hosted and deployed verification.
+  - [x] Complete hosted and deployed verification in `ebf5e35f`; regression at 320px corrected and hosted CI `35715410132` passed. No schema or permission change.
 - [ ] **P7-05 — Notification preferences and quiet digests.** Extend scoped in-app activity only after demand is demonstrated; include consent/preferences and no sensitive content leakage through notification previews.
 - [ ] **P7-06 — Evaluate optional semantic search.** Discovery only until explicit approval: processing consent, cost, retention, index authorisation and deletion propagation must be agreed before a pilot. Default-on AI or face identification is not included.
 
@@ -1051,3 +1052,10 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [ ] Integrate current authority into database mutations and all UI/API paths after Phase 2. The prepared module is not used by production; no membership, invitation default or permission changed. Parent phase counts remain unchanged.
 
 Cloudflare case email checked 22 September at approximately 09:10 UTC: acknowledgement only, no technical answer. No reply is required and no additional message was sent.
+
+
+## 22 September 2026 - Independent retrieval and presentation released
+
+- [x] Complete P7-01 and P7-04: scoped type/own-upload filters, validated tab-local saved views, recent current-library albums, interrupted-transfer shortcut and presentation cover. No schema or access grant changes.
+- [x] Deploy `ebf5e35f` at 100%, source `c4c999d`; both origins healthy. Hosted CI `35715410132` passed verification/browser jobs after correcting the legacy 320px label conflict. Live signed-in filters and cover checked without modifying originals or roles.
+- [ ] Continue the additive Editor implementation and its API/UI/legacy authority tests; no real membership is changed by development or deployment. General lifecycle release still awaits the documented external and execution gates.

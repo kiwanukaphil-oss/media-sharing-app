@@ -29,9 +29,10 @@ export async function listSpacePeople(database: D1Database, session: SpacePerson
 }
 
 // Record authority evidence before the mutation in the same atomic batch. Concurrent last-owner changes serialize.
-// Claimed legacy devices follow the person's revocation/demotion; other legacy devices remain separately identified.
+// Claimed legacy devices follow revocation/demotion. Account Editor maps only to legacy Member,
+// never legacy Owner: older device clients retain upload/read access without access administration.
 export async function changeSpacePerson(database: D1Database, session: SpacePersonSession, spaceId: string,
-  targetId: string, action: "owner" | "member" | "remove" | "leave", revision: number, now = Date.now()) {
+  targetId: string, action: "owner" | "member" | "editor" | "remove" | "leave", revision: number, now = Date.now()) {
   const eventId = crypto.randomUUID();
   const removing = action === "remove" || action === "leave";
   const admission = accountClosureCommitAuthority(session);
@@ -49,7 +50,7 @@ export async function changeSpacePerson(database: D1Database, session: SpacePers
     database.prepare(`UPDATE space_memberships SET role = CASE WHEN ? THEN role ELSE ? END, revoked_at = CASE WHEN ? THEN ? ELSE NULL END,
       revision = revision + 1 WHERE id = ? AND EXISTS (SELECT 1 FROM membership_events WHERE id = ?)`)
       .bind(removing ? 1 : 0, action, removing ? 1 : 0, now, targetId, eventId),
-    database.prepare(`UPDATE devices SET role = CASE WHEN ? THEN role ELSE ? END, revoked_at = CASE WHEN ? THEN COALESCE(revoked_at, ?) ELSE revoked_at END
+    database.prepare(`UPDATE devices SET role = CASE WHEN ? THEN role WHEN ? = 'owner' THEN 'owner' ELSE 'member' END, revoked_at = CASE WHEN ? THEN COALESCE(revoked_at, ?) ELSE revoked_at END
       WHERE id IN (SELECT device_id FROM legacy_owner_claims WHERE membership_id = ?) AND EXISTS (SELECT 1 FROM membership_events WHERE id = ?)`)
       .bind(removing ? 1 : 0, action, removing ? 1 : 0, now, targetId, eventId),
     database.prepare(`UPDATE invitations SET expires_at = 0 WHERE created_by IN (SELECT device_id FROM legacy_owner_claims WHERE membership_id = ?)
