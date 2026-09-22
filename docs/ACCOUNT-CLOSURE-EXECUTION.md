@@ -88,3 +88,7 @@ The explicitly approved provider fixture was created, checked, removed and indep
 The prototype records the exact object key, multipart upload ID, part number and URL admission deadline before a caller signs/returns a part URL. No signed URL or bearer is stored. Issued capabilities remain uncertain and block write settlement even after their deadline; a lost response or client completion cannot clear them. New reservations are rejected after fencing. Tests cover exact custody, invalid targets/deadlines, fence ordering and expiry without settlement.
 
 This is preparatory bookkeeping, not a completed direct-upload freeze: production part-URL issuance is not wired to it, and a separately reviewed storage reconciliation must establish multipart quiescence before any clearance. The prototype schema remains outside the migration journal and the snapshot minimiser still refuses unreviewed schemas.
+
+### Delayed sign-in after minimisation
+
+Account-session creation now checks the same issuer/subject digest retained by the snapshot minimiser before both profile insertion/update and session insertion, inside D1. This prevents a previously verified callback from recreating an identity whose original provider columns have been anonymised. Actual-schema tests cover a tombstone alone, an inconsistent duplicate active row and unrelated login. No erasure is performed by this guard; full executor and restore reconciliation remain required.

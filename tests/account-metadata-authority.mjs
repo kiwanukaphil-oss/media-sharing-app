@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+import { providerIdentityDigest } from '../scripts/minimise-erased-snapshot.mjs';
 
 const bundle = await build({entryPoints:['lib/account-sessions.ts','lib/account-space-access.ts','lib/space-memberships.ts','lib/space-people.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
 const modules = await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
@@ -81,5 +82,21 @@ try {
   assert.equal((await database.prepare('SELECT revoked_at FROM person_invitations WHERE id=?').bind(invitation.id).first()).revoked_at,null);
   await assert.rejects(people.acceptPersonInvitation(database,recipient,invitation.token,now),/no longer available/);
   assert.equal((await database.prepare('SELECT accepted_at FROM person_invitations WHERE id=?').bind(invitation.id).first()).accepted_at,null);
+  // Use the actual minimiser's identity digest to prove a delayed callback cannot recreate erased
+  // profile fields, even if an inconsistent restore also contains the old active provider row.
+  const erasedIdentity={issuer:settings.issuer,subject:'erased-callback',displayName:'Must not return',
+    verifiedEmail:'erased@example.test',authenticatedAt:now,credentialsChangedAt:0};
+  await database.prepare("INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at,disabled_at) VALUES(?,'urn:relay:erased',?,'Deleted member','',?,?)")
+    .bind(crypto.randomUUID(),providerIdentityDigest(erasedIdentity.issuer,erasedIdentity.subject),now,now).run();
+  const countBefore=(await database.prepare('SELECT COUNT(*) AS n FROM people').first()).n;
+  await assert.rejects(accounts.createAccountSession(database,settings,erasedIdentity,null,now),/unavailable/);
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM people').first()).n,countBefore);
+  const inconsistentId=crypto.randomUUID();
+  await database.prepare('INSERT INTO people(id,issuer,subject,display_name,verified_email,created_at) VALUES(?,?,?,?,?,?)')
+    .bind(inconsistentId,settings.issuer,erasedIdentity.subject,'Unchanged','old@example.test',now).run();
+  await assert.rejects(accounts.createAccountSession(database,settings,erasedIdentity,null,now),/unavailable/);
+  assert.equal((await database.prepare('SELECT display_name FROM people WHERE id=?').bind(inconsistentId).first()).display_name,'Unchanged');
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM account_sessions WHERE person_id=?').bind(inconsistentId).first()).n,0);
+  assert.ok((await accounts.createAccountSession(database,settings,{...erasedIdentity,subject:'unrelated-current'},null,now)).token);
   console.log('PASS: actual D1 attribution/claim races, current profile attribution, recovery-bound people writes and unchanged rejected effects.');
 } finally {await runtime.dispose();}

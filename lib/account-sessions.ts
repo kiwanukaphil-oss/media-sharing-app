@@ -51,19 +51,25 @@ export async function createAccountSession(database: D1Database, settings: Auth0
   const sessionId = crypto.randomUUID();
   const binding = await configurationHash(settings);
   const previousHash = previousToken && validToken(previousToken) ? await digest(previousToken) : "";
+  // Match the independently reconciled snapshot tombstone format. A delayed verified callback must
+  // not recreate personal data after minimisation changed the original provider identity columns.
+  const identityDigest = await digest(JSON.stringify([identity.issuer, identity.subject]));
+  const notErased = "NOT EXISTS (SELECT 1 FROM people erased WHERE erased.issuer='urn:relay:erased' AND erased.subject=?)";
   const results = await database.batch([
     database.prepare(`INSERT INTO people (id, issuer, subject, display_name, verified_email, created_at, credentials_changed_at)
-      VALUES (?, ?, ?, ?, ?, ?, MAX(?, COALESCE((SELECT changed_at FROM recovery_watermarks WHERE issuer = ? AND subject = ?), 0))) ON CONFLICT(issuer, subject) DO UPDATE SET
+      SELECT ?, ?, ?, ?, ?, ?, MAX(?, COALESCE((SELECT changed_at FROM recovery_watermarks WHERE issuer = ? AND subject = ?), 0))
+      WHERE ${notErased} ON CONFLICT(issuer, subject) DO UPDATE SET
       display_name = excluded.display_name, verified_email = excluded.verified_email,
       credentials_changed_at = MAX(people.credentials_changed_at, excluded.credentials_changed_at) WHERE people.disabled_at IS NULL`)
-      .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now, identity.credentialsChangedAt, identity.issuer, identity.subject),
+      .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now, identity.credentialsChangedAt, identity.issuer, identity.subject, identityDigest),
     database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE revoked_at IS NULL AND person_id IN
       (SELECT id FROM people WHERE issuer = ? AND subject = ?) AND authenticated_at <
       (SELECT credentials_changed_at FROM people WHERE issuer = ? AND subject = ?)` )
       .bind(now, identity.issuer, identity.subject, identity.issuer, identity.subject),
     database.prepare(`INSERT INTO account_sessions (id, person_id, token_hash, configuration_hash, created_at, expires_at, session_mode, provider_session_id, authenticated_at)
-      SELECT ?, id, ?, ?, ?, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL AND credentials_changed_at <= ?`)
-      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.authenticatedAt, identity.issuer, identity.subject, identity.authenticatedAt),
+      SELECT ?, id, ?, ?, ?, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL
+      AND credentials_changed_at <= ? AND ${notErased}`)
+      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.authenticatedAt, identity.issuer, identity.subject, identity.authenticatedAt, identityDigest),
     database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE token_hash = ? AND configuration_hash = ?
       AND revoked_at IS NULL AND EXISTS (SELECT 1 FROM account_sessions WHERE id = ?)`)
       .bind(now, previousHash, binding, sessionId),

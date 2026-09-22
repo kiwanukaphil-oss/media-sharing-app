@@ -859,3 +859,9 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Bound request reads to 10 seconds and verify stalled-body cancellation without a database mutation.
 - [x] Pass actual built-Worker enabled-route checks, disabled-route/account regressions, TypeScript, focused lint and production build. Add enabled-route coverage to hosted CI.
 - [ ] Deploy/activate only with the reviewed complete protocol schema, separate secret, writer configuration and hosted coordinated-backup verification. Existing live release and scheduled backup are unchanged.
+
+## 22 September 2026 - Erased identity sign-in protection
+
+- [x] Atomically deny profile/session creation when the verified issuer/subject matches the minimiser's retained identity digest. A delayed callback cannot recreate personal fields after anonymisation.
+- [x] Test the shared digest format, absent original profile, inconsistent old active profile, unchanged rejected fields and unrelated successful login against actual D1. TypeScript, focused lint and production build pass.
+- [ ] Complete release verification and deployment; no real identity is erased by this change.
