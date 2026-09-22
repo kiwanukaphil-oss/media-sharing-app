@@ -13,7 +13,10 @@ export function validateHeartbeatUrl(value) {
 // A copied snapshot, stale verification, or failed integrity check must never reset the missed-backup timer.
 export function requireFreshVerification(report, snapshotId, now = Date.now()) {
   const age = now - Date.parse(report.verifiedAt);
-  if (report.status !== 'verified' || report.snapshotId !== snapshotId || !Number.isFinite(age) || age < 0 || age > 3600000 ||
+  const incremental=report.status==='incremental-verified'&&report.verificationMode==='incremental';
+  const fullAge=now-Date.parse(report.fullVerifiedAt);
+  if(incremental&&(!Number.isFinite(fullAge)||fullAge<0||fullAge>35*86400000||![report.downloadedBytes,report.carriedBytes].every(value=>Number.isSafeInteger(value)&&value>=0)))throw new Error('Incremental backup evidence is incomplete or full verification is overdue.');
+  if ((!incremental && report.status !== 'verified') || report.snapshotId !== snapshotId || !Number.isFinite(age) || age < 0 || age > 3600000 ||
       report.databaseIntegrity !== 'ok' || report.foreignKeyViolations !== 0 ||
       report.oldDeviceSessionsRevoked !== true || report.oldInvitationsInvalidated !== true ||
       !Number.isSafeInteger(report.originals) || report.originals < 0 || !/^[a-f0-9]{64}$/.test(report.manifestDigest?.sha256 ?? '')) {

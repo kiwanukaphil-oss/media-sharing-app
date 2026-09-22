@@ -7,13 +7,15 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { authorizeBackupRole, downloadBackupFile, hashFile, operationsDirectory,
+import { authorizeBackupRole, downloadBackupFile, verifyBackupStream, inspectVerifiedBackupVersion, hashBoundedStream, uploadBackupStream, hashFile, operationsDirectory,
   runPrivateCommand, storageRequest, uploadBackupFile, validateFileDigest, backupBucketId } from './backup-storage.mjs';
 import { readEncryptedBackupIndex } from './backup-index.mjs';
 import { exportReadOnlyDatabase } from './backup-d1-readonly.mjs';
 import { backupCoordinationTransport, runCoordinatedBackup } from './backup-closure-client.mjs';
 import { backupCoordinationVariables } from './backup-coordination-config.mjs';
 import { persistBackupCompletionReceipt } from './backup-completion-receipt.mjs';
+
+import { loadVerificationEvidence, verificationMode, matchingVerifiedObject, saveVerificationEvidence } from './backup-verification-evidence.mjs';
 
 const backupRoot = resolve(operationsDirectory, 'backups');
 const source = JSON.parse(await readFile('deploy/cloudflare.json', 'utf8'));
@@ -166,6 +168,18 @@ async function downloadSourceOriginal(objectKey, destination) {
     `${source.bucket_name}/${objectKey}`, '--remote', '--file', destination, '--config', 'deploy/backup-source.json']);
 }
 
+// Source credentials remain restricted to R2 reads; the independent verifier never receives them.
+async function sourceOriginalStream(objectKey) {
+  const { AwsClient } = await import('aws4fetch');
+  const accessKeyId=process.env.R2_READ_ACCESS_KEY_ID,secretAccessKey=process.env.R2_READ_SECRET_ACCESS_KEY;
+  if(!accessKeyId||!secretAccessKey)throw new Error('Source-read credentials are incomplete.');
+  const client=new AwsClient({accessKeyId,secretAccessKey,region:'auto',service:'s3'});
+  const key=objectKey.split('/').map(encodeURIComponent).join('/');
+  const response=await fetch(await client.sign(`https://${source.account_id}.r2.cloudflarestorage.com/${source.bucket_name}/${key}`,{method:'GET'}),{redirect:'error',signal:AbortSignal.timeout(6*3600000)});
+  if(!response.ok)throw new Error(`Source original download failed (HTTP ${response.status}).`);
+  return response.body;
+}
+
 // Export metadata first, copy every referenced ready original including Trash, and publish the manifest last.
 async function createRecoverySnapshot() {
   const coordinationVariables = backupCoordinationVariables(JSON.parse(await readFile('deploy/backup-coordination.json', 'utf8')));
@@ -202,15 +216,17 @@ async function copyRecoverySnapshot(snapshotId,directory,coordination) {
   for (let position = 0; position < originals.length; position++) {
     const original = originals[position];
     const originalPath = join(directory, 'source', `${position}.bin`);
-    await downloadSourceOriginal(original.object_key, originalPath);
-    validateFileDigest(await hashFile(originalPath), original);
+    const streaming=Boolean(process.env.R2_READ_ACCESS_KEY_ID);
+    const sourceBody=streaming?await sourceOriginalStream(original.object_key):null;
+    if(!streaming){await downloadSourceOriginal(original.object_key, originalPath);validateFileDigest(await hashFile(originalPath), original);}
     let backup = index.get(original.sha256);
     if (backup) {
       validateFileDigest(backup, original);
       if (backup.fileName !== `relay/originals/${original.sha256}`) throw new Error('Cached object destination mismatch.');
+      if(sourceBody)await hashBoundedStream(sourceBody,original);
       reusedOriginals++;
     } else {
-      backup = await uploadBackupFile(writer, originalPath, `relay/originals/${original.sha256}`);
+      backup = sourceBody?await uploadBackupStream(writer,sourceBody,`relay/originals/${original.sha256}`,original):await uploadBackupFile(writer, originalPath, `relay/originals/${original.sha256}`);
       index.set(original.sha256, backup);
       uploadedOriginals++;
     }
@@ -233,8 +249,11 @@ async function copyRecoverySnapshot(snapshotId,directory,coordination) {
 }
 
 // Fetch the cloud manifest, SQL, and every pinned original into a new directory; use no source files as restore input.
-async function verifyRecoverySnapshot(snapshotId) {
+export async function verifyRecoverySnapshot(snapshotId,requestedMode="full") {
   const started = Date.now();
+  const prior=requestedMode==="auto"?await loadVerificationEvidence(started):null;
+  const mode=verificationMode(requestedMode,prior,started),verifiedObjects=new Map();
+  let downloadedBytes=0,carriedBytes=0;
   const directory = join(backupRoot, validateSnapshotId(snapshotId));
   const restoreDirectory = join(directory, `restore-${randomUUID()}`);
   await mkdir(restoreDirectory, { recursive: true });
@@ -267,18 +286,24 @@ async function verifyRecoverySnapshot(snapshotId) {
         throw new Error('Database and original-file manifest disagree.');
       }
       validateFileDigest(object.backup, original);
-      await downloadBackupFile(reader, object.backup, join(restoreDirectory, `${position}.bin`));
-      console.log(`Restored original ${position + 1}/${originals.length}: SHA-256 and size match.`);
+      const already=verifiedObjects.get(object.backup.fileId),old=mode==='incremental'?matchingVerifiedObject(object.backup,prior):null;
+      if(already){validateFileDigest(already,object.backup);}
+      else if(old){await inspectVerifiedBackupVersion(reader,object.backup);verifiedObjects.set(old.fileId,old);carriedBytes+=original.size;}
+      else{await verifyBackupStream(reader,object.backup);downloadedBytes+=original.size;verifiedObjects.set(object.backup.fileId,{...object.backup,verifiedAt:new Date().toISOString()});}
+      console.log(`Verified original ${position+1}/${originals.length}: ${old?'prior checksum and current immutable-version presence':'streamed SHA-256 and size'}.`);
     }
     sanitizeRestoredAccess(database);
-    const report = { status: 'verified', snapshotId, verifiedAt: new Date().toISOString(),
+    const verifiedAt=new Date().toISOString(),fullVerifiedAt=mode==='full'?verifiedAt:prior.fullVerifiedAt;
+    const evidence={formatVersion:1,bucketId:backupBucketId,snapshotId,mode,verifiedAt,fullVerifiedAt,objects:[...verifiedObjects.values()]};
+    await saveVerificationEvidence(evidence);
+    const report = { status: mode==='full'?'verified':'incremental-verified', verificationMode:mode, fullVerifiedAt, downloadedBytes, carriedBytes, snapshotId, verifiedAt,
       originals: originals.length, originalBytes: originals.reduce((sum, original) => sum + original.size, 0),
       tableCounts: tableCounts(database), databaseIntegrity: 'ok', foreignKeyViolations: 0,
       oldDeviceSessionsRevoked: true, oldInvitationsInvalidated: true, previewReferencesReset: true,
       durationSeconds: Math.round((Date.now() - started) / 1000), manifestDigest: await hashFile(manifestPath),
       restoreDirectory, localCleanupCandidates: ['source files and restore copies; retain until operator approves cleanup'] };
     await writeFile(join(directory, 'restore-verification.json'), JSON.stringify(report, null, 2), { mode: 0o600 });
-    if (process.env.GITHUB_ACTIONS === 'true') console.log('Independent backup restoration and access revocation verified.');
+    if (process.env.GITHUB_ACTIONS === 'true') console.log(`Independent ${mode} verification and restored access quarantine passed; ${downloadedBytes} bytes reread, ${carriedBytes} bytes carried from authenticated evidence.`);
     else console.log(JSON.stringify(report));
   } finally { database.close(); }
 }
@@ -286,7 +311,7 @@ async function verifyRecoverySnapshot(snapshotId) {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     if (process.argv[2] === 'create') await createRecoverySnapshot();
-    else if (process.argv[2] === 'verify') await verifyRecoverySnapshot(process.argv[3]);
+    else if (process.argv[2] === 'verify') await verifyRecoverySnapshot(process.argv[3],process.argv[4]||'full');
     else throw new Error('Usage: node scripts/relay-backup.mjs create | verify <snapshot-id>');
   } catch (error) {
     console.error(`Backup operation stopped: ${error.message}`);

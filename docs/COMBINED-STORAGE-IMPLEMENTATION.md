@@ -1,0 +1,26 @@
+# Combined capacity and scalable backup verification
+
+## Approved scope
+
+100 GiB shared between the existing personal and shared libraries; additional $5/month planning budget; daily backups with independent new-version checks and monthly full byte verification. Budget is not a provider-enforced billing cap. Keep all file audiences, existing clients, retained originals and deletion gates intact.
+
+## Implementation evidence
+
+- [x] Validated private `RELAY_STORAGE_POOL` configuration accepts exactly two distinct library IDs and a limit at most 100 GiB. Invalid configuration fails closed. Unlisted libraries retain existing limits.
+- [x] Same-statement pooled SQL reservations cover ordinary account/device uploads, previews, publication copies and prepared intake allowances. Disposable D1 verifies concurrent cross-library reservations, exact boundary, Trash/previews and common-owner privacy.
+- [x] Storage UI labels the combined allowance. Only a live signed-in owner of both libraries gets the aggregate count; all filenames/upload lists remain library-scoped.
+- [x] Hosted backup originals now stream from R2 to bounded B2 parts, and independent original verification hashes a stream instead of retaining large disk copies. Small files use ordinary B2 upload; larger files have at least two parts. Tests cover corruption, incorrect object versions and 16 MiB boundaries.
+- [x] Daily incremental verification restores/checks SQL and manifest, independently verifies new versions, and checks exact old-version presence. Checksums carried forward come from AES-GCM authenticated, bucket/run-bound evidence encrypted using a verifier-only secret. Public GitHub artifacts contain ciphertext only. New versions never inherit old checksums.
+- [x] Monthly rollover, missing history or explicit full dispatch requires a full reread. Evidence older than 35 days cannot be reused. Full reports retain `verified`; incremental reports use `incremental-verified`, preserving the distinction for release/recovery gates.
+- [x] Backup heartbeat accepts only complete fresh reports with bounded full-verification age. Workflow tests preserve read/write credential separation and main-only entry; artifact history requires read-only Actions permission only in the verifier.
+- [ ] Finish compiled Worker/API and browser regression; hosted source checks.
+- [ ] Inspect Backblaze billing/caps after owner sign-in, then verify a real full baseline and subsequent incremental run. Do not bypass the existing download-cap failure or describe copied snapshots as verified.
+- [ ] Activate the private pool only on a schema-0020 compatible runtime; verify live both-library totals and enforcement. No new migration required.
+
+## Limits and operations
+
+The hosted copy and verifier jobs have six-hour ceilings; originals use bounded buffers and do not accumulate on runner disk. This removes the previous total-capacity/disk mismatch but is not a measured 100 GiB provider throughput benchmark. Metadata exports retain their existing bounded 8 MiB guard. Failure or missing/stale monthly evidence must alert; it must never produce a success heartbeat. Failed multipart backups remain for operator review under the existing no-automatic-purge policy.
+
+The verification secret lives only in `relay-backup-verify`; loss or rotation requires a fresh full baseline. It is not an access credential. The authenticated evidence is tied to a successful main-branch execution of the exact backup workflow, immutable artifact and run ID. The new artifact is retained for 40 days; the maximum reusable evidence age is 35 days. Backups remain retained, so churn and extra restore runs can exceed the approved planning estimate and require review.
+
+Pool configuration is operator-owned and never a user-provided request field. It controls billing only. Restore still revokes sessions, memberships and historical delivery links. Removing the pool configuration restores old per-space limits and may leave a personal library over its old allowance; never delete files to force it under that limit. A rollback to code without pool enforcement is not safe after activation; prefer a forward fix or pause admissions.

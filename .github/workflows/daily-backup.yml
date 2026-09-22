@@ -1,6 +1,12 @@
 name: Daily verified backup
 on:
   workflow_dispatch:
+    inputs:
+      verification:
+        description: "Full restore for release/recovery gates; auto uses daily incremental checks and monthly full verification"
+        type: choice
+        options: [full, auto]
+        default: full
   schedule:
     # 00:00 UTC = 03:00 Africa/Nairobi. GitHub schedules are best effort.
     - cron: '0 0 * * *'
@@ -40,7 +46,7 @@ jobs:
     needs: inventory
     runs-on: ubuntu-latest
     environment: relay-backup-copy
-    timeout-minutes: 75
+    timeout-minutes: 360
     outputs:
       snapshot_id: ${{ steps.backup.outputs.snapshot_id }}
     steps:
@@ -67,10 +73,13 @@ jobs:
           RELAY_BACKUP_INDEX_FILE: work/backup-index.enc
         run: node --disable-warning=ExperimentalWarning scripts/relay-backup.mjs create
   verify:
+    permissions:
+      contents: read
+      actions: read
     needs: copy
     runs-on: ubuntu-latest
     environment: relay-backup-verify
-    timeout-minutes: 35
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -78,11 +87,39 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
+      - name: Select authenticated previous verification
+        id: previous
+        if: github.event_name == 'schedule' || inputs.verification == 'auto'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/previous-backup-verification.mjs
+      - name: Download encrypted previous verification
+        if: steps.previous.outputs.run_id != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: independent-verification-evidence
+          path: work/prior
+          run-id: ${{ steps.previous.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Prepare private verification output
+        run: mkdir -p work
       - name: Restore and verify from Backblaze
         env:
           B2_READER_KEY_JSON: ${{ secrets.B2_READER_KEY_JSON }}
           SNAPSHOT_ID: ${{ needs.copy.outputs.snapshot_id }}
-        run: node --disable-warning=ExperimentalWarning scripts/relay-backup.mjs verify "$SNAPSHOT_ID"
+          BACKUP_VERIFICATION_KEY: ${{ secrets.BACKUP_VERIFICATION_KEY }}
+          RELAY_PREVIOUS_VERIFICATION_RUN: ${{ steps.previous.outputs.run_id }}
+          RELAY_PREVIOUS_VERIFICATION_FILE: ${{ steps.previous.outputs.run_id != '' && 'work/prior/verification.enc' || '' }}
+          RELAY_VERIFICATION_OUTPUT: work/verification.enc
+          VERIFICATION_MODE: ${{ github.event_name == 'schedule' && 'auto' || inputs.verification || 'full' }}
+        run: node --disable-warning=ExperimentalWarning scripts/relay-backup.mjs verify "$SNAPSHOT_ID" "$VERIFICATION_MODE"
+      - name: Retain encrypted independent verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: independent-verification-evidence
+          path: work/verification.enc
+          retention-days: 40
+          if-no-files-found: error
       - name: Report verified success
         env:
           BETTER_STACK_BACKUP_HEARTBEAT_URL: ${{ secrets.BETTER_STACK_BACKUP_HEARTBEAT_URL }}

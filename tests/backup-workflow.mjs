@@ -16,7 +16,8 @@ test('backup secrets cannot be reached by pull request or off-main entry jobs', 
 test('upload runner never receives the restore reader and verification never receives source or write access', () => {
   const copy = JSON.stringify(workflow.jobs.copy);
   const verify = JSON.stringify(workflow.jobs.verify);
-  assert.doesNotMatch(copy, /B2_READER_KEY_JSON/);
+  assert.doesNotMatch(copy, /B2_READER_KEY_JSON|BACKUP_VERIFICATION_KEY/);
+  assert.doesNotMatch(JSON.stringify(workflow.jobs.inventory), /BACKUP_VERIFICATION_KEY/);
   assert.match(copy, /RELAY_BACKUP_COORDINATION_SECRET/);
   assert.doesNotMatch(verify, /RELAY_BACKUP_COORDINATION_SECRET/);
   assert.doesNotMatch(verify, /B2_WRITER_KEY_JSON|CLOUDFLARE_D1_READ_TOKEN|R2_READ_SECRET_ACCESS_KEY/);
@@ -28,7 +29,10 @@ test('upload runner never receives the restore reader and verification never rec
 test('only encrypted inventory is uploaded and third-party actions are pinned', () => {
   const steps = Object.values(workflow.jobs).flatMap(job => job.steps);
   const uploads = steps.filter(step => step.uses?.startsWith('actions/upload-artifact@'));
-  assert.equal(uploads.length, 1);
+  assert.equal(uploads.length, 2);
+  assert.equal(uploads[1].with.path, "work/verification.enc");
+  assert.equal(uploads[1].with.name, "independent-verification-evidence");
+  assert.deepEqual(workflow.jobs.verify.permissions, { contents: "read", actions: "read" });
   assert.equal(uploads[0].with.path, 'work/backup-index.enc');
   assert.equal(uploads[0].with['retention-days'], 1);
   for (const step of steps.filter(step => step.uses)) assert.match(step.uses, /@[a-f0-9]{40}$/);

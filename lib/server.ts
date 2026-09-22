@@ -1,3 +1,4 @@
+import { storageQuota } from "./storage-pool";
 import { resourceAudienceAuthority, newAssetAudienceAuthority, mediaOperationAuthority } from "./asset-scope-authority";
 import { env } from "cloudflare:workers";
 import { AwsClient } from "aws4fetch";
@@ -83,7 +84,7 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
   return device;
 }
 export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number; revision: number; access_scope_id: string | null };
-export function spaceLimitBytes(device: ActiveDevice) { return device.storage_limit_bytes ?? 100 * 1024 * 1024 * 1024; }
+export function spaceLimitBytes(device: ActiveDevice) { return storageQuota(device.space_id, device.storage_limit_bytes ?? 100 * 1024 ** 3).limit; }
 // Byte-producing operations need current upload permission before storage dispatch or URL signing.
 export async function requireUploadAccess(device: ActiveDevice) {
   const authority = transferAuthority(device);
@@ -150,13 +151,14 @@ export async function initializeUpload(device: ActiveDevice, input: z.infer<type
   });
   try {
     const authority = transferAuthority(device);
+    const quota = storageQuota(device.space_id, spaceLimitBytes(device));
     const reservation = database().prepare(`INSERT INTO media (id, space_id, device_id, name, mime, size, sha256, category, object_key, upload_id, part_size, status, created_at, original_name, captured_at, upload_batch, access_scope_id)
       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?, ?, ?
-      WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + ? <= ?
+      WHERE (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE ${quota.sql}) + ? <= ?
       AND (? IS NULL OR EXISTS (SELECT 1 FROM albums WHERE id = ? AND space_id = ? AND access_scope_id IS ? AND deleted_at IS NULL AND archived_at IS NULL))
       AND (? IS NULL OR EXISTS (SELECT 1 FROM album_sections WHERE album_id = ? AND id = ? AND deleted_at IS NULL))
       AND ${authority.sql} AND ${scopeAuthority.sql}`)
-      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, scopeId, device.space_id, input.size, spaceLimitBytes(device), input.albumId || null, input.albumId || null, device.space_id, scopeId, input.sectionId || null, input.albumId || null, input.sectionId || null,...authority.bindings,...scopeAuthority.bindings);
+      .bind(input.id, device.space_id, device.id, input.name, input.mime, input.size, input.sha256, input.category, key, upload.uploadId, PART_SIZE, Date.now(), input.name, input.capturedAt || null, input.uploadBatch || null, scopeId, ...quota.bindings, input.size, quota.limit, input.albumId || null, input.albumId || null, device.space_id, scopeId, input.sectionId || null, input.albumId || null, input.sectionId || null,...authority.bindings,...scopeAuthority.bindings);
     const statements = [reservation];
     if (input.albumId) statements.push(database().prepare("INSERT INTO album_media (album_id, media_id, section_id) SELECT ?, id, ? FROM media WHERE id = ? AND space_id = ?").bind(input.albumId, input.sectionId || null, input.id, device.space_id));
     const [reserved] = await database().batch(statements);

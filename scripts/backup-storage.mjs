@@ -179,3 +179,64 @@ export async function downloadBackupFile(session, record, destination) {
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination, { flags: 'wx', mode: 0o600 }));
   validateFileDigest(await hashFile(destination), record);
 }
+
+// Verify large originals with bounded memory and no runner-disk copy; actual bytes, not provider metadata, establish integrity.
+export async function verifyBackupStream(session,record,request=fetch) {
+  if(!record.fileName.startsWith(backupPrefix))throw new Error('Restore reference outside backup prefix.');
+  const url=new URL('/b2api/v4/b2_download_file_by_id',session.downloadUrl);url.searchParams.set('fileId',record.fileId);
+  const response=await request(url,{headers:{Authorization:session.token},redirect:'error',signal:AbortSignal.timeout(6*3600000)});
+  if(!response.ok)throw await restoreDownloadError(response);
+  if(decodeURIComponent(response.headers.get('x-bz-file-name')||'')!==record.fileName||response.headers.get('x-bz-file-id')!==record.fileId)throw new Error('Restore returned a different object version.');
+  return hashBoundedStream(response.body,record);
+}
+
+// A carried checksum still needs today's independent proof that the exact immutable version exists.
+export async function inspectVerifiedBackupVersion(session,record) {
+  const info=await storageRequest(session,'b2_get_file_info',{fileId:record.fileId});
+  if(info.fileId!==record.fileId||info.fileName!==record.fileName||info.bucketId!==backupBucketId||info.action!=='upload'||
+    Number(info.contentLength)!==record.size||info.fileInfo?.sha256!==record.sha256||info.serverSideEncryption?.mode!=='SSE-B2')throw new Error('Previously verified backup version is unavailable or changed.');
+}
+
+export async function hashBoundedStream(body,expected) {
+  const hash=createHash('sha256');let size=0;
+  for await(const chunk of Readable.fromWeb(body)){
+    size+=chunk.length;if(size>expected.size)throw new Error('Original stream exceeds its recorded size.');hash.update(chunk);
+  }
+  const digest={size,sha256:hash.digest('hex')};validateFileDigest(digest,expected);return digest;
+}
+
+// Relay source streams into bounded multipart buffers; no original is accumulated on the hosted runner's disk.
+// Failed multipart versions remain for explicit operator review, consistent with the existing backup writer policy.
+export async function uploadBackupStream(session,body,fileName,expected) {
+  if(fileName!==`${backupPrefix}originals/${expected.sha256}`||expected.size<1||expected.size>100*1024**3)throw new Error('Unsupported backup original.');
+  if(expected.size<=16*1024*1024)return uploadSmallBackupStream(session,body,fileName,expected);
+  const started=await storageRequest(session,'b2_start_large_file',{bucketId:backupBucketId,fileName,contentType:'application/octet-stream',fileInfo:{sha256:expected.sha256},serverSideEncryption:{mode:'SSE-B2',algorithm:'AES256'}});
+  const destination=await storageRequest(session,'b2_get_upload_part_url',{fileId:started.fileId});validateBackblazeUrl(destination.uploadUrl);
+  const hashes=[],sha256=createHash('sha256');let size=0,filled=0;const buffer=Buffer.allocUnsafe(16*1024*1024);
+  const sendPart=async bytes=>{
+    const checksum=createHash('sha1').update(bytes).digest('hex');
+    const part=await readStorageResponse(await fetch(destination.uploadUrl,{method:'POST',headers:{Authorization:destination.authorizationToken,'Content-Length':String(bytes.length),'X-Bz-Part-Number':String(hashes.length+1),'X-Bz-Content-Sha1':checksum},body:bytes,redirect:'error',signal:AbortSignal.timeout(900000)}));
+    if(part.contentSha1!==checksum||Number(part.contentLength)!==bytes.length)throw new Error('Uploaded part verification failed.');hashes.push(checksum);
+  };
+  for await(const chunk of Readable.fromWeb(body)){
+    size+=chunk.length;if(size>expected.size)throw new Error('Source stream exceeds recorded size.');sha256.update(chunk);
+    for(let offset=0;offset<chunk.length;){const length=Math.min(buffer.length-filled,chunk.length-offset);chunk.copy(buffer,filled,offset,offset+length);filled+=length;offset+=length;if(filled===buffer.length){await sendPart(buffer);filled=0;}}
+  }
+  validateFileDigest({size,sha256:sha256.digest('hex')},expected);
+  if(filled)await sendPart(buffer.subarray(0,filled));
+  const result=await storageRequest(session,'b2_finish_large_file',{fileId:started.fileId,partSha1Array:hashes});
+  if(result.fileId!==started.fileId||result.fileName!==fileName||result.bucketId!==backupBucketId||result.action!=='upload'||Number(result.contentLength)!==size||result.serverSideEncryption?.mode!=='SSE-B2')throw new Error('Stream upload acknowledgement mismatch.');
+  return {fileId:result.fileId,fileName,size,sha256:expected.sha256};
+}
+
+// Small files use one ordinary upload: Backblaze large files require at least two parts.
+async function uploadSmallBackupStream(session,body,fileName,expected) {
+  const chunks=[];let size=0;
+  for await(const chunk of Readable.fromWeb(body)){size+=chunk.length;if(size>expected.size)throw new Error('Source stream exceeds recorded size.');chunks.push(chunk);}
+  const bytes=Buffer.concat(chunks),sha256=createHash('sha256').update(bytes).digest('hex'),sha1=createHash('sha1').update(bytes).digest('hex');
+  validateFileDigest({size,sha256},expected);
+  const destination=await storageRequest(session,'b2_get_upload_url',{bucketId:backupBucketId});validateBackblazeUrl(destination.uploadUrl);
+  const result=await readStorageResponse(await fetch(destination.uploadUrl,{method:'POST',headers:{Authorization:destination.authorizationToken,'Content-Type':'application/octet-stream','Content-Length':String(size),'X-Bz-File-Name':encodeURIComponent(fileName),'X-Bz-Content-Sha1':sha1,'X-Bz-Info-sha256':sha256,'X-Bz-Server-Side-Encryption':'AES256'},body:bytes,redirect:'error',signal:AbortSignal.timeout(900000)}));
+  if(result.fileName!==fileName||result.bucketId!==backupBucketId||result.action!=='upload'||result.contentSha1!==sha1||Number(result.contentLength)!==size||result.serverSideEncryption?.mode!=='SSE-B2')throw new Error('Stream upload acknowledgement mismatch.');
+  return {fileId:result.fileId,fileName,size,sha256};
+}

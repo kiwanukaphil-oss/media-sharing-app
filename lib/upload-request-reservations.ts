@@ -1,3 +1,4 @@
+import { storageQuota } from "./storage-pool";
 import {z} from "zod";
 import {AccountError,type AccountSession} from "./account-sessions";
 import type {AccountSpaceAccess} from "./account-space-access";
@@ -9,6 +10,7 @@ import {intakeIssuerAuthority,intakeRecipientAuthority} from "./upload-request-a
 // This preparation has no route; the draft must already contain reviewed immutable destination/limits.
 export async function activateUploadRequest(database:D1Database,owner:AccountSpaceAccess,id:string,spaceLimit:number,now=Date.now()) {
   if(!Number.isSafeInteger(spaceLimit)||spaceLimit<1)throw new AccountError(409,"Storage capacity is unavailable.");
+  const quota=storageQuota(owner.space_id,spaceLimit);
   const live=transferAuthority(owner,now,true),issuer=intakeIssuerAuthority(now,"draft");
   const guard=`upload_requests.id=? AND upload_requests.space_id=? AND upload_requests.issuer_membership_id=
     (SELECT membership_id FROM account_space_actors WHERE device_id=?) AND ${issuer.sql} AND ${live.sql}`;
@@ -22,8 +24,8 @@ export async function activateUploadRequest(database:D1Database,owner:AccountSpa
         'intake-allowance:'||id,0,'collecting',?,access_scope_id FROM upload_requests WHERE ${guard}
       AND EXISTS(SELECT 1 FROM devices d WHERE d.id=upload_requests.id AND d.space_id=upload_requests.space_id AND d.token_hash='intake-attribution:'||upload_requests.id AND d.expires_at=0)
       AND (SELECT COUNT(*) FROM upload_requests other WHERE other.space_id=upload_requests.space_id AND other.state='open' AND other.revoked_at IS NULL AND other.expires_at>?)<10
-      AND (SELECT COALESCE(SUM(size+preview_size),0) FROM media WHERE space_id=upload_requests.space_id)+max_bytes<=?`)
-      .bind("0".repeat(64),now,...values,now,spaceLimit),
+      AND (SELECT COALESCE(SUM(size+preview_size),0) FROM media WHERE ${quota.sql})+max_bytes<=?`)
+      .bind("0".repeat(64),now,...values,now,...quota.bindings,quota.limit),
     database.prepare(`UPDATE upload_requests SET state='open',revision=revision+1 WHERE ${guard}
       AND EXISTS(SELECT 1 FROM media m WHERE m.id=upload_requests.id AND m.space_id=upload_requests.space_id AND m.device_id=upload_requests.id
         AND m.status='collecting' AND m.upload_id='intake-allowance:'||upload_requests.id AND m.size=upload_requests.max_bytes AND m.access_scope_id IS upload_requests.access_scope_id)`)

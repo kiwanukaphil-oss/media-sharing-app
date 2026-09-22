@@ -31,3 +31,11 @@ test('failed verification produces no outbound success request', async () => {
   }));
   assert.equal(requests, 0);
 });
+
+test('incremental heartbeat requires explicit mode and a recent full verification',()=>{
+ const incremental={...report,status:'incremental-verified',verificationMode:'incremental',fullVerifiedAt:verifiedAt,downloadedBytes:10,carriedBytes:100};
+ assert.doesNotThrow(()=>requireFreshVerification(incremental,'snapshot',Date.parse(verifiedAt)+1000));
+ assert.throws(()=>requireFreshVerification({...incremental,verificationMode:'full'},'snapshot',Date.parse(verifiedAt)));
+ assert.throws(()=>requireFreshVerification({...incremental,fullVerifiedAt:'2026-01-01'},'snapshot',Date.parse(verifiedAt)));
+ assert.throws(()=>requireFreshVerification({...incremental,downloadedBytes:-1},'snapshot',Date.parse(verifiedAt)));
+});

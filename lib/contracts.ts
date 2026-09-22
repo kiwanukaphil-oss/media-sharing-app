@@ -9,7 +9,7 @@ export type Album = { accessScopeId?: string | null; id: string; name: string; d
 export type AlbumSection = { id: string; albumId: string; name: string; position: number; count: number; coverMediaId?: string | null };
 export type RenameEntry = { id: string; name: string; expectedRevision: number };
 export type FeedPage = { items: MediaItem[]; nextCursor: string | null; counts: { all: number; original: number; final: number; trash: number }; total: number; role: LibraryRole };
-export type StorageUsage = { allScopeBilling?: boolean | number; used: number; reserved: number; trash: number; limit: number; uploads: { id: string; name: string; size: number; createdAt: number; deviceName: string; canCancel: boolean; publication?: boolean }[] };
+export type StorageUsage = { pooled?: boolean; poolUsed?: number; allScopeBilling?: boolean | number; used: number; reserved: number; trash: number; limit: number; uploads: { id: string; name: string; size: number; createdAt: number; deviceName: string; canCancel: boolean; publication?: boolean }[] };
 export type DeviceRole = "owner" | "member";
 export type LibraryRole = DeviceRole | "editor" | "viewer" | "contributor";
 export function libraryRoleLabel(role: string) { return role === "owner" ? "Owner" : role === "editor" ? "Editor" : role === "viewer" ? "Viewer" : role === "contributor" ? "Contributor" : role === "member" ? "Member" : "Unavailable"; }
