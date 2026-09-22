@@ -14,6 +14,7 @@ const item = { id: crypto.randomUUID(), name: 'Library original.jpg', mime: 'ima
 const requests = [];
 const errors = [];
 let forbidden = false;
+let commonOwner = true;
 let activeSpace = space;
 let uploadCompleted = false;
 let cancelledDestination = null;
@@ -33,12 +34,13 @@ await page.route('**/api/**', async route => {
   if (forbidden) return route.fulfill({ status: 403, json: { error: 'This library is not available to your account.' } });
   if (url.pathname === '/api/feed') return route.fulfill({ json: { items: [item], total: 1, nextCursor: null, role: 'owner', counts: { all: 1, original: 1, final: 0, trash: 0 } } });
   if (url.pathname === '/api/albums') return route.fulfill({ json: { albums: [], sections: [] } });
-  if (url.pathname === '/api/storage') return route.fulfill({ json: { used: 4, reserved: 0, trash: 0, limit: 100000, uploads: [] } });
+  if (url.pathname === '/api/storage') return route.fulfill({ json: { used: 4, reserved: 0, trash: 0, limit: 100 * 1024 ** 3, pooled: true, ...(commonOwner ? { poolUsed: 30 * 1024 ** 3 } : {}), uploads: [] } });
   if (url.pathname === '/api/uploads') return route.fulfill({ json: { id: route.request().postDataJSON().id, status: 'uploading', partSize: 16777216, uploadId: 'fixture-upload' } });
   if (/\/uploads\/.*\/part$/.test(url.pathname)) return route.fulfill({ json: { url: `/api/uploads/fixture/bytes/1?space=${activeSpace}` } });
   if (url.pathname.endsWith('/bytes/1')) return route.fulfill({ headers: { ETag: 'fixture-etag' }, body: '{}' });
   if (url.pathname.endsWith('/complete')) { uploadCompleted = true; return route.fulfill({ json: { ready: true } }); }
   if (/\/media\/.*\/(thumbnail|preview)$/.test(url.pathname)) return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nS8AAAAASUVORK5CYII=', 'base64') });
+  if(url.pathname==='/api/activity')return route.fulfill({json:{events:[],next:null}});
   throw new Error('Unexpected route: ' + url.pathname);
 });
 try {
@@ -47,6 +49,16 @@ try {
   await expect(page.getByRole('link', { name: 'Account', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pair a device' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Connected devices' })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Storage/ }).click();
+  await expect(page.getByRole('heading', { name: 'Your combined storage' })).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Combined storage used' })).toHaveAttribute('value', String(30 * 1024 ** 3));
+  await expect(page.getByText('30.0 GB of 100.0 GB used across your personal and shared spaces.', { exact: false })).toBeVisible();
+  await page.keyboard.press('Escape');
+  commonOwner = false;
+  await page.getByRole('button', { name: /^Storage/ }).click();
+  await expect(page.getByRole('progressbar', { name: 'This library storage used' })).toHaveAttribute('value', '4');
+  await expect(page.getByRole('progressbar', { name: 'Combined storage used' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await page.getByRole('searchbox', { name: 'Search filenames' }).fill('original');
   await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('original');
   assert.equal(new URL(page.url()).searchParams.get('space'), space);
@@ -54,7 +66,7 @@ try {
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   assert.ok(requests.some(url => url.pathname.endsWith('/thumbnail')));
-  await page.locator('input[type="file"]').first().setInputFiles({ name: 'Scoped upload.txt', mimeType: 'text/plain', buffer: Buffer.from('Preserve this destination') });
+  await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'Scoped upload.txt', mimeType: 'text/plain', buffer: Buffer.from('Preserve this destination') });
   await expect.poll(() => uploadCompleted).toBe(true);
   await mkdir('.sites-runtime/account-library', { recursive: true });
   await page.screenshot({ path: '.sites-runtime/account-library/desktop.png', fullPage: true });

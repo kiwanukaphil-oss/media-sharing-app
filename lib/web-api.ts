@@ -1,3 +1,4 @@
+import { storageQuota, readStoragePoolSummary } from "./storage-pool";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { libraryAction, requireAlbum } from "./library-api";
@@ -96,7 +97,7 @@ export async function readStorage(device: ActiveDevice) {
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
     (? <> 'viewer' AND (media.device_id = ? OR ? = 'owner' OR (? = 1 AND ? = 'editor'))) AS canCancel, (media.status = 'publishing') AS publication
     FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.role, device.id, device.role, device.authentication === "account" ? 1 : 0, device.role, device.space_id).all();
-  return Response.json({ ...usage, limit: spaceLimitBytes(device), uploads: uploads.results });
+  return Response.json({ ...usage, ...await readStoragePoolSummary(database(), device), limit: spaceLimitBytes(device), uploads: uploads.results });
 }
 
 // Previews are small, separate JPEG objects. An original is never decoded or replaced here.
@@ -117,10 +118,11 @@ async function writeThumbnail(request: Request, device: ActiveDevice, id: string
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   if (size < 4 || bytes[0] !== 255 || bytes[1] !== 216 || bytes[size - 2] !== 255 || bytes[size - 1] !== 217) throw new ApiError(415, "Invalid JPEG preview.");
   const authority = transferAuthority(device);
+  const quota = storageQuota(device.space_id, spaceLimitBytes(device));
   const reserved = await database().prepare(`UPDATE media SET preview_size = ? WHERE id = ? AND status = 'ready' AND preview_ready = 0 AND preview_size = 0
     AND archived_at IS NULL AND ${authority.sql}
-    AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE space_id = ?) + ? <= ?`)
-    .bind(size, id,...authority.bindings,device.space_id, size, spaceLimitBytes(device)).run();
+    AND (SELECT COALESCE(SUM(size + preview_size),0) FROM media WHERE ${quota.sql}) + ? <= ?`)
+    .bind(size, id,...authority.bindings,...quota.bindings, size, quota.limit).run();
   if (!reserved.meta.changes) return Response.json({ ready: false });
   try {
     await storage.put(`${item.object_key}.preview.jpg`, bytes, { httpMetadata: { contentType: "image/jpeg" } });

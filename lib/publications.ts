@@ -1,3 +1,4 @@
+import { storageQuota } from "./storage-pool";
 import { AccountError } from "./account-sessions";
 import type { AccountSpaceAccess } from "./account-space-access";
 import type { ActiveDevice } from "./server";
@@ -41,6 +42,7 @@ export async function reservePublication(database: D1Database, source: AccountSp
   if (input.sectionId && !input.albumId) throw new AccountError(400, "Choose an album for this section.");
   const existing = await database.prepare("SELECT * FROM publications WHERE id = ?").bind(input.id).first<PublicationRow>();
   if (existing) { assertMatchingPublication(existing, source, input); return existing; }
+  const quota = storageQuota(destination.space_id, destinationLimit);
   const marker = `publication:${crypto.randomUUID()}`;
   const writeAuthority = transferAuthority(source, now);
   try {
@@ -51,13 +53,13 @@ export async function reservePublication(database: D1Database, source: AccountSp
           COALESCE(original.original_name, original.name), original.captured_at, CASE WHEN original.preview_ready = 1 THEN original.preview_size ELSE 0 END
         FROM media original WHERE original.id = ? AND original.space_id = ? AND original.revision = ? AND original.status = 'ready'
         AND original.archived_at IS NULL AND original.size <= ? AND ${publicationAuthority} AND ${destinationAvailable}
-        AND (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE space_id = ?) + original.size +
+        AND (SELECT COALESCE(SUM(size + preview_size), 0) FROM media WHERE ${quota.sql}) + original.size +
           CASE WHEN original.preview_ready = 1 THEN original.preview_size ELSE 0 END <= ? AND ${writeAuthority.sql}`)
         .bind(input.id, destination.space_id, destination.id, `${destination.space_id}/${input.id}/pending`, marker, now,
           input.sourceId, source.space_id, input.sourceRevision, MAX_PUBLICATION_BYTES,
           source.sessionId, source.personId, now, source.space_id, destination.space_id,
           input.albumId || null, input.albumId || null, destination.space_id, input.sectionId || null, input.sectionId || null, input.albumId || null,
-          destination.space_id, destinationLimit, ...writeAuthority.bindings),
+          ...quota.bindings, quota.limit, ...writeAuthority.bindings),
       database.prepare(`INSERT INTO publications (id, source_id, source_space_id, destination_space_id, person_id, source_revision, album_id, section_id, created_at)
         SELECT id, ?, ?, space_id, ?, ?, ?, ?, ? FROM media WHERE id = ? AND upload_id = ? AND status = 'publishing'`)
         .bind(input.sourceId, source.space_id, source.personId, input.sourceRevision, input.albumId || null, input.sectionId || null, now, input.id, marker),
