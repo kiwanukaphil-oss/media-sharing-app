@@ -30,7 +30,7 @@ export async function runScheduledIdentityMonitor(env,request=fetch,now=Date.now
     (async()=>evaluateIdentityOperations(await readMonitorRows(env.CLOUDFLARE_D1_READ_TOKEN,identityOperationsQuery,boundedRequest)))(),
     (async()=>{
       const people=await readMonitorRows(env.CLOUDFLARE_D1_READ_TOKEN,recoveryPeopleQuery,boundedRequest);
-      // Keep the combined job below Free Workers' external-subrequest budget, including report delivery.
+      // Retain the reviewed pilot bound after the Paid upgrade; a billing change does not validate expansion.
       if(people.length>40)throw new Error('Pilot monitor capacity requires review.');
       return inspectAuth0Recovery(people,{clientId:env.AUTH0_MONITOR_CLIENT_ID,clientSecret:env.AUTH0_MONITOR_CLIENT_SECRET},boundedRequest,now);
     })(),

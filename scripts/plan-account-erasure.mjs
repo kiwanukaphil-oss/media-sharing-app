@@ -3,8 +3,25 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { importSnapshot } from './relay-backup.mjs';
+import { inspectClosureSnapshot } from './inspect-closure-snapshot.mjs';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+
+// Include exact positively linked effects plus global backups without exposing unrelated people's
+// storage targets in this person's review. The full inventory digest detects changes outside scope;
+// unbound legacy work still blocks review because absence of a link is not proof of unrelated ownership.
+function inventoryClosureReferences(database, personId) {
+  const protocol = inspectClosureSnapshot(database);
+  if (!protocol.complete) return { present: protocol.present, complete: false, quiescenceProven: false };
+  const admissions = protocol.admissions.filter(row => row.globalScope || row.personIds.includes(personId));
+  const ids = new Set(admissions.map(row => row.id));
+  return { present: true, complete: true, quiescenceProven: false,
+    fullInventoryDigest: digest(protocol),
+    fences: protocol.fences.filter(row => row.person_id === personId), admissions,
+    effects: protocol.effects.filter(row => ids.has(row.admission_id)), backups: protocol.backups,
+    unboundLegacyAdmissions: protocol.unboundLegacyAdmissionIds.length,
+    orphanEffects: protocol.orphanEffectIds.length, orphanBackups: protocol.orphanBackupIds.length };
+}
 
 // Produce a private, read-only review inventory from one database snapshot, never an execution instruction.
 // Scope comes from personal_spaces ownership, not file authorship, membership role, email or library names.
@@ -57,8 +74,18 @@ export function planAccountErasure(database, requestId) {
   if (ownershipBlockers.length) blockers.push('shared-last-owner-handover-required');
   if (personalMedia.some(row => row.status !== 'ready')) blockers.push('personal-uploads-need-reconciliation');
   if (publications.some(row => !['ready','cancelled'].includes(row.phase))) blockers.push('publication-operations-need-reconciliation');
+  const closureReferences = inventoryClosureReferences(database, person);
+  if (!closureReferences.complete) blockers.push('closure-protocol-inventory-incomplete');
+  else {
+    if (closureReferences.admissions.some(row => row.unresolved) ||
+        closureReferences.effects.some(row => row.state !== 'acknowledged')) blockers.push('tracked-writes-need-current-reconciliation');
+    if (closureReferences.unboundLegacyAdmissions || closureReferences.orphanEffects || closureReferences.orphanBackups)
+      blockers.push('unattributed-protocol-records-require-review');
+    if (closureReferences.effects.length) blockers.push('tracked-storage-disposition-required');
+  }
   const inventory = { request, personalSpaces:spaces, personalMedia, publications, publicationAttempts:attempts,
-    accountActors:actors, linkedDevices, sharedMediaToPreserve:sharedMedia, backupContent, ownershipBlockers, metadataReferences };
+    accountActors:actors, linkedDevices, sharedMediaToPreserve:sharedMedia, backupContent, ownershipBlockers, metadataReferences,
+    closureReferences };
   return { formatVersion:1, mode:'review-only', executable:false, inventoryFingerprint:digest(inventory), blockers, inventory };
 }
 

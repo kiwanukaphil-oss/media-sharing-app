@@ -55,3 +55,10 @@ At **16:19 UTC**, the same optimised version passed a second real cron: **5 ms C
 At 08:19 UTC the same optimised version succeeded with no exceptions, 10 ms CPU and 3,290 ms wall time. Private bounded-tail evidence is retained in `.sites-runtime/operations/identity-monitor-tail-2026-09-22-0819.json`. This provides continued coverage, but not CPU headroom. The Workers plans dashboard explicitly marks **Free / Current plan**; the billable-usage period on the overview does not establish a paid subscription.
 
 Workers Paid is recommended at [a $5/month minimum plus usage](https://developers.cloudflare.com/workers/platform/pricing/) to remove dependence on the Free 10 ms CPU ceiling. A recurring-budget decision has been requested. No upgrade or purchase has occurred; expansion remains gated.
+
+
+## Approved Paid activation
+
+On 22 September the user explicitly approved $5/month plus usage, then separately approved the checkout terms and recurring charges. Cloudflare displayed **Purchase complete** and **subscription is active**. The earlier Free observations remain historical evidence. No further purchase is required for this transition.
+
+A 1,000 ms monitor CPU limit is prepared and passes Wrangler deployment dry run. This is substantially above the observed 5?10 ms, while keeping a finite per-invocation budget. The 40-identity guard, response/deadline bounds, exact provider permissions, private trigger and external stale-report alert remain unchanged. Deployment and a subsequent actual scheduled execution must be recorded before checking post-upgrade verification.

@@ -45,6 +45,27 @@ try {
   assert.ok(first.blockers.includes('publication-operations-need-reconciliation'));
   assert.equal(database.prepare('SELECT total_changes() AS n').get().n,before,'Planning must not write even to the supplied database.');
   assert.equal(planAccountErasure(database,'request').inventoryFingerprint,first.inventoryFingerprint);
+  // Historical settled writes still need disposition; an exported active global backup is not
+  // proof of current writer activity. Keep exact linked targets and omit unrelated private targets.
+  database.exec(`INSERT INTO closure_write_admissions(id,kind,person_id,device_id,generation,state,started_at) VALUES
+    ('linked','legacy',NULL,'shared-actor',0,'settled',1),
+    ('foreign','account','keeper',NULL,0,'settled',1),
+    ('unknown','legacy',NULL,'other-actor',0,'settled',1),
+    ('backup','backup',NULL,NULL,0,'active',1);
+    INSERT INTO closure_backup_runs VALUES ('backup','fixture-snapshot',NULL,1);
+    INSERT INTO closure_storage_effects(id,admission_id,object_key,operation,state,started_at) VALUES
+    ('linked-effect','linked','shared/late-attempt','put','acknowledged',1),
+    ('foreign-effect','foreign','other/private-protocol-key','put','acknowledged',1);`);
+  const tracked=planAccountErasure(database,'request');
+  assert.deepEqual(tracked.inventory.closureReferences.effects.map(row=>row.id),['linked-effect']);
+  assert.equal(tracked.inventory.closureReferences.backups.length,1);
+  assert.equal(tracked.inventory.closureReferences.quiescenceProven,false);
+  assert.ok(tracked.blockers.includes('tracked-writes-need-current-reconciliation'));
+  assert.ok(tracked.blockers.includes('tracked-storage-disposition-required'));
+  assert.ok(tracked.blockers.includes('unattributed-protocol-records-require-review'));
+  assert.doesNotMatch(JSON.stringify(tracked),/other\/private-protocol-key/);
+  database.exec("UPDATE closure_storage_effects SET object_key='other/changed-private-key' WHERE id='foreign-effect'");
+  assert.notEqual(planAccountErasure(database,'request').inventoryFingerprint,tracked.inventoryFingerprint);
   database.exec("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES ('new-owner','keeper','shared','owner',2)");
   const handedOver=planAccountErasure(database,'request');
   assert.ok(!handedOver.blockers.includes('shared-last-owner-handover-required'));

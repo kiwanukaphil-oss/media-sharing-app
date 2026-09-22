@@ -1,5 +1,11 @@
 # Direct Cloudflare deployment
 
+## Delayed recovery identity protection - 22 September 2026
+
+Worker `a25d36be-f1ca-4b52-90bb-eb043b310312` is at **100%**, deployed 08:28 UTC from runtime source `87d93eb`. Recovery notifications now refuse raw identity recreation after minimisation and updates to disabled identities, with authority checked inside each batch mutation. Full built-Worker account-access tests include a forced closure/recovery race and pass. TypeScript, focused lint, production build and dry run passed. Both origins return health/operations 200, anonymous feed 401 and unauthenticated coordinator 403. Hosted CI `35704906771` passed verification and browser jobs.
+
+No schema, audience, quota or flag change: migration 0019 and global backup coordination remain enabled; account closure tracking remains disabled. Fresh interactive verification still awaits user sign-in. Historical read-only inventory reconciles 12 SQL versions, 12 manifests and one completion receipt; seven older schemas still need review. No deletion or cutover performed.
+
 ## Global backup coordination - 22 September 2026
 
 Worker `45f8d855-7ef7-4f48-ad18-f26adc583eb2` is at **100%**, deployed at 08:10 UTC. Runtime/build source `436af67`, activation source `1ec67a6`. Migration 0019 is applied; independently exported before/after data confirms all 21 prior application tables unchanged and all four new tables initially empty. A fresh backup and recovery bookmark preceded the migration.
