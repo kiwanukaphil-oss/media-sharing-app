@@ -86,6 +86,13 @@ export async function verifySpacePeople(database, dispatch) {
   assert.equal((await database.prepare('SELECT role FROM devices WHERE id=?').bind(legacyId).first()).role,'member','Account Editor must never become a legacy Owner.');
   assert.equal((await request(departed,'feed','GET',undefined,{Cookie:`relay_device=${credential}`})).status,200);
   assert.equal((await request(departed,'invitations','POST',undefined,{Cookie:`relay_device=${credential}`})).status,403);
+  assert.equal((await request(remaining,scoped(`people/${restored.id}`),'PUT',{action:'viewer',revision:restored.revision})).status,200);
+  restored.revision++;
+  assert.equal((await request(departed,'feed','GET',undefined,{Cookie:`relay_device=${credential}`})).status,401,'Viewer cannot retain upload-capable paired credentials.');
+  assert.equal((await request(departed,scoped('feed'))).status,200,'Viewer can still browse by signing in.');
+  assert.equal((await request(remaining,scoped(`people/${restored.id}`),'PUT',{action:'member',revision:restored.revision})).status,200);
+  restored.revision++;
+  assert.equal((await request(departed,'feed','GET',undefined,{Cookie:`relay_device=${credential}`})).status,401,'Promotion does not revive a revoked credential.');
   const mediaBefore = await database.prepare('SELECT COUNT(*) AS n FROM media').first();
   assert.equal((await request(remaining, scoped(`people/${restored.id}`), 'PUT', { action: 'remove', revision: restored.revision })).status, 200);
   assert.equal((await request(departed, 'feed', 'GET', undefined, { Cookie: `relay_device=${credential}` })).status, 401, 'Claimed legacy cookie must not bypass removal');

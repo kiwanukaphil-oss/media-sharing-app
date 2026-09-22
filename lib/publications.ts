@@ -35,7 +35,7 @@ function assertMatchingPublication(job: PublicationRow, access: AccountSpaceAcce
 // Personal names enter the shared feed only after the checksum-verified object and live permissions are committed.
 export async function reservePublication(database: D1Database, source: AccountSpaceAccess, destination: AccountSpaceAccess,
   input: PublicationInput, destinationLimit: number, now = Date.now()) {
-  if (source.space_kind !== "personal" || destination.space_kind !== "shared" || source.personId !== destination.personId) {
+  if (source.space_kind !== "personal" || destination.space_kind !== "shared" || source.personId !== destination.personId || destination.role === "viewer") {
     throw new AccountError(403, "Publish from My space into one of your shared libraries.");
   }
   if (input.sectionId && !input.albumId) throw new AccountError(400, "Choose an album for this section.");

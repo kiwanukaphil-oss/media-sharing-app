@@ -87,3 +87,13 @@ The [route integration review](COLLABORATION-ROUTE-REVIEW.md) maps both web and 
 The existing invitation flow reactivates an existing membership ID as Member. Future Contributor work must explicitly explain what a subsequent own-contribution grant restores; the pure policy never infers attribution from a person's email or a newly allocated membership ID.
 
 Local release checks: production build, TypeScript, web lint, normal API suite, account API suite, Editor browser and People browser checks passed on 22 September. Hosted verification and production deployment remain outstanding.
+
+## Additive Viewer increment - local verification
+
+- [x] Keep feed, original downloads and library browsing available while denying upload creation/retry, part URLs/bytes, completion, thumbnails, metadata edits and cancellation. Current SQL continues to reject Viewer mutations, including cached upload authority after demotion.
+- [x] Revoke explicitly linked legacy credentials on Viewer demotion; subsequent promotion does not revive them. Explain this consequence in the named role-change confirmation.
+- [x] Hide upload/drop affordances and disallow new/resumed local queue actions for the current Viewer space. Exclude Viewer destinations from new publication choices; retain accurate names in existing publication history.
+- [x] Production-build account/API and browser checks passed; hosted Editor CI `35716768570` passed both jobs. Viewer hosted checks and deployment remain outstanding.
+- [ ] Complete hosted Viewer verification, publication demotion-race checks and restricted production baseline checks. No real membership changes are part of release verification.
+
+Already issued signed URLs and bytes in flight cannot be recalled by this role change. New part requests and ready-state commits require current upload authority. This is separate from the pending provider-specific account-erasure guarantee.

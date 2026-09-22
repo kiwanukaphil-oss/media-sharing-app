@@ -30,9 +30,10 @@ export async function listSpacePeople(database: D1Database, session: SpacePerson
 
 // Record authority evidence before the mutation in the same atomic batch. Concurrent last-owner changes serialize.
 // Claimed legacy devices follow revocation/demotion. Account Editor maps only to legacy Member,
-// never legacy Owner: older device clients retain upload/read access without access administration.
+// Viewer revokes linked bearer credentials because legacy Member can upload.
+// Never legacy Owner: older device clients retain upload/read access without access administration.
 export async function changeSpacePerson(database: D1Database, session: SpacePersonSession, spaceId: string,
-  targetId: string, action: "owner" | "member" | "editor" | "remove" | "leave", revision: number, now = Date.now()) {
+  targetId: string, action: "owner" | "member" | "editor" | "viewer" | "remove" | "leave", revision: number, now = Date.now()) {
   const eventId = crypto.randomUUID();
   const removing = action === "remove" || action === "leave";
   const admission = accountClosureCommitAuthority(session);
@@ -52,7 +53,7 @@ export async function changeSpacePerson(database: D1Database, session: SpacePers
       .bind(removing ? 1 : 0, action, removing ? 1 : 0, now, targetId, eventId),
     database.prepare(`UPDATE devices SET role = CASE WHEN ? THEN role WHEN ? = 'owner' THEN 'owner' ELSE 'member' END, revoked_at = CASE WHEN ? THEN COALESCE(revoked_at, ?) ELSE revoked_at END
       WHERE id IN (SELECT device_id FROM legacy_owner_claims WHERE membership_id = ?) AND EXISTS (SELECT 1 FROM membership_events WHERE id = ?)`)
-      .bind(removing ? 1 : 0, action, removing ? 1 : 0, now, targetId, eventId),
+      .bind(removing ? 1 : 0, action, removing || action === "viewer" ? 1 : 0, now, targetId, eventId),
     database.prepare(`UPDATE invitations SET expires_at = 0 WHERE created_by IN (SELECT device_id FROM legacy_owner_claims WHERE membership_id = ?)
       AND EXISTS (SELECT 1 FROM membership_events WHERE id = ?)`).bind(targetId, eventId),
     database.prepare(`UPDATE person_invitations SET revoked_at = COALESCE(revoked_at, ?) WHERE created_by = ? AND accepted_at IS NULL

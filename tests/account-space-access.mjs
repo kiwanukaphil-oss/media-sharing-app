@@ -129,6 +129,27 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.equal((await request(bob,scoped(`people/${membership}`),'PUT',{action:'remove',revision:0})).status,409);
   assert.equal((await request(bob,scoped(`uploads/${upload.id}/part`),'POST',{number:1})).status,404);
   assert.equal((await request(bob,scoped(`media/${upload.id}/thumbnail`),'PUT',{})).status,404);
+  // Viewer retains original reads but cannot create, continue, preview or cancel even their own upload.
+  const viewerUpload={...upload,id:crypto.randomUUID(),name:'Viewer unfinished.txt'};
+  assert.equal((await request(bob,scoped('uploads'),'POST',viewerUpload)).status,200);
+  await database.prepare("UPDATE space_memberships SET role='viewer' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
+  assert.equal((await request(bob,scoped('session'))).data.role,'viewer');
+  assert.equal((await request(bob,scoped('feed'))).status,200);
+  assert.equal((await request(bob,scoped(`media/${upload.id}/link`))).status,200);
+  assert.equal((await request(bob,scoped('uploads'),'POST',{...upload,id:crypto.randomUUID()})).status,403);
+  assert.equal((await request(bob,scoped('uploads'),'POST',viewerUpload)).status,403);
+  for(const [path,method,body] of [
+    [`uploads/${viewerUpload.id}/part`,'POST',{number:1}],
+    [`uploads/${viewerUpload.id}/bytes/1`,'PUT',{}],
+    [`uploads/${viewerUpload.id}/complete`,'POST',{parts:[]}],
+    [`uploads/${viewerUpload.id}/restart`,'POST',{}],
+    [`media/${viewerUpload.id}/thumbnail`,'PUT',{}],
+    ['albums','POST',{name:'Viewer cannot organise'}],
+    [`media/${upload.id}/archive`,'POST',{}],
+  ]) assert.equal((await request(bob,scoped(path),method,body)).status,403,path);
+  assert.equal((await request(bob,scoped(`uploads/${viewerUpload.id}`),'DELETE')).status,409);
+  assert.equal((await request(bob,scoped('storage'))).data.uploads.find(row=>row.id===viewerUpload.id).canCancel,0);
+  assert.equal((await database.prepare('SELECT status FROM media WHERE id=?').bind(viewerUpload.id).first()).status,'uploading');
   await database.prepare("UPDATE space_memberships SET role='unrecognised-role' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
   assert.equal((await request(bob,scoped('feed'))).status,403);
   await database.prepare("UPDATE space_memberships SET role='member' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();

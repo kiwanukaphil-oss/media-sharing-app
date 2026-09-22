@@ -83,9 +83,16 @@ export async function requireDevice(request: Request): Promise<ActiveDevice> {
 }
 export type UploadRow = { id: string; space_id: string; device_id: string; name: string; mime: string; size: number; sha256: string; category: string; object_key: string; upload_id: string; part_size: number; status: string; created_at: number; archived_at: number | null; preview_ready: number };
 export function spaceLimitBytes(device: ActiveDevice) { return device.storage_limit_bytes ?? 100 * 1024 * 1024 * 1024; }
+// Byte-producing operations need current upload permission before storage dispatch or URL signing.
+export async function requireUploadAccess(device: ActiveDevice) {
+  const authority = transferAuthority(device);
+  if (!await database().prepare(`SELECT 1 WHERE ${authority.sql}`).bind(...authority.bindings).first())
+    throw new ApiError(403, "Upload access changed. Refresh this library; viewers can browse and save files.");
+}
 export async function requireMedia(device: ActiveDevice, id: string, ownerOnly = false) {
   const item = await database().prepare("SELECT * FROM media WHERE id = ? AND space_id = ?").bind(id, device.space_id).first<UploadRow>();
   if (!item || (ownerOnly && item.device_id !== device.id)) throw new ApiError(404, "This file is not available.");
+  if (ownerOnly) await requireUploadAccess(device);
   return item;
 }
 export function attachmentName(name: string) {
@@ -114,6 +121,7 @@ export const uploadSchema = z.object({
 });
 // Reuse a caller's stable upload ID after interrupted requests rather than creating duplicates.
 export async function initializeUpload(device: ActiveDevice, input: z.infer<typeof uploadSchema>, storage: R2Bucket = bucket()) {
+  await requireUploadAccess(device);
   const existing = await database().prepare("SELECT * FROM media WHERE id = ?").bind(input.id).first<UploadRow>();
   if (existing) {
     if (existing.space_id !== device.space_id || existing.device_id !== device.id || existing.sha256 !== input.sha256 || existing.size !== input.size) throw new ApiError(409, "That transfer belongs to a different file.");

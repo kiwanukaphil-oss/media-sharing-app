@@ -53,6 +53,10 @@ export async function verifyTransferAuthority(database) {
   await database.prepare("UPDATE space_memberships SET role='member' WHERE id=?").bind(member).run();
   assert.equal(await write(account),1);assert.equal(await write(account,true),0,'Stale owner role cannot authorize management');
   await database.prepare("UPDATE space_memberships SET role='owner' WHERE id=?").bind(member).run();
+  await database.prepare("UPDATE space_memberships SET role='viewer' WHERE id=?").bind(member).run();
+  assert.equal(await write({...account,role:'owner'}),0,'Cached upload authority must not survive Viewer demotion.');
+  assert.equal(await write(account,'organiser'),0);
+  await database.prepare("UPDATE space_memberships SET role='owner' WHERE id=?").bind(member).run();
   assert.equal(await write({...account,sessionId:undefined}),0);
   assert.equal(await write({...account,personId:'wrong'}),0);
   assert.equal(await write({...account,space_id:'wrong'}),0);

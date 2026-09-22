@@ -92,8 +92,8 @@ export async function readStorage(device: ActiveDevice) {
     COALESCE(SUM(CASE WHEN status IN ('uploading','cancelling','publishing') THEN size + preview_size ELSE 0 END),0) AS reserved,
     COALESCE(SUM(CASE WHEN archived_at IS NOT NULL THEN size + preview_size ELSE 0 END),0) AS trash FROM media WHERE space_id = ?`).bind(device.space_id).first();
   const uploads = await database().prepare(`SELECT media.id, media.name, media.size, media.created_at AS createdAt, devices.name AS deviceName,
-    (media.device_id = ? OR ? = 'owner' OR (? = 1 AND ? = 'editor')) AS canCancel, (media.status = 'publishing') AS publication
-    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.id, device.role, device.authentication === "account" ? 1 : 0, device.role, device.space_id).all();
+    (? <> 'viewer' AND (media.device_id = ? OR ? = 'owner' OR (? = 1 AND ? = 'editor'))) AS canCancel, (media.status = 'publishing') AS publication
+    FROM media JOIN devices ON devices.id = media.device_id WHERE media.space_id = ? AND media.status IN ('uploading','cancelling','publishing') ORDER BY media.created_at LIMIT 100`).bind(device.role, device.id, device.role, device.authentication === "account" ? 1 : 0, device.role, device.space_id).all();
   return Response.json({ ...usage, limit: spaceLimitBytes(device), uploads: uploads.results });
 }
 

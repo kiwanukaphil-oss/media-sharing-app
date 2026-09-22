@@ -36,6 +36,11 @@ try {
   await page.getByLabel('Search filenames').fill('Another');
   await expect(page.getByRole('button',{name:'Restore',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'New album',exact:true})).toHaveCount(0);
+  role='viewer';
+  await page.goto(`${origin}/?space=${space}`);
+  await expect(page.getByRole('button',{name:'Add files',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Rename',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Save to device',exact:true})).toBeVisible();
   assert.equal(mutations,0);
   console.log('PASS: Editor organisation controls and role label, Trash restoration, no device pairing or permanent-delete controls.');
 } finally {await browser.close();}

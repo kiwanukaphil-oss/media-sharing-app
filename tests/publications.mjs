@@ -93,8 +93,13 @@ export async function verifyPublications(database, bucket, dispatch) {
   assert.equal(await database.prepare('SELECT id FROM media WHERE id=?').bind(corruptInput.id).first(), null);
   assert.equal((await request(personal, 'publications', 'POST', corruptInput)).status, 409, 'Cancelled operation identifiers cannot restart');
 
+  await database.prepare("UPDATE space_memberships SET role='viewer' WHERE id=?").bind(destinationMembership).run();
+  assert.equal((await request(personal,'publications','POST',{...input,id:crypto.randomUUID()})).status,403);
+  await assert.rejects(publications.reservePublication(database,sourceAccess,destinationAccess,{...input,id:crypto.randomUUID()},100*1024**3));
+  await database.prepare("UPDATE space_memberships SET role='member' WHERE id=?").bind(destinationMembership).run();
+
   // Membership changes, source changes and explicit cancellation must win before a copied object becomes visible.
-  for (const scenario of ['revoke-destination', 'change-source', 'cancel', 'password-recovery']) {
+  for (const scenario of ['revoke-destination', 'viewer-destination', 'change-source', 'cancel', 'password-recovery']) {
     const source = await createOriginal();
     const intent = { id: crypto.randomUUID(), sourceId: source.id, sourceRevision: 0, destinationSpaceId: shared };
     const job = await publications.reservePublication(database, sourceAccess, destinationAccess, intent, 100 * 1024 ** 3);
@@ -107,6 +112,7 @@ export async function verifyPublications(database, bucket, dispatch) {
         if (!changed) {
           changed = true;
           if (scenario === 'revoke-destination') await database.prepare('UPDATE space_memberships SET revoked_at=? WHERE id=?').bind(Date.now(), destinationMembership).run();
+          if (scenario === 'viewer-destination') await database.prepare("UPDATE space_memberships SET role='viewer' WHERE id=?").bind(destinationMembership).run();
           if (scenario === 'change-source') await database.prepare('UPDATE media SET revision=revision+1 WHERE id=?').bind(source.id).run();
           if (scenario === 'cancel') await publications.cancelPublication(database, bucket, sourceAccess, intent.id);
           if (scenario === 'password-recovery') await database.prepare('UPDATE people SET credentials_changed_at=? WHERE id=?')
@@ -122,7 +128,7 @@ export async function verifyPublications(database, bucket, dispatch) {
     for (const attempt of attempts) assert.equal(await bucket.head(attempt.object_key), null);
     if (scenario === 'password-recovery') await database.prepare('UPDATE people SET credentials_changed_at=0 WHERE id=?').bind(account.personId).run();
     await publications.cancelPublication(database, bucket, sourceAccess, intent.id);
-    await database.prepare('UPDATE space_memberships SET revoked_at=NULL WHERE id=?').bind(destinationMembership).run();
+    await database.prepare("UPDATE space_memberships SET revoked_at=NULL,role='member' WHERE id=?").bind(destinationMembership).run();
   }
   // A cached principal cannot reserve new storage or initiate destructive cancellation after recovery.
   const recoverySource = await createOriginal();

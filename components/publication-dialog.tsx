@@ -6,7 +6,7 @@ import { createLibraryApi } from "@/lib/api-client";
 import { formatBytes, type Album, type AlbumSection, type MediaItem } from "@/lib/contracts";
 import { WorkspaceSelect } from "./workspace-select";
 
-type Destination = { id: string; name: string; kind?: string };
+type Destination = { id: string; name: string; kind?: string; role?: string };
 type Publication = { id: string; sourceId: string; sourceRevision: number; destinationSpaceId: string; albumId?: string | null; sectionId?: string | null; phase?: string };
 
 // A publication captures its original and destination; retries retain that intent and its server-side reservation.
@@ -16,7 +16,7 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   const sourceApi = useMemo(() => createLibraryApi(sourceSpaceId), [sourceSpaceId]);
-  const destinations = libraries.filter(library => library.kind === "shared");
+  const destinations = libraries.filter(library => library.kind === "shared" && library.role !== "viewer");
   const [destinationId, setDestinationId] = useState(destinations[0]?.id || "");
   const [albumId, setAlbumId] = useState("");
   const [sectionId, setSectionId] = useState("");
@@ -87,14 +87,14 @@ export default function PublicationDialog({ item, sourceSpaceId, libraries, onCl
     finally { setOperation(null); }
   }
 
-  const destinationName = destinations.find(destination => destination.id === destinationId)?.name || "Unavailable library";
+  const destinationName = libraries.find(destination => destination.id === destinationId)?.name || "Unavailable library";
   return <dialog ref={dialog} className="modal publication-dialog" aria-labelledby={headingId}
     onCancel={event => { event.preventDefault(); if (!busy) onClose(); }} onClose={() => { if (!busy) onClose(); }}>
     <div className="modal-heading"><h2 id={headingId}>{!loaded ? "Shared copy" : published ? recoveredPublication ? "Previously published" : "Copy published" : "Publish a shared copy"}</h2><button className="icon-button" disabled={busy} aria-label="Close publication" onClick={onClose}><X size={20} /></button></div>
     <p className="publication-filename">{item.name}</p><p className="small-muted">{formatBytes(item.size)} &middot; Original quality</p>
     {error && <p role="alert" className="error-banner">{error}</p>}
     {!loaded ? <p role="status" className="publication-progress">{error ? "Close this dialog and try again." : "Checking for an existing shared copy."}</p> : published ? <><p className="modal-intro">{recoveredPublication ? "This file already has a verified copy in " : "A verified copy was published to "}{destinationName}. Your personal original stays in My space. The shared library manages its copy independently.</p><div className="publication-success-actions"><a className="button primary" href={`/?space=${encodeURIComponent(destinationId)}${albumId ? `&album=${encodeURIComponent(albumId)}` : ""}${sectionId ? `&section=${encodeURIComponent(sectionId)}` : ""}`}>Open shared library <ArrowRight size={16} /></a><button className="text-button" onClick={() => { setIntent(null); setPublished(false); setError(""); }}>Publish another copy</button></div></> : <>
-      {!destinations.length && <p className="modal-intro">Connect or join a shared library before publishing a copy.</p>}
+      {!destinations.length && <p className="modal-intro">A shared library with upload access is needed to publish a copy.</p>}
       {destinations.length > 0 && <div className="publication-destinations"><WorkspaceSelect label="Shared destination" value={destinationId} disabled={busy || Boolean(intent)} options={destinations.map(destination => ({ value: destination.id, label: destination.name }))}
         onChange={id => { setDestinationId(id); setAlbumId(""); setSectionId(""); setAlbums([]); setSections([]); setDestinationLoaded(false); setError(""); }} />
         <WorkspaceSelect label="Destination album" value={albumId} disabled={busy || Boolean(intent) || !destinationLoaded} options={[{ value: "", label: "Unorganised" }, ...albums.map(album => ({ value: album.id, label: album.name }))]}
