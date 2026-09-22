@@ -1,6 +1,6 @@
 # Provider removal rehearsal
 
-Status: specifically approved on 22 September 2026; first live attempt held before account creation. Temporary API and database connection access were revoked. Secret rotation is required before reuse. This verifies one provider boundary of P2-06, not complete account erasure.
+Status: live component rehearsal passed on 22 September 2026. The exact generated account was created, independently verified, removed and independently confirmed absent. Temporary API and database connection access are revoked. Full P2-06 account erasure remains open.
 
 ## Concrete scope
 
@@ -33,10 +33,10 @@ Sources: [Management API user permissions](https://auth0.com/docs/manage-users/u
 
 - [x] Implement and test the bounded provider adapter without live credentials.
 - [x] Obtain specific approval and configure the separate grant.
-- [ ] Run generated-account creation/removal with independent verification.
+- [x] Run generated-account creation/removal with independent verification.
 - [x] Revoke the first attempt's temporary API and database connection access.
-- [ ] Rotate the temporary application secret before reuse; user credential-change handoff required.
-- [ ] Complete the rehearsal and record actual writer-token expiry and final revocation evidence.
+- [x] Owner rotated the temporary application secret before reuse.
+- [x] Complete the rehearsal and record actual writer-token expiry and final revocation evidence.
 
 ## First live attempt — 22 September 2026
 
@@ -45,3 +45,11 @@ The owner explicitly approved the proposal. Client `9HuHPIJEhoFuHHS16CoNAuiv3d6L
 The temporary client secret accidentally appeared in a browser tool trace during setup. Its database connection access was saved off and API Access subsequently showed **0 / 273 permissions granted** and **No per-app authorization grant**. The secret must not be reused; the owner was asked to rotate it because browser rules require credential changes to be performed by the user. Revocation prevents new management tokens but does not invalidate previously issued tokens; this runner did not reach writer issuance, and absence of issuance by other callers is not established. No secret was saved in Git or the private stage evidence. The inactive application is a cleanup candidate, not permission to delete it silently.
 
 Private first-attempt evidence is under `.sites-runtime/operations/provider-erasure-rehearsal/67985336-e179-4145-986e-6729972793fe/`. Preserve it. The command deliberately refuses to overwrite an existing run directory; a reviewed continuation must retain prior evidence and recheck absence before any POST. The live creation/removal milestone remains unchecked.
+
+## Rotated continuation ? passed
+
+After owner-confirmed rotation, the approved continuation ran at 06:08 UTC on 22 September. The reader validated the existing `read:users read:logs` scope; the separate writer validated exactly `create:users delete:users`. Preflight required HTTP 404. Creation returned HTTP 201; exact subject, marker, blocked/unverified status, single database identity, zero login history and creation timestamp were verified. Removal returned HTTP 204 and independent GET returned HTTP 404 at 06:08:04 UTC. No real account or Relay media was changed.
+
+The writer response reported a 24-hour lifetime, bounded to approximately **23 September 2026 06:08:02 UTC / 09:08:02 Nairobi**. Bearers remained in process memory. Database connection access was saved off, then API Access visibly confirmed **0 / 273 permissions granted** and **No per-app authorization grant**. Revocation prevents new tokens, not use of an already issued token until expiry.
+
+Evidence is preserved in the private `rotated-continuation` subdirectory alongside the first attempt. The single-use runner refuses to overwrite this completed attempt. This checks only the provider component: coordinated live storage, all backup versions, minimisation, and the complete generated-person closure remain outstanding.

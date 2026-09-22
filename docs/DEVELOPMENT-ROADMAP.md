@@ -32,7 +32,7 @@ Counts describe completed parent work items, not effort or percentage of the pro
 
 ## How to keep this document current
 
-**22 September provider rehearsal:** Specific approval and temporary grant setup are complete. The first attempt stopped on a read-only token scope mismatch before writer issuance or account creation; an independent GET confirmed the dummy subject absent. Temporary API and connection access are revoked. The temporary secret appeared in a tool trace and needs owner-performed rotation before reuse. Live creation/removal remains outstanding; see [rehearsal evidence and checkboxes](PROVIDER-ERASURE-REHEARSAL.md#first-live-attempt--22-september-2026). Parent counts remain unchanged.
+**22 September provider rehearsal:** Passed after owner-performed secret rotation. Exact generated identity creation/removal and independent absence verification succeeded; temporary API and connection access are revoked. [Evidence and checked milestones](PROVIDER-ERASURE-REHEARSAL.md#rotated-continuation--passed) record the writer token expiry. Full lifecycle and backup execution remain outstanding; parent counts are unchanged.
 
 Update this file in the same change set as meaningful development work, and again after a release. Do not leave the tracker describing the state before the change.
 
@@ -820,8 +820,8 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 ## 22 September 2026 - Provider removal rehearsal preparation
 
 - [x] Prepare the [exact generated-account proposal](PROVIDER-ERASURE-REHEARSAL.md) and locally test the provider adapter. It rejects real, pre-existing, linked, activated or changed identities, requires durable intent and independently checks absence; ambiguous responses never retry deletion automatically.
-- [ ] Obtain specific approval for a separate `create:users`/`delete:users` grant and permanent removal of the named generated fixture. The provider grant is tenant-wide, and issued tokens remain valid until expiry; these limits are explicit in the proposal. No live grant or provider mutation has occurred.
-- [ ] Complete the live component rehearsal and remove its temporary grant/connection access. Full lifecycle execution and P2-06 remain open.
+- [x] Obtain specific approval for the separate `create:users`/`delete:users` grant and permanent removal of the named generated fixture. The tenant-wide grant and token lifetime limits were explicitly approved.
+- [x] Complete the live provider component rehearsal and remove its temporary grant/connection access. Creation, exact-profile checks, removal and independent absence passed at 06:08 UTC; writer expiry is 23 September approximately 06:08 UTC. Full lifecycle execution and P2-06 remain open.
 
 ## 22 September 2026 - Backup writer coordination preparation
 
@@ -829,7 +829,7 @@ P2-02, P2-03, P2-04 and P2-05 are now checked as implemented, released and verif
 - [x] Verify isolated D1 transaction rollback, duplicate/snapshot collision handling, fence ordering, storage-effect settlement guards, final receipt binding and irreversible uncertainty. Client tests prove admission precedes export/copy and acknowledgement follows awaited effects. Existing backup recovery and workflow separation tests pass; TypeScript and focused lint pass.
 - [ ] Review new-table restore quarantine, expose/deploy the coordinator with a separate secret, activate hosted writer configuration, and verify an actual coordinated backup before any production fence. Existing scheduled backup remains on its current path until that coordinated release.
 - [x] Add actual-schema restore quarantine for the complete closure/backup protocol family: preserve disabled fences for review, retain completed evidence and hold interrupted operations as uncertain. Partial schemas fail and roll back. All 13 backup-recovery tests and focused lint pass.
-- [ ] Review personal-data minimisation for new protocol references before migrating production; the current transformer deliberately remains restricted to schema 0018. Provider live rehearsal approval remains pending in the current owner request.
+- [ ] Review personal-data minimisation for new protocol references before migrating production; the current transformer deliberately remains restricted to schema 0018. The provider component rehearsal is complete; whole-lifecycle execution remains outstanding.
 
 ## 22 September 2026 - Metadata authority race correction
 

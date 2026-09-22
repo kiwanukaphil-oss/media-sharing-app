@@ -9,7 +9,9 @@ import { createProviderRehearsal,removeProviderRehearsal,providerRehearsalTransp
 
 const runId='67985336-e179-4145-986e-6729972793fe',clientId='9HuHPIJEhoFuHHS16CoNAuiv3d6Lp0HL';
 const readerClientId='1Rakur48pyVj6WOVy3Yyb4cY31E0IEpb';
-const directory=resolve(operationsDirectory,'provider-erasure-rehearsal',runId);
+// The prior attempt was reviewed: it stopped at reader validation, before any writer token or POST.
+// Preserve its evidence and reserve a single continuation directory; a second launch fails closed.
+const directory=resolve(operationsDirectory,'provider-erasure-rehearsal',runId,'rotated-continuation');
 const port=8797,origin=`http://127.0.0.1:${port}`,pathname=`/${randomBytes(24).toString('hex')}`;
 let used=false,sequence=0;
 await mkdir(resolve(operationsDirectory,'provider-erasure-rehearsal'),{recursive:true});
