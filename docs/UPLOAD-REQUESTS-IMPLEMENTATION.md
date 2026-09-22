@@ -36,7 +36,8 @@ Restore quarantines requests, recipient acceptance and outstanding multipart ope
 - [x] Isolated SQLite/D1 acceptance and authority preparation: draft/expiry/session denial, exact verified-person binding, no membership/file disclosure, immutable destination, non-resurrecting issuer/destination revocation and restored quarantine.
 - [x] Atomic quota activation and exact submission reservations pass real D1 concurrency tests. Two requests cannot reserve the same free bytes; concurrent retries produce one staged file; file count/size and total allowance are enforced.
 - [ ] Add tracked transfer custody and reconcile the new staging states before routing this preparation.
-- [ ] Implement owner creation/revocation/review and recipient-only upload/receipt routes behind a disabled feature flag.
+- [x] Isolated owner draft creation/close: exact intent retries, bounded request count, current audience/role and revision checks. Closing releases only unused allowance; staged originals remain charged. D1 rollback test preserves allowance when custody insertion fails.
+- [ ] Route owner creation/revocation/review and recipient-only upload/receipt flows behind a disabled feature flag.
 - [ ] Integrate bounded byte transfer, checksum-verified acceptance, capability custody and shared quota reservations.
 - [ ] Build mobile/desktop owner and recipient workflows, interrupted retry/recovery and clear abuse/error states.
 - [ ] Extend lifecycle/minimisation/restore contracts and test cross-account, revoked, expired, concurrent and malformed requests.

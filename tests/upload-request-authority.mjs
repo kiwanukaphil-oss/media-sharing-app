@@ -6,10 +6,11 @@ import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {planReadOnlySnapshot,restoreReadOnlySnapshot,schemaQuery} from '../scripts/backup-d1-readonly.mjs';
 import {importSnapshot,sanitizeRestoredAccess} from '../scripts/relay-backup.mjs';
 
-const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
+const bundle=await build({entryPoints:['lib/upload-request-authority.ts','lib/upload-request-reservations.ts','lib/upload-request-management.ts'],outdir:'unused',bundle:true,write:false,platform:'node',format:'esm'});
 const modules=await Promise.all(bundle.outputFiles.map(file=>import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
 const {acceptUploadRequest,intakeRecipientAuthority}=modules.find(module=>module.acceptUploadRequest);
 const {activateUploadRequest,reserveIntakeSubmission}=modules.find(module=>module.activateUploadRequest);
+const {createUploadRequestDraft,closeUploadRequest}=modules.find(module=>module.createUploadRequestDraft);
 const db=new DatabaseSync(':memory:'),now=Date.now();
 try {
   for(const migration of JSON.parse(await readFile('drizzle/meta/_journal.json','utf8')).entries)db.exec(await readFile(`drizzle/${migration.tag}.sql`,'utf8'));
@@ -70,6 +71,31 @@ try {
     assert.equal(await charged(),2048);assert.equal((await d1.prepare('SELECT size FROM media WHERE id=?').bind(winner.id).first()).size,0);
     assert.equal((await d1.prepare("SELECT COUNT(*) AS n FROM media WHERE status='ready'").first()).n,0,'Intake reservation never exposes a ready original.');
     assert.equal((await d1.prepare("SELECT expires_at FROM devices WHERE id=?").bind(winner.id).first()).expires_at,0,'Intake attribution cannot log in as a device.');
+    // Owner draft/retry/close follows immutable reviewed intent; releasing unused allowance never
+    // deletes staged originals. A failed custody insert must roll back both sides of the quota exchange.
+    const generalAlbum=crypto.randomUUID();
+    await d1.prepare("INSERT INTO albums(id,space_id,name,created_at) VALUES(?,'shared','General destination',?)").bind(generalAlbum,now).run();
+    const draft={id:crypto.randomUUID(),tokenHash:'e'.repeat(64),title:'Reviewed collection',recipientEmail:'RECIPIENT@example.invalid',albumId:generalAlbum,sectionId:null,accessScopeId:null,expiresAt:now+86400000,maxFiles:2,maxFileBytes:1024,maxBytes:2048,confirmed:true};
+    assert.equal((await createUploadRequestDraft(d1,owner,draft,now)).state,'draft');
+    assert.equal((await createUploadRequestDraft(d1,owner,draft,now)).id,draft.id);
+    await assert.rejects(createUploadRequestDraft(d1,owner,{...draft,title:'Different intent'},now),/changed/);
+    await activateUploadRequest(d1,owner,draft.id,10000,now);
+    await acceptUploadRequest(d1,session('recipient'),draft.tokenHash,now);
+    const incoming={...file,id:crypto.randomUUID(),requestId:draft.id,size:512};
+    await d1.prepare(`CREATE TRIGGER fail_intake_custody BEFORE INSERT ON intake_submissions WHEN NEW.request_id='${draft.id}' BEGIN SELECT RAISE(ABORT,'Fixture custody failure'); END`).run();
+    await assert.rejects(reserveIntakeSubmission(d1,session('recipient'),incoming,now),/custody failure/);
+    assert.equal((await d1.prepare('SELECT size FROM media WHERE id=?').bind(draft.id).first()).size,2048);
+    assert.equal(await d1.prepare('SELECT id FROM media WHERE id=?').bind(incoming.id).first(),null);
+    await d1.prepare('DROP TRIGGER fail_intake_custody').run();
+    await reserveIntakeSubmission(d1,session('recipient'),incoming,now);
+    const revision=(await d1.prepare('SELECT revision FROM upload_requests WHERE id=?').bind(draft.id).first()).revision;
+    await assert.rejects(closeUploadRequest(d1,owner,draft.id,revision+1,now),/changed/);
+    assert.equal(await charged(),4096);
+    await closeUploadRequest(d1,owner,draft.id,revision,now);
+    assert.equal(await charged(),2560,'Only 1536 unused bytes are released; both earlier originals and this staged file remain charged.');
+    assert.equal((await d1.prepare('SELECT status FROM media WHERE id=?').bind(incoming.id).first()).status,'receiving');
+    assert.equal((await closeUploadRequest(d1,owner,draft.id,revision,now)).changed,false);
+    await assert.rejects(reserveIntakeSubmission(d1,session('recipient'),{...incoming,id:crypto.randomUUID()},now),/limit/);
     await d1.prepare("UPDATE people SET verified_email='recipient@example.invalid' WHERE id='other'").run();
     await assert.rejects(acceptUploadRequest(d1,session('other'),'a'.repeat(64),now),/unavailable/,'Matching email cannot rebind acceptance.');
     await d1.prepare("UPDATE people SET verified_email='changed@example.invalid' WHERE id='recipient'").run();
