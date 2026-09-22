@@ -8,7 +8,7 @@ export const libraryViewStateSchema = z.object({
   query: z.object({ album: z.union([optionalId,z.literal("unorganised")]),
     section: z.union([optionalId,z.literal("unsectioned")]), dateMode: z.enum(["uploaded","captured"]),
     from: date, to: date, sort: z.enum(["newest","oldest"]), batch: optionalId,
-    type: z.enum(["","photo","video","other"]), uploader: z.enum(["","me"]),
+    type: z.enum(["","photo","video","other"]), uploader: z.enum(["","me"]), favorites: z.enum(["","1"]).default(""),
   }),
 });
 export type LibraryViewState = z.infer<typeof libraryViewStateSchema>;

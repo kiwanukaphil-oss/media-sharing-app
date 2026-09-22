@@ -118,3 +118,11 @@ No schema or real membership changes were performed during this increment. The s
 Earlier increment checklists retain their original local/deployment context; this release record supersedes their outstanding role-release checks. Phase 3 still requires invitation release, private favourites/activity and bounded guest intake.
 
 Invitation hosted run `35725104303` passed browser checks but failed the final closure-entry fixture because preceding authentication fixtures consumed its shared IP rate budget (429 instead of the expected fenced-invitation 410). The independent fixture now uses its own documentation-range test IP; production limits remain unchanged. Migration 0020 is still held pending the corrected hosted run.
+
+## Invitation release - 22 September, 12:14 UTC
+
+- [x] Role-bound invitation API, issuer selection and recipient preview passed local API/browser checks and hosted CI `35725523545` (both jobs). The earlier rate-budget test failure is resolved without relaxing production protection.
+- [x] Migration 0020 applied after a fresh backup, recovery bookmark and actual-export rehearsal. Before/after comparisons preserve every existing row/column across 25 tables.
+- [x] Worker `b7e1565a-3aa7-402c-acd2-5703cfe57ad4` is at 100%; both origins and signed-in invitation-role preview verified. No real invitation was created.
+
+Private favourites are the next partial P3-03 increment. They are personal bookmarks with a 10,000-record cap, scoped by current access; Viewer can bookmark but cannot change shared metadata. They remain present if a shared file is in Trash and appear only in the matching Trash view; permanent file removal removes its bookmarks. Person erasure removes that person's bookmarks. Activity remains outstanding.

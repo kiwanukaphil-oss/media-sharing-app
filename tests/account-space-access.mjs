@@ -101,6 +101,14 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.equal((await request(bob,scoped('albums'),'POST',{name:'Denied Contributor album'})).status,403);
   await database.prepare("UPDATE space_memberships SET role='owner' WHERE person_id=? AND space_id=?").bind(alice.personId,space).run();
   await database.prepare("UPDATE space_memberships SET role='member' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
+  assert.equal((await request(bob,scoped(`favorites/${upload.id}`),'PUT',{favorite:true})).status,200);
+  assert.equal((await request(bob,scoped('feed?favorites=1'))).data.total,1);
+  assert.equal((await request(alice,scoped('feed?favorites=1'))).data.total,0,'An owner cannot see another person bookmarks.');
+  assert.equal((await request(alice,scoped('feed'))).data.items[0].isFavorite,0);
+  assert.equal((await request(alice,scoped(`favorites/${upload.id}`),'PUT',{favorite:true})).status,200);
+  assert.equal((await request(aliceOtherBrowser,scoped('feed?favorites=1'))).data.total,1,'Bookmarks follow the signed-in person.');
+  assert.equal((await request(alice,`favorites/${upload.id}?space=${otherSpace}`,'PUT',{favorite:true})).status,403,'A bookmark cannot be created through an unauthorised space.');
+  assert.equal((await request(alice,scoped('feed?favorites=invalid'))).status,400);
   // A recorded claim attributes older uploads to this exact membership without guessing from names.
   const legacyId = crypto.randomUUID();
   await database.prepare("INSERT INTO devices (id,space_id,name,token_hash,role,created_at,expires_at) VALUES (?,?,'alice',?,'owner',?,?)")
@@ -121,6 +129,7 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.deepEqual(new Uint8Array(await original.arrayBuffer()), bytes);
   await database.prepare('INSERT INTO space_memberships (id,person_id,space_id,role,created_at) VALUES (?,?,?,?,?)')
     .bind(crypto.randomUUID(), alice.personId, otherSpace, 'owner', now).run();
+  assert.equal((await request(alice,`favorites/${upload.id}?space=${otherSpace}`,'PUT',{favorite:true})).status,409,'An authorised second space still cannot address the wrong file.');
   assert.equal((await request(alice, `uploads?space=${otherSpace}`, 'POST', upload)).status, 409, 'Upload IDs cannot move between authorised spaces');
   assert.equal((await request(alice, `media/${upload.id}/link?space=${otherSpace}`)).status, 404);
   assert.equal((await request(alice, `feed?space=${otherSpace}`)).data.total, 0);
@@ -141,6 +150,9 @@ export async function verifyAccountSpaceAccess(database, dispatch) {
   assert.equal((await request(bob,scoped('uploads'),'POST',viewerUpload)).status,200);
   await database.prepare("UPDATE space_memberships SET role='viewer' WHERE person_id=? AND space_id=?").bind(bob.personId,space).run();
   assert.equal((await request(bob,scoped('session'))).data.role,'viewer');
+  assert.equal((await request(bob,scoped(`favorites/${upload.id}`),'PUT',{favorite:false})).status,200,'Viewer can manage personal bookmarks.');
+  assert.equal((await request(bob,scoped('feed?favorites=1'))).data.total,0);
+  assert.equal((await request(aliceOtherBrowser,scoped('feed?favorites=1'))).data.total,1,'Removing a bookmark affects only its owner.');
   assert.equal((await request(bob,scoped('feed'))).status,200);
   assert.equal((await request(bob,scoped(`media/${upload.id}/link`))).status,200);
   assert.equal((await request(bob,scoped('uploads'),'POST',{...upload,id:crypto.randomUUID()})).status,403);

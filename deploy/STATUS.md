@@ -1,5 +1,12 @@
 # Direct Cloudflare deployment
 
+## Role-aware invitations - 22 September 2026
+
+Worker `b7e1565a-3aa7-402c-acd2-5703cfe57ad4` is at **100%**, deployed at 12:14 UTC. Runtime `402b6e4`, verified follow-up `9d81a1c`; hosted `35725523545` passed both jobs. Migration 0020 adds only the invitation role with default Member for existing records. New web invitations default Contributor and may explicitly grant Viewer, Editor or Member; Owner cannot be invited directly.
+
+A fresh independently restored backup `35724705808`, recovery bookmark and private D1 export preceded the migration. The exact live export passed local upgrade/quarantine rehearsal. Post-migration export comparison confirms all existing data across 25 tables unchanged. Both origins returned health/operations 200 and anonymous feed 401; signed-in People shows Contributor invitation preview and unchanged ownership. No real invitation or role change was made for testing. Migration 0021 remains local work only.
+
+
 ## Scoped collaboration roles - 22 September 2026
 
 Worker `7a64bb09-c235-4958-91d9-b0ce10fd2526` is at **100%**, deployed at 12:02 UTC from `2e2c531`. Editor, Contributor and Viewer are available through explicit owner role changes. Current-authority and exact contribution checks cover file mutations, uploads, publication and legacy credentials. Existing members and devices keep their grants; no real membership was changed during verification.

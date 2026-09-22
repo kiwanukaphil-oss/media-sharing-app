@@ -26,6 +26,8 @@ jobs:
       - run: node tests/preparation-progress.mjs
       - run: node tests/preview-lifecycle.mjs
       - run: node tests/album-section-migration.mjs
+      - run: node tests/favorites-migration.mjs
+      - run: node tests/personal-favorites.mjs
       - run: node tests/invitation-role-migration.mjs
       - run: node tests/identity-migration.mjs
       - run: node tests/identity-runtime.mjs

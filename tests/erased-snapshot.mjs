@@ -115,6 +115,15 @@ try {
     INSERT INTO closure_backup_runs(id,snapshot_id,created_at) VALUES('${runId}','${manifest.snapshotId}',1);`;
   const roleSql=backupSql+'\n'+await readFile('drizzle/0020_tidy_starjammers.sql','utf8');
   assert.equal(inspectHistoricalSnapshot(roleSql).minimisationSchemaReviewed,true);
+  const favoritesSql=roleSql+'\n'+await readFile('drizzle/0021_magical_raza.sql','utf8')+`
+    INSERT INTO personal_favorites VALUES('gone','published',1),('gone','private',1),('kept','published',1);`;
+  const favoritesMinimised=minimiseErasedSnapshot(favoritesSql,receipt,1000);
+  const favoritesRestored=importSnapshot(favoritesMinimised.sql);
+  try {
+    assert.equal(favoritesRestored.prepare("SELECT COUNT(*) AS n FROM personal_favorites WHERE person_id='gone'").get().n,0);
+    assert.equal(favoritesRestored.prepare("SELECT COUNT(*) AS n FROM personal_favorites WHERE person_id='kept'").get().n,1);
+  } finally { favoritesRestored.close(); }
+  assert.equal(minimiseErasedSnapshot(favoritesMinimised.sql,receipt,1000).sql,favoritesMinimised.sql);
   const roleMinimised=minimiseErasedSnapshot(roleSql,receipt,1000);
   assert.equal(minimiseErasedSnapshot(roleMinimised.sql,receipt,1000).sql,roleMinimised.sql);
   const backupReview = inspectHistoricalSnapshot(backupSql);

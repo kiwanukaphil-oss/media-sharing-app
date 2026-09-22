@@ -33,6 +33,9 @@ export function minimiseErasedSnapshot(sql, receipt, now = Date.now()) {
     const personal = 'SELECT space_id FROM personal_spaces WHERE person_id=?';
     const actors = `SELECT device_id FROM account_space_actors WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)
       UNION SELECT device_id FROM legacy_owner_claims WHERE membership_id IN(SELECT id FROM space_memberships WHERE person_id=?)`;
+    // Newer schemas retain personal navigation separately; it must not survive person erasure.
+    if (database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='personal_favorites'").get())
+      database.prepare(`DELETE FROM personal_favorites WHERE person_id=? OR media_id IN(SELECT id FROM media WHERE space_id IN(${personal}))`).run(personId,personId);
     const sharedBefore = JSON.stringify(database.prepare(`SELECT * FROM media WHERE space_id NOT IN(${personal}) ORDER BY id`).all(personId));
     database.prepare(`DELETE FROM album_media WHERE album_id IN(SELECT id FROM albums WHERE space_id IN(${personal}))
       OR media_id IN(SELECT id FROM media WHERE space_id IN(${personal}))`).run(personId,personId);

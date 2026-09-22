@@ -271,3 +271,10 @@ export const closureBackupRuns = sqliteTable("closure_backup_runs", {
   receiptDigest: text("receipt_digest"),
   createdAt: integer("created_at").notNull(),
 });
+
+// A favourite is personal navigation only: it never changes shared approval, ownership or audience.
+export const personalFavorites = sqliteTable("personal_favorites", {
+  personId: text("person_id").notNull().references(() => people.id),
+  mediaId: text("media_id").notNull().references(() => media.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at").notNull(),
+}, table => [primaryKey({ columns: [table.personId, table.mediaId] }), index("idx_favorites_media").on(table.mediaId)]);

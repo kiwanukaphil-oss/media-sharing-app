@@ -2,7 +2,7 @@ export type Category = "original" | "final";
 export type MediaItem = {
   id: string; name: string; mime: string; size: number; sha256: string;
   category: Category; createdAt: number; deviceName: string;
-  canEdit?: boolean; hasPreview?: boolean; archivedAt?: number | null;
+  isFavorite?: boolean; canEdit?: boolean; hasPreview?: boolean; archivedAt?: number | null;
   originalName?: string; capturedAt?: string | null; uploadBatch?: string | null; revision?: number;
 };
 export type Album = { id: string; name: string; description: string; createdAt: number; latestUploadAt?: number; archivedAt: number | null; deletedAt: number | null; revision: number; count: number };

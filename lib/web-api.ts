@@ -1,3 +1,4 @@
+import { changePersonalFavorite } from "./personal-favorites";
 import { fileEditAuthority, requireFileEditor } from "./file-edit-authority";
 import { z } from "zod";
 import { libraryAction, requireAlbum } from "./library-api";
@@ -22,6 +23,13 @@ export async function readFeed(request: Request, device: ActiveDevice) {
   if (mediaType === "photo") where += " AND media.mime LIKE 'image/%'";
   if (mediaType === "video") where += " AND media.mime LIKE 'video/%'";
   if (mediaType === "other") where += " AND media.mime NOT LIKE 'image/%' AND media.mime NOT LIKE 'video/%'";
+  const favoriteFilter = query.get("favorites") || "";
+  if (!["", "1"].includes(favoriteFilter)) throw new ApiError(400, "Choose a valid favourites filter.");
+  if (favoriteFilter) {
+    if (device.authentication !== "account" || !device.personId) throw new ApiError(403, "Sign in to open private favourites.");
+    where += " AND EXISTS (SELECT 1 FROM personal_favorites favorite WHERE favorite.media_id=media.id AND favorite.person_id=?)";
+    values.push(device.personId);
+  }
   const uploader = query.get("uploader") || "";
   if (!["", "me"].includes(uploader)) throw new ApiError(400, "Choose a valid uploader filter.");
   if (uploader === "me") {
@@ -77,9 +85,9 @@ export async function readFeed(request: Request, device: ActiveDevice) {
     } catch { throw new ApiError(400, "This page link is invalid. Refresh the feed."); }
   }
   const editable = fileEditAuthority(device);
-  const result = await database().prepare(`SELECT (${editable.sql}) AS canEdit, media.id, media.name, media.mime, media.size, media.sha256, media.category,
+  const result = await database().prepare(`SELECT EXISTS (SELECT 1 FROM personal_favorites favorite WHERE favorite.media_id=media.id AND favorite.person_id=?) AS isFavorite, (${editable.sql}) AS canEdit, media.id, media.name, media.mime, media.size, media.sha256, media.category,
     COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
-    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(...editable.bindings, ...values, limit + 1).all<MediaItem & { sortValue: number }>();
+    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(device.authentication === "account" ? device.personId || "" : "", ...editable.bindings, ...values, limit + 1).all<MediaItem & { sortValue: number }>();
   const items = result.results.slice(0, limit);
   const last = items.at(-1);
   const counts = await database().prepare(`SELECT COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS "all",
@@ -156,6 +164,7 @@ async function permanentlyDelete(item: UploadRow, storage: R2Bucket, device: Act
 // All management actions inherit the route's CSRF check and scope every object to the paired space.
 export async function webAction(request: Request, device: ActiveDevice, resource: string, id?: string, action?: string, storage: R2Bucket = bucket()): Promise<Response | null> {
   const method = request.method;
+  if (resource === "favorites" && id && !action && method === "PUT") return changePersonalFavorite(request, device, id);
   const libraryResponse = await libraryAction(request, device, resource, id);
   if (libraryResponse) return libraryResponse;
   if (resource === "feed" && method === "GET") return readFeed(request, device);
