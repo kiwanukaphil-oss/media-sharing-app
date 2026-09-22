@@ -1,5 +1,13 @@
 # Direct Cloudflare deployment
 
+## Publication recovery authority - 22 September 2026
+
+Worker `d2878ef1-7faa-4220-88bf-7fce19b63320` is at **100%**, read back at 06:57 UTC. Source `6c57684` adds password-recovery checks to publication reservation/copy/visibility commits and current account/device authority before cancellation cleanup. Authorised repeated cleanup is preserved. Previous version: `13b029f9-328b-467d-9c5e-99a7dfc63285`.
+
+TypeScript, focused lint, production build, actual-D1/R2 recovery race tests, full account-access/legacy API checks and deployment dry run passed. Both origins return health/operations 200, anonymous feed 401 and dormant coordinator 404. Retained signed-in My space shows its existing ready fixture after reload. Hosted CI `35697206357` is still running. No schema, account audience, secrets, pilot quota or user originals changed.
+
+The external identity/recovery test alert is now confirmed in Gmail Inbox (21 September, 11:57 a.m. EAT; inspected 22 September). Expansion capacity and full lifecycle execution remain open. Historical sections below describe their verification state at the time.
+
 ## Transfer authority and page lifecycle release - 21 September 2026
 
 Worker `59b996f4-aea4-4ece-a808-3798a2d783b3` is live at **100%**, deployment read back at 15:55 UTC. Source `30fe826` includes atomic transfer-commit access checks and navigation-aware background polling. No schema, account audience, secret or 1 GiB pilot-budget change. Previous version: `fe4fa894-f45e-4c7d-93a6-4ced1a355774`.

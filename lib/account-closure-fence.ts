@@ -50,7 +50,7 @@ export async function settleClosureTrackedWrite(database: D1Database, id: string
   if (!result.meta.changes) throw new AccountError(409, "Tracked write changed; review its outcome.");
 }
 
-type StorageEffect = { objectKey: string; operation: "put" | "multipart_create" | "multipart_part" | "multipart_complete" | "delete" | "multipart_abort"; uploadId?: string };
+type StorageEffect = { objectKey: string; operation: "put" | "multipart_create" | "multipart_part" | "multipart_complete" | "delete" | "multipart_abort"; uploadId?: string; partNumber?: number };
 
 // Reserve before signing or returning a direct-upload URL. URL expiry is an admission deadline, not
 // proof that storage finished a previously admitted request. Keep uncertainty without an automatic
@@ -79,13 +79,15 @@ export async function reserveClosureUploadCapability(database: D1Database, admis
 export async function runClosureStorageEffect<T>(database: D1Database, admissionId: string, effect: StorageEffect,
   dispatch: () => Promise<{ value: T; uploadId?: string }>, now = Date.now()): Promise<T> {
   if (!effect.objectKey || effect.objectKey.length > 1024 || /[\x00-\x1f]/.test(effect.objectKey) ||
-      (["multipart_part", "multipart_complete", "multipart_abort"].includes(effect.operation) && !effect.uploadId)) {
+      (["multipart_part", "multipart_complete", "multipart_abort"].includes(effect.operation) && !effect.uploadId) ||
+      (effect.uploadId !== undefined && (effect.uploadId.length > 2048 || /[\x00-\x1f]/.test(effect.uploadId))) ||
+      (effect.operation === "multipart_part" && (!Number.isSafeInteger(effect.partNumber) || effect.partNumber! < 1 || effect.partNumber! > 10000))) {
     throw new AccountError(400, "An exact storage target is required.");
   }
   const id = crypto.randomUUID(), authority = closureAdmissionAuthority(admissionId);
   const reserved = await database.prepare(`INSERT INTO closure_storage_effects
-    (id,admission_id,object_key,operation,upload_id,state,started_at) SELECT ?,?,?,?,?,'active',? WHERE ${authority.sql}`)
-    .bind(id, admissionId, effect.objectKey, effect.operation, effect.uploadId ?? null, now, ...authority.bindings).run();
+    (id,admission_id,object_key,operation,upload_id,part_number,state,started_at) SELECT ?,?,?,?,?,?,'active',? WHERE ${authority.sql}`)
+    .bind(id, admissionId, effect.objectKey, effect.operation, effect.uploadId ?? null, effect.partNumber ?? null, now, ...authority.bindings).run();
   if (!reserved.meta.changes) throw new AccountError(409, "Closure prevents new storage work.");
   try {
     const result = await dispatch();

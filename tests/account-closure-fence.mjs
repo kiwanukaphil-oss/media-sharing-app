@@ -5,6 +5,8 @@ import { Miniflare,convertV4MiniflareOptions } from 'miniflare';
 
 const bundle=await build({entryPoints:['lib/account-closure-fence.ts'],bundle:true,write:false,platform:'node',format:'esm'});
 const fence=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const storageBundle=await build({entryPoints:['lib/closure-tracked-bucket.ts'],bundle:true,write:false,platform:'node',format:'esm'});
+const {createClosureTrackedBucket}=await import(`data:text/javascript;base64,${Buffer.from(storageBundle.outputFiles[0].text).toString('base64')}`);
 const runtime=new Miniflare(convertV4MiniflareOptions({workers:[{name:'closure-protocol-test',modules:true,
   script:'export default { fetch() { return new Response("isolated"); } }',d1Databases:['DB'],r2Buckets:['MEDIA']}]}));
 const now=Date.now(),issuer='https://closure.fixture/';
@@ -49,6 +51,38 @@ try {
   };
   assert.equal(await commit(activeAccount),1);
   const storage=await runtime.getR2Bucket('MEDIA');
+  // Exercise the actual R2 interface through the adapter, including handles retained across a fence.
+  const adapterPerson=await createPerson('adapter');
+  const adapterAdmission=await fence.admitClosureTrackedWrite(database,{kind:'account',session:adapterPerson},now);
+  const tracked=createClosureTrackedBucket(database,adapterAdmission.id,storage);
+  const adapterKey='fixture/adapter';
+  await tracked.put(adapterKey,'original',{httpMetadata:{contentType:'text/plain'}});
+  assert.equal(await (await tracked.get(adapterKey)).text(),'original');
+  assert.equal((await tracked.head(adapterKey)).httpMetadata.contentType,'text/plain');
+  assert.ok((await tracked.list({prefix:adapterKey})).objects.length);
+  assert.equal(await tracked.put(adapterKey,'denied',{onlyIf:{etagMatches:'wrong'}}),null);
+  assert.equal(await (await tracked.get(adapterKey)).text(),'original');
+  const adapterMultipart=await tracked.createMultipartUpload('fixture/adapter-multipart');
+  const resumed=tracked.resumeMultipartUpload(adapterMultipart.key,adapterMultipart.uploadId);
+  await assert.rejects(resumed.uploadPart(0,'invalid'),/target/);
+  const part=await resumed.uploadPart(1,'multipart bytes');
+  await resumed.complete([part]);
+  assert.equal(await (await tracked.get(adapterMultipart.key)).text(),'multipart bytes');
+  const pendingMultipart=await tracked.createMultipartUpload('fixture/adapter-abort');
+  await pendingMultipart.abort();
+  await tracked.delete([adapterKey,adapterMultipart.key]);
+  assert.equal(await storage.head(adapterKey),null);
+  const adapterEffects=(await database.prepare('SELECT operation,upload_id,part_number,state FROM closure_storage_effects WHERE admission_id=?').bind(adapterAdmission.id).all()).results;
+  assert.equal(adapterEffects.length,9);
+  assert.ok(adapterEffects.every(row=>row.state==='acknowledged'));
+  assert.equal(adapterEffects.find(row=>row.operation==='multipart_part').part_number,1);
+  assert.equal(adapterEffects.find(row=>row.operation==='multipart_part').upload_id,adapterMultipart.uploadId);
+  const retainedHandle=await tracked.createMultipartUpload('fixture/adapter-fenced');
+  await fence.beginApprovedClosureFence(database,approval(adapterPerson),now);
+  await assert.rejects(retainedHandle.uploadPart(1,'late'),/Closure/);
+  await assert.rejects(tracked.put('fixture/adapter-denied','late'),/Closure/);
+  assert.equal(await storage.head('fixture/adapter-denied'),null);
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM closure_storage_effects WHERE admission_id=?').bind(adapterAdmission.id).first()).n,10);
   let releaseStorage, announceDispatch;
   const dispatched=new Promise(resolve=>{announceDispatch=resolve;});
   const paused=new Promise(resolve=>{releaseStorage=resolve;});

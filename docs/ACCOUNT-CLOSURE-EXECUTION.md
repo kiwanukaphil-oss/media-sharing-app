@@ -87,6 +87,8 @@ The explicitly approved provider fixture was created, checked, removed and indep
 
 ### Direct-upload capability reservation (isolated only)
 
+`createClosureTrackedBucket` now preserves the R2 bucket/multipart interface while reserving every mutation before dispatch. It tracks multipart part numbers and identifiers and gives each key in a multi-key delete its own receipt. Reads retain their native behaviour. Isolated D1/R2 tests cover conditional writes, exact multipart bytes, create/resume/complete/abort, per-key deletion and denial through handles retained across fencing. Request injection and complete metadata-generation coverage remain outstanding; the adapter is not active in production.
+
 The prototype records the exact object key, multipart upload ID, part number and URL admission deadline before a caller signs/returns a part URL. No signed URL or bearer is stored. Issued capabilities remain uncertain and block write settlement even after their deadline; a lost response or client completion cannot clear them. New reservations are rejected after fencing. Tests cover exact custody, invalid targets/deadlines, fence ordering and expiry without settlement.
 
 This is preparatory bookkeeping, not a completed direct-upload freeze: production part-URL issuance is not wired to it, and a separately reviewed storage reconciliation must establish multipart quiescence before any clearance. The prototype schema remains outside the migration journal and the snapshot minimiser still refuses unreviewed schemas.
