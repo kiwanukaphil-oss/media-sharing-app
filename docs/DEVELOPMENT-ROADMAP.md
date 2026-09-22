@@ -10,7 +10,7 @@
 - [x] Isolated named-recipient authority and immutable snapshot labels pass real D1 tests: no membership grant, all-source availability, session/recovery/expiry denial, sticky Trash/source/grant suspension and restored quarantine.
 - [x] Isolated atomic sender drafts, exact retries, stale/mixed-scope denial, explicit issue/reactivation/revocation and rollback checks pass D1.
 - [x] Gated owner/recipient routes pass actual built-Worker D1/R2 tests with closure tracking, exact original bytes, no membership, captured labels, duplicate-grant handling and source suspension/revocation.
-- [ ] Recipient/sender UI, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
+- [x] Recipient/sender UI, packages and isolated lifecycle acceptance are implemented and hosted-verified; schema 0026 is journalled. Live release remains open below. [Contract and evidence](DELIVERY-CONTRACT.md).
 
 ## Delivery development acceptance
 
@@ -281,7 +281,7 @@ These are recommended defaults carried forward from the assessment. Phase 0 reco
 
 - [x] **P5-01 — Define immutable delivery selections.** Snapshot explicit asset versions by default; do not require the later creative lineage UI. Review audience, expiry, authentication/passcode and recipient capabilities before publishing.
 
-  - [x] [Snapshot delivery contract](DELIVERY-CONTRACT.md): named-account recipients, owner-only audience expansion, one source scope, explicit selection/expiry, suspended access after source/authority loss, honest bearer-URL/download limitations, and separate guest-mode gates. Design only; no delivery is implemented or enabled.
+  - [x] [Snapshot delivery contract](DELIVERY-CONTRACT.md): named-account recipients, owner-only audience expansion, one source scope, explicit selection/expiry, suspended access after source/authority loss, honest bearer-URL/download limitations, and separate guest-mode gates. Design implemented and hosted-verified; production delivery activation remains disabled.
 - [ ] **P5-02 — Build recipient and sender workflows.** Focused branded presentation, predictable downloads, revoke/update controls and a sender preview of exposed content. A live collection is a separately approved optional mode, never an implicit default.
 - [ ] **P5-03 — Deliver selected-file download/export jobs.** Bounded in-tab packages with progress, cancellation, fresh retries, collision-safe names and limits; avoid huge browser-memory archives. Unattended background artifacts remain a separately gated expansion, per the delivery contract. Check permissions at job creation and retrieval and define loss-of-access behaviour.
 - [ ] **P5-04 — Provide portable metadata and import mapping.** Export originals with names, dates, albums, sections and available relationships in a manifest. Preview directory-import mapping and name collisions; support browser fallbacks without claiming universal folder APIs.
@@ -1231,3 +1231,8 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [x] Document bounded abuse response, private incident evidence, containment, resume conditions and admitted-capability limitations in the [intake operations runbook](INTAKE-OPERATIONS.md).
 - [x] Complete hosted pause verification in `35752698764`.
 - [ ] Complete independent backup and provider-disposition/live release gates. Production flags are unchanged; P3-05 remains open for disposition and deployed acceptance.
+
+### 22 September - release readiness reconciliation
+
+- [x] Update [release candidate](RELEASE-CANDIDATE.md) with current schema 0020 baseline, candidate migrations 0021-0027, feature-specific development/live acceptance, safe rollout order and rollback restrictions. Preserve the old release record as explicitly historical.
+- [ ] Independent backup, provider disposition, live acceptance and demand-dependent expansion remain open; parent counts stay 22/47.
