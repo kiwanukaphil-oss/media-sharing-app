@@ -5,6 +5,12 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Hosted verification correction
+
+- [x] Hosted browser job passed in run 35735781823 (source 62de840).
+- [x] Fixed the legacy identity migration assertion to compare every original column while allowing additive scope fields; also assert no scopes/grants are invented. Local populated migration rehearsal passes.
+- [ ] Repeat hosted verification after the copy increment. The previous verify job failed on the outdated whole-row comparison; this is not a production failure.
+
 ## Restricted audience UI checkpoint
 
 - [x] Flag-gated owner management and explicit self-access, general/restricted/combined navigation, scoped album/import/upload capture, activity and saved-view contexts implemented and locally verified.
