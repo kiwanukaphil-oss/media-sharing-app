@@ -62,3 +62,9 @@ Extend backup/export/minimisation schemas before enabling any delivery table. Pr
 - [ ] P5-06: test access loss during reads/jobs, expired capabilities, stale selection, partial failure, restore quarantine, recipient usability and operational costs; record deployed verification.
 
 This contract completes design only. It neither approves a purchase nor marks delivery implementation or Phase 5 complete.
+
+## Isolated implementation checkpoint
+
+Named-recipient authority preparation now passes real D1 tests. The draft grants no access; acceptance binds the invited verified account without membership or source audience grants. Every delivery read requires all captured originals and the sender's current authority. Snapshot labels survive working-file renames; Trash, source removal and sender grant loss suspend the whole issued delivery, with no automatic revival. Revoked/recovered sessions, expired deliveries and reassigned email addresses cannot inherit access. Historical restore quarantines issued deliveries.
+
+Prototype tables remain outside the migration journal. Sender draft/issue/revoke workflows, recipient routes/UI, download capabilities, lifecycle/minimisation and original packages are still outstanding. This preparation creates no live grants and sends no invitations.

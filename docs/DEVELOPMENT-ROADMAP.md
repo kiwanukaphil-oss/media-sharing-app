@@ -5,6 +5,11 @@
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
 
+## Delivery preparation checkpoint
+
+- [x] Isolated named-recipient authority and immutable snapshot labels pass real D1 tests: no membership grant, all-source availability, session/recovery/expiry denial, sticky Trash/source/grant suspension and restored quarantine.
+- [ ] Sender issuance, recipient UI/downloads, packages and lifecycle/release acceptance. Prototype schema remains outside the journal. [Contract and evidence](DELIVERY-CONTRACT.md).
+
 ## Upload-request development checkpoint
 
 Work continues on isolated branch `work/upload-requests`, latest source `cd01dcd`. The feature remains disabled; prototype tables are outside the active migration journal. Parent counts are unchanged.
