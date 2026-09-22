@@ -1268,3 +1268,10 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [x] Built Worker pool tests pass against both main and a schema-0020 compatible release patch; account/publication/intake and browser storage regressions pass.
 - [x] Backblaze caps inspected: 10 GB storage, 1 GB/day download, no payment method.
 - [ ] Owner payment setup, bounded cap configuration, hosted verification, real backup acceptance and production activation remain outstanding. Billing tab is prepared for the owner.
+
+### 22 September - combined capacity provider acceptance
+
+- [x] Main source `c0bb3b2` passes hosted verification/browser run `35780616516`; schema-0020 patch `cc8649d` passes `35780653681`, local account/closure regression and deployment dry run.
+- [x] Owner added Backblaze payment method. Dashboard now displays finite daily caps of $0.04 storage / $1.10 downloads (183 GB / 111 GB) and existing alerts.
+- [ ] B06 remains blocked: real full backup `35782249944` copied successfully but independent verification and subsequent fresh one-byte probes returned `download_cap_exceeded`. Saved dashboard values do not prove usable capacity. No pool deployment/activation yet.
+- [ ] Obtain successful full and incremental verification, then deploy the prepared schema-compatible pool and verify live display. Daily backup can retry automatically; missing evidence forces full verification. No success receipt was published for the failed run.

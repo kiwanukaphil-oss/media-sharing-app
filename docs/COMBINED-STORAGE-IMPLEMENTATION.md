@@ -14,9 +14,11 @@
 - [x] Monthly rollover, missing history or explicit full dispatch requires a full reread. Evidence older than 35 days cannot be reused. Full reports retain `verified`; incremental reports use `incremental-verified`, preserving the distinction for release/recovery gates.
 - [x] Backup heartbeat accepts only complete fresh reports with bounded full-verification age. Workflow tests preserve read/write credential separation and main-only entry; artifact history requires read-only Actions permission only in the verifier.
 - [x] Compiled Worker pool tests pass on both current main and the schema-0020 release patch: concurrent cross-space reservation, common limit and aggregate privacy after ownership loss. Account/closure/publication and intake regression pass; browser storage display checks pass.
-- [ ] Complete hosted source checks.
+- [x] Hosted main run `35780616516` and schema-0020 release patch `cc8649d` run `35780653681` pass both verification and browser jobs.
 - [x] Inspect Backblaze caps: current account has no payment method; 10 GB storage and 1 GB/day download caps explain the verification failure.
-- [ ] Owner adds a card in the prepared Billing tab; configure bounded caps within the approved plan, then verify a real full baseline and subsequent incremental run. Do not bypass the existing download-cap failure or describe copied snapshots as verified.
+- [x] Owner saved the card. B2 caps now $0.04/day storage (183 GB) and $1.10/day download (111 GB), with existing alerts enabled. These are daily ceilings, not monthly fees or a $5 total guarantee.
+- [ ] Verify a real full baseline and subsequent incremental run before activation. Run `35782249944` copied successfully but independent verification still failed with HTTP 403 `download_cap_exceeded` after the dashboard cap change. Two fresh reader authorizations and one-byte probes also failed; do not count this snapshot as verified. B06 remains open.
+- [x] Reopen the provider dashboard after a transient invalid-session message: both new caps and both existing alert checkboxes are displayed. Actual download acceptance remains the deciding release gate.
 - [ ] Activate the private pool only on a schema-0020 compatible runtime; verify live both-library totals and enforcement. No new migration required.
 
 ## Limits and operations

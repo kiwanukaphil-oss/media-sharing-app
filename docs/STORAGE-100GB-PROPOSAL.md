@@ -1,6 +1,6 @@
 # Personal capacity proposal - 100 GB
 
-Prepared 22 September 2026. Requested capacity: 100 GB combined across the existing owner's personal and shared libraries. The owner approved the additional $5/month planning budget and daily incremental/monthly full verification, then explicitly selected combined storage. Live allowance remains 1 GiB.
+Prepared 22 September 2026. Requested capacity: 100 GB combined across the existing owner's personal and shared libraries. The owner approved the additional $5/month planning budget and daily incremental/monthly full verification, then explicitly selected combined storage. Live personal allowance remains 1 GiB until pooled activation.
 
 ## Concrete scope
 
@@ -34,9 +34,9 @@ This changes how frequently unchanged bytes are reread and must be accepted expl
 - [x] Inspect actual quota and backup scheduling code; confirm exact existing-space update is required.
 - [x] Check current provider pricing and calculate full-use costs, including daily restore traffic.
 - [x] Owner approved the additional recurring budget, verification policy and combined personal/shared allowance.
-- [ ] Implement and test separate incremental/full verification evidence and monitoring before changing the live schedule; review runner capacity and timeouts at 100 GiB.
-- [ ] Inspect live B2 billing eligibility and download/storage caps. Resolve the existing download-cap blocker without an unapproved cap change.
+- [x] Implement and hosted-test separate incremental/full verification evidence, bounded streaming and monitoring; six-hour runner ceilings remain an operational limit.
+- [x] Owner saved the B2 payment method. Replace automatically unlimited caps with $0.04/day storage (dashboard: 183 GB) and $1.10/day downloads (111 GB); existing 75%/100% alerts remain enabled.
 - [ ] Obtain a verified recovery point; activate the guarded two-library pool using a schema-compatible release.
 - [ ] Verify storage display, quota-boundary/reservation behaviour and independent backup operation; update checked roadmap and deployment evidence.
 
-No production quota, cap, billing setting, backup schedule or deletion policy has changed. A new encryption key has been installed only in the existing main-only backup verification environment; the copy job cannot forge independent verification evidence.
+Production quota and deletion policy remain unchanged pending verification. The approved daily schedule now chooses incremental verification with monthly full rereads; explicit release checks remain full. Caps limit daily exposure, not monthly spend: sustained maximum download usage could cost more than the approved planning estimate. Full checks at 100 GiB must not be run daily. Retained backup growth approaching the storage cap requires operator review, never automatic deletion. A new encryption key lives only in the existing main-only backup verification environment; the copy job cannot forge independent verification evidence.
