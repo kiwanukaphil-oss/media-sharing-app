@@ -1285,10 +1285,13 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 
 Earlier unchecked capacity entries are historical checkpoints superseded by this acceptance. Remaining unrelated roadmap parents stay 22/47; provider disposition and feature-specific live acceptance still apply.
 
-### 23 September - cinematic UI direction prototype
+### 23 September - UI direction prototypes
 
 - [x] Create a separate, non-production HTML concept for a darker editorial theme with local photography, responsive home/discovery/collections/profile views, an immersive viewer, activity and upload states.
 - [x] Verify desktop and 390-pixel layouts, viewer metadata, search recovery, responsive upload simulation and activity presentation in Chromium; JavaScript syntax and repository whitespace checks pass.
-- [ ] Review the concept with the product owner before selecting elements for production integration. Existing application functionality, API boundaries and release state are unchanged.
+- [x] Product-owner review found the cinematic direction too far from the application model; retain it only as an exploration and do not carry it into production.
+- [x] Create an app-first refresh preserving persistent side navigation, visible filters, search, sorting, grid/list views, albums, storage, selection and the existing viewer while adding stronger colour, depth, hierarchy and interactive presence.
+- [x] Verify the revised desktop and 390-pixel responsive layouts, navigation drawer, selection controls, filtering and viewer in Chromium with no browser warnings or errors.
+- [ ] Review the app-refresh direction before selecting elements for production integration. Existing application functionality, API boundaries and release state are unchanged.
 
-[Prototype and review guide](../prototypes/relay-cinematic/README.md). This visual exploration does not change parent completion counts or deployment status.
+[Cinematic exploration](../prototypes/relay-cinematic/README.md) and [app-refresh review guide](../prototypes/relay-app-refresh/README.md). These visual explorations do not change parent completion counts or deployment status.
