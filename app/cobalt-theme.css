@@ -165,8 +165,9 @@ input:focus { border-color: #7fa2e3; box-shadow: 0 0 0 3px #3268d814; }
 
 @media (max-width: 560px) {
   main { padding: 26px 18px 24px; }
-  .page-heading { align-items: center; margin-bottom: 22px; }
-  .page-heading h1 { font-size: 29px; }
+  .page-heading { align-items: center; flex-wrap: wrap; margin-bottom: 22px; }
+  .page-heading h1 { flex: 1 1 100%; min-width: 0; font-size: 29px; }
+  .page-upload-actions { width: 100%; justify-content: flex-end; }
   .library-command-row { border-radius: 14px; }
   .library-filter-panel { padding: 13px; }
   .media-grid { gap: 13px; }
