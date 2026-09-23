@@ -17,9 +17,10 @@
 - [x] Hosted main run `35780616516` and schema-0020 release patch `cc8649d` run `35780653681` pass both verification and browser jobs.
 - [x] Inspect Backblaze caps: current account has no payment method; 10 GB storage and 1 GB/day download caps explain the verification failure.
 - [x] Owner saved the card. B2 caps now $0.04/day storage (183 GB) and $1.10/day download (111 GB), with existing alerts enabled. These are daily ceilings, not monthly fees or a $5 total guarantee.
-- [ ] Verify a real full baseline and subsequent incremental run before activation. Run `35782249944` copied successfully but independent verification still failed with HTTP 403 `download_cap_exceeded` after the dashboard cap change. Two fresh reader authorizations and one-byte probes also failed; do not count this snapshot as verified. B06 remains open.
+- [x] Real full baseline `35814505652` passed on 23 September (323,643,069 bytes independently reread); incremental run `35821232068` passed with zero original bytes reread and 323,643,069 bytes carried from authenticated evidence plus current exact-version presence checks. B06 is resolved. Historical failed attempt: Run `35782249944` copied successfully but independent verification still failed with HTTP 403 `download_cap_exceeded` after the dashboard cap change. Two fresh reader authorizations and one-byte probes also failed; do not count this snapshot as verified. This historical failure is superseded by the successful 23 September runs.
 - [x] Reopen the provider dashboard after a transient invalid-session message: both new caps and both existing alert checkboxes are displayed. Actual download acceptance remains the deciding release gate.
-- [ ] Activate the private pool only on a schema-0020 compatible runtime; verify live both-library totals and enforcement. No new migration required.
+- [x] Activate the private pool on schema-0020 compatible source `cc8649d`, Worker `37d3cc5f-9811-4ddc-94f0-fa00a82e9767`, at 100% on 23 September 05:11 UTC. Both-origin health, security headers and anonymous denial pass. No migration required.
+- [x] Signed-in live browser verifies Personal and Shared both show 132.7 MB / 100.0 GB, the same 139,134,720-byte aggregate. Current-library Trash and file lists remain separate. Quota boundary/concurrency checks passed against the built Worker in disposable storage; no production fill-to-limit test or user-file mutation was performed.
 
 ## Limits and operations
 

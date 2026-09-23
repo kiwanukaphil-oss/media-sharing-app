@@ -1,6 +1,6 @@
 # Personal capacity proposal - 100 GB
 
-Prepared 22 September 2026. Requested capacity: 100 GB combined across the existing owner's personal and shared libraries. The owner approved the additional $5/month planning budget and daily incremental/monthly full verification, then explicitly selected combined storage. Live personal allowance remains 1 GiB until pooled activation.
+Prepared 22 September 2026. Requested capacity: 100 GB combined across the existing owner's personal and shared libraries. The owner approved the additional $5/month planning budget and daily incremental/monthly full verification, then explicitly selected combined storage. The combined allowance is live as of 23 September 2026.
 
 ## Concrete scope
 
@@ -36,7 +36,7 @@ This changes how frequently unchanged bytes are reread and must be accepted expl
 - [x] Owner approved the additional recurring budget, verification policy and combined personal/shared allowance.
 - [x] Implement and hosted-test separate incremental/full verification evidence, bounded streaming and monitoring; six-hour runner ceilings remain an operational limit.
 - [x] Owner saved the B2 payment method. Replace automatically unlimited caps with $0.04/day storage (dashboard: 183 GB) and $1.10/day downloads (111 GB); existing 75%/100% alerts remain enabled.
-- [ ] Obtain a verified recovery point; activate the guarded two-library pool using a schema-compatible release.
-- [ ] Verify storage display, quota-boundary/reservation behaviour and independent backup operation; update checked roadmap and deployment evidence.
+- [x] Full backup `35814505652` and incremental `35821232068` passed; activated schema-compatible Worker `37d3cc5f-9811-4ddc-94f0-fa00a82e9767`.
+- [x] Both live library views show the same 100 GB combined allowance; isolated compiled Worker quota/concurrency checks and independent backup acceptance passed. Checked roadmap and deployment evidence updated.
 
-Production quota and deletion policy remain unchanged pending verification. The approved daily schedule now chooses incremental verification with monthly full rereads; explicit release checks remain full. Caps limit daily exposure, not monthly spend: sustained maximum download usage could cost more than the approved planning estimate. Full checks at 100 GiB must not be run daily. Retained backup growth approaching the storage cap requires operator review, never automatic deletion. A new encryption key lives only in the existing main-only backup verification environment; the copy job cannot forge independent verification evidence.
+The production pool is active; deletion policy remains unchanged. The approved daily schedule now chooses incremental verification with monthly full rereads; explicit release checks remain full. Caps limit daily exposure, not monthly spend: sustained maximum download usage could cost more than the approved planning estimate. Full checks at 100 GiB must not be run daily. Retained backup growth approaching the storage cap requires operator review, never automatic deletion. A new encryption key lives only in the existing main-only backup verification environment; the copy job cannot forge independent verification evidence.

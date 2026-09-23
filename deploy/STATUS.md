@@ -1,3 +1,7 @@
+## 23 September 2026 - combined capacity live
+
+Worker `37d3cc5f-9811-4ddc-94f0-fa00a82e9767` serves 100% from 05:11 UTC, source `cc8649d` on `fix/combined-capacity-live`. Schema remains 0020. The private operator configuration activates one 100 GiB personal/shared pool. Full backup `35814505652` and incremental `35821232068` passed before deployment; both-origin health/security/anonymous access and signed-in storage displays pass. [Checked evidence](../docs/COMBINED-STORAGE-IMPLEMENTATION.md). Removing pool configuration or reverting to code without enforcement is not a safe rollback after use; prefer a forward fix or admission pause. Historical records follow.
+
 ## Pending collaboration release - 22 September, 12:35 UTC
 
 ## 22 September 2026 - persistent workspace navigation hotfix
