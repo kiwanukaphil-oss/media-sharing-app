@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./creative-workspace.css";
 import "./interaction-polish.css";
-import "./graphite-theme.css";
+import "./cobalt-theme.css";
 
 export const metadata: Metadata = {
   title: "Relay",
