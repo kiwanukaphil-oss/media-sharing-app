@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./creative-workspace.css";
 import "./interaction-polish.css";
+import "./graphite-theme.css";
 
 export const metadata: Metadata = {
-  title: "Relay — Your shared drop zone",
-  description: "Move original photos and videos between your devices. Drop, save, and keep creating.",
+  title: "Relay",
+  description: "Photo and video libraries across your devices.",
   other: {
     "codex-preview": "development",
   },

@@ -25,7 +25,7 @@ async function verifyBrowser(engine, options, label) {
   try {
     await page.goto(origin);
     await page.getByLabel('Space name').fill(`Browser verification ${label}`);
-    await page.getByLabel('This device', { exact: true }).fill(`${label} desktop`);
+    await page.getByLabel('Device name', { exact: true }).fill(`${label} desktop`);
     await page.getByRole('button', { name: 'Create shared space' }).click();
     await expect(page.getByLabel('Search filenames')).toBeVisible();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'full-quality.raw', mimeType: 'application/octet-stream', buffer: payload });
@@ -36,7 +36,7 @@ async function verifyBrowser(engine, options, label) {
     const download = await downloadPromise;
     assert.deepEqual(await readFile(await download.path()), payload);
     await page.getByLabel('Search filenames').fill('not-present');
-    await expect(page.getByText('No matching files.')).toBeVisible();
+    await expect(page.getByText('No matches')).toBeVisible();
     await page.getByLabel('Search filenames').fill('');
     await expect(card).toBeVisible();
     await expect(card.getByRole('button', { name: 'Rename', exact: true })).toBeVisible();

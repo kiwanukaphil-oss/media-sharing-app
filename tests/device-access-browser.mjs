@@ -19,13 +19,13 @@ try {
   await owner.goto(origin);
   await owner.getByRole('button', { name: 'Create shared space' }).click();
   await expect(owner.getByLabel('Search filenames')).toBeVisible();
-  await owner.getByRole('button', { name: 'Pair a device', exact: true }).click();
+  await owner.getByRole('button', { name: 'Pair device', exact: true }).click();
   const ownerDialog = owner.getByRole('dialog', { name: 'Your connected devices' });
   await expect(ownerDialog.getByRole('button', { name: 'Disconnect this device', exact: true })).toBeDisabled();
   await ownerDialog.getByRole('button', { name: 'Pair a device', exact: true }).click();
   const invitation = await ownerDialog.getByLabel('Invitation link').inputValue();
   await member.goto(invitation);
-  await member.getByLabel('This device', { exact: true }).fill('Member browser fixture');
+  await member.getByLabel('Device name', { exact: true }).fill('Member browser fixture');
   await member.getByRole('button', { name: 'Join shared space' }).click();
   await expect(member.getByLabel('Search filenames')).toBeVisible();
   await member.getByRole('button', { name: 'Devices', exact: true }).click();
@@ -48,7 +48,7 @@ try {
   await expect(ownerDialog.getByRole('button', { name: 'Disconnect this device', exact: true })).toBeEnabled();
   await member.reload();
   await expect(member.getByRole('button', { name: 'Move to Trash', exact: true })).toBeVisible();
-  await member.getByRole('button', { name: 'Pair a device', exact: true }).click();
+  await member.getByRole('button', { name: 'Pair device', exact: true }).click();
   await expect(memberDialog).toContainText('You are an owner');
   const oldCookie = (await memberContext.cookies()).find(cookie => cookie.name === 'relay_device');
   await memberDialog.getByRole('button', { name: 'Disconnect this device', exact: true }).click();

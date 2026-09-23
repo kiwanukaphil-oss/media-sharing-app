@@ -12,7 +12,7 @@ page.on('pageerror', error => errors.push(error.message));
 try {
   await page.goto(origin);
   await page.getByLabel('Space name').fill('Studio workspace');
-  await page.getByLabel('This device', { exact: true }).fill('Studio desktop');
+  await page.getByLabel('Device name', { exact: true }).fill('Studio desktop');
   await page.getByRole('button', { name: 'Create shared space' }).click();
   await expect(page.getByLabel('Search filenames')).toBeVisible();
   const fixtures = await page.evaluate(async () => {

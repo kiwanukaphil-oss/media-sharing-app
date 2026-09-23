@@ -66,7 +66,7 @@ export function MediaViewer({ item, items, saving, onNavigate, onClose, onSave, 
           <div ref={stage} className={`viewer-stage${zoomed ? " is-zoomed" : ""}`} tabIndex={zoomed ? 0 : undefined} aria-label={zoomed ? "Zoomed image; scroll to explore" : undefined}>{preview}</div>
           <button className="icon-button viewer-next" aria-label="Next file" disabled={position === sequence.length - 1} onClick={() => navigateBy(1)}><ArrowRight size={21} /></button>
         </div>
-        <aside id={detailsId} className="viewer-details" hidden={!detailsOpen}><h3>The details</h3><p className="viewer-details-intro">Everything that came with it.</p>{children}</aside>
+        <aside id={detailsId} className="viewer-details" hidden={!detailsOpen}><h3>File details</h3>{children}</aside>
       </div>
       <footer className="viewer-footer">
         <span className="viewer-position" role="status">{position + 1} of {sequence.length} loaded files</span>

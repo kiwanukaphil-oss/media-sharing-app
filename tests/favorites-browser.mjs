@@ -43,7 +43,7 @@ try {
   await page.reload();
   await expect(page.getByRole('button',{name:'Remove from my favourites',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Remove from my favourites',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'No files in this view.'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'No files'})).toBeVisible();
   await page.getByRole('button',{name:'Clear search and filters',exact:true}).click();
   await expect(page.getByRole('button',{name:'Add to my favourites',exact:true})).toBeVisible();
   deny=true;
