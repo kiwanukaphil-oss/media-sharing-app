@@ -1257,24 +1257,24 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 
 - [x] Prepare [capacity, backup cost and activation proposal](STORAGE-100GB-PROPOSAL.md) for the existing personal library.
 - [x] Owner approved the recurring planning budget and verification policy; the later combined allowance supersedes personal-only capacity.
-- [ ] Validate provider operation, resolve cap/recovery gates and activate the combined allowance. Live personal quota remains 1 GiB.
+- [x] Validate provider operation, resolve the cap/recovery gate and activate the combined allowance; live acceptance completed 23 September.
 
 ### 22 September - combined 100 GB implementation
 
 - [x] Owner approved the additional $5/month planning budget, daily incremental/monthly full backup verification and combined personal/shared allowance.
 - [x] Implement pooled atomic reservations, private aggregate display, bounded streaming backups and verifier-only authenticated evidence; targeted D1/security/streaming tests pass. [Implementation](COMBINED-STORAGE-IMPLEMENTATION.md).
-- [ ] Complete compiled/hosted checks, provider cap inspection, real full/incremental backup acceptance and live activation. The 100 GB pool is not live yet.
+- [x] Complete compiled/hosted checks, provider cap inspection, real full/incremental backup acceptance and live activation on 23 September.
 
 - [x] Built Worker pool tests pass against both main and a schema-0020 compatible release patch; account/publication/intake and browser storage regressions pass.
 - [x] Backblaze caps inspected: 10 GB storage, 1 GB/day download, no payment method.
-- [ ] Owner payment setup, bounded cap configuration, hosted verification, real backup acceptance and production activation remain outstanding. Billing tab is prepared for the owner.
+- [x] Owner payment setup, bounded caps, hosted checks, real backups and production activation completed; see 23 September evidence.
 
 ### 22 September - combined capacity provider acceptance
 
 - [x] Main source `c0bb3b2` passes hosted verification/browser run `35780616516`; schema-0020 patch `cc8649d` passes `35780653681`, local account/closure regression and deployment dry run.
 - [x] Owner added Backblaze payment method. Dashboard now displays finite daily caps of $0.04 storage / $1.10 downloads (183 GB / 111 GB) and existing alerts.
-- [ ] B06 remains blocked: real full backup `35782249944` copied successfully but independent verification and subsequent fresh one-byte probes returned `download_cap_exceeded`. Saved dashboard values do not prove usable capacity. No pool deployment/activation yet.
-- [ ] Obtain successful full and incremental verification, then deploy the prepared schema-compatible pool and verify live display. Daily backup can retry automatically; missing evidence forces full verification. No success receipt was published for the failed run.
+- [x] Resolve B06 on 23 September through new verified backups and live pool activation. Historical `35782249944` remains a copied but unverified snapshot.
+- [x] Obtain successful full and incremental verification, deploy the prepared schema-compatible pool and verify live display on 23 September. No success receipt was published for the failed run.
 
 ### 23 September - combined 100 GB live
 
