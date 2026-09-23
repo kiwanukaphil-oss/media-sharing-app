@@ -1294,6 +1294,8 @@ Earlier unchecked capacity entries are historical checkpoints superseded by this
 - [x] Verify the revised desktop and 390-pixel responsive layouts, navigation drawer, selection controls, filtering and viewer in Chromium with no browser warnings or errors.
 - [x] Product-owner review approved the app-first structure and requested replacement of the green/teal theme.
 - [x] Revise the same app-refresh prototype to a non-green midnight-indigo, coral, periwinkle, amber and warm-lilac palette without changing its information architecture or interactions.
-- [ ] Review the revised colour system before selecting elements for production integration. Existing application functionality, API boundaries and release state are unchanged.
+- [x] Product-owner requested multiple non-green colour directions and a functional product voice without advertising-style taglines or explanatory subtext.
+- [x] Create a theme evaluator applying Midnight, Cobalt, Plum, Graphite and Clay palettes to the same app-first shell, and reduce the app-refresh copy to necessary labels, status, metadata and prototype notices.
+- [ ] Select one colour direction before production integration. Existing application functionality, API boundaries and release state are unchanged.
 
-[Cinematic exploration](../prototypes/relay-cinematic/README.md) and [app-refresh review guide](../prototypes/relay-app-refresh/README.md). These visual explorations do not change parent completion counts or deployment status.
+[Cinematic exploration](../prototypes/relay-cinematic/README.md), [app-refresh review guide](../prototypes/relay-app-refresh/README.md) and [colour-theme evaluator](../prototypes/relay-theme-options/README.md). These visual explorations do not change parent completion counts or deployment status.

@@ -8,8 +8,8 @@ The theme adds presence without replacing the product structure:
 - a warm lilac-neutral canvas rather than document-white pages;
 - coral, periwinkle and gold accents tied to actions and status;
 - elevated tool surfaces and more substantial media cards;
-- a compact workspace overview for useful visual rhythm;
-- stronger hierarchy and more tactile hover, selection and progress states.
+- stronger hierarchy and more tactile hover, selection and progress states;
+- concise product language limited to labels, status, metadata, and required prototype notices.
 
 ## Open
 
@@ -30,7 +30,7 @@ All assets are local. The mockup does not call Relay APIs or read the live works
 3. Select files to inspect the contextual action bar, album action and reversible Trash state.
 4. Open a photograph to review the immersive viewer, details drawer, filmstrip, zoom and keyboard navigation.
 5. Try the sample upload, device and album-creation dialogs.
-6. Narrow the browser to verify the responsive navigation drawer, horizontal overview and two-column gallery.
+6. Narrow the browser to verify the responsive navigation drawer and two-column gallery.
 
 ## Scope
 

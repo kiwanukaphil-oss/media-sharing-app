@@ -41,7 +41,6 @@ function renderLibrary() {
   const title = albumNames[state.location] || ({all:'Shared library',original:'Originals',final:'Final cuts',trash:'Trash'}[state.location]) || 'Shared library';
   element('page-title').innerHTML = `${escapeText(title)}<span>.</span>`;
   element('breadcrumb-current').textContent = albumNames[state.location] ? 'Albums' : 'Library';
-  element('page-subtitle').textContent = albumNames[state.location] ? 'Good things belong together. Originals, always.' : state.location === 'trash' ? 'A second chance for the files you set aside.' : 'A little less sending. A lot more creating.';
   element('upload-label').textContent = albumNames[state.location] ? 'Add to album' : 'Add files';
   document.querySelector('.page-heading [data-action="upload"]').hidden = state.location === 'trash';
   element('gallery').innerHTML = files.map(cardMarkup).join('');
@@ -50,7 +49,7 @@ function renderLibrary() {
   element('empty-state').hidden = files.length > 0;
   element('result-count').textContent = `${files.length} ${files.length === 1 ? 'file' : 'files'}`;
   element('section-title').textContent = state.query ? `Results for “${state.query}”` : state.location === 'trash' ? 'Recently removed' : 'Recent additions';
-  element('footer-count').textContent = state.location === 'all' && files.length === 8 ? '8 originals & final cuts · 184 MB' : `${files.length} ${files.length === 1 ? 'file' : 'files'} · Original quality`;
+  element('footer-count').textContent = state.location === 'all' && files.length === 8 ? '8 files · 184 MB' : `${files.length} ${files.length === 1 ? 'file' : 'files'}`;
   document.querySelectorAll('[data-location]').forEach(button => {
     const current = button.dataset.location === state.location;
     button.classList.toggle('active', current);
@@ -65,9 +64,8 @@ function renderLibrary() {
 
 function renderEmptyState() {
   const filtered = state.query || state.type !== 'all' || state.date !== 'all';
-  element('empty-title').textContent = filtered ? 'Nothing here. Yet.' : state.location === 'trash' ? 'A clean slate.' : 'Your next idea starts here.';
-  element('empty-copy').innerHTML = filtered ? 'Try another filename or give your filters a little room.' : state.location === 'trash' ? 'Files you move to Trash will appear here.<br>You can restore them whenever you need.' : 'Drop in your first photos and videos.<br>They’ll be here, in original quality, on every paired device.';
-  element('empty-action').innerHTML = filtered ? `Clear search & filters ${icon('RotateCcw')}` : state.location === 'trash' ? `Back to library ${icon('ArrowRight')}` : `Add your first files ${icon('ArrowUpRight')}`;
+  element('empty-title').textContent = filtered ? 'No matches' : state.location === 'trash' ? 'Trash is empty' : 'No files';
+  element('empty-action').innerHTML = filtered ? `Clear filters ${icon('RotateCcw')}` : state.location === 'trash' ? `Back to library ${icon('ArrowRight')}` : `Add files ${icon('ArrowUpRight')}`;
 }
 
 function renderFilterChips() {
@@ -160,15 +158,15 @@ function showActionDialog(title, content) {
 function simulateTransfer() {
   element('action-dialog').close(); clearInterval(transferTimer);
   element('transfer-tray').hidden = false;
-  element('transfer-title').textContent = 'Preparing your originals';
-  element('transfer-description').textContent = 'Demo transfer · original quality';
+  element('transfer-title').textContent = 'Preparing files';
+  element('transfer-description').textContent = 'Demo transfer';
   element('transfer-progress').value = 0;
   let progress = 0;
   transferTimer = setInterval(() => {
     progress = Math.min(100, progress + 8);
     element('transfer-progress').value = progress;
-    element('transfer-title').textContent = progress < 24 ? 'Preparing your originals' : progress < 100 ? 'Adding to your library' : 'Ready when you are';
-    element('transfer-description').textContent = progress < 100 ? `Demo transfer · ${progress}%` : 'Demo complete · no files were uploaded';
+    element('transfer-title').textContent = progress < 24 ? 'Preparing files' : progress < 100 ? 'Adding files' : 'Complete';
+    element('transfer-description').textContent = progress < 100 ? `${progress}%` : 'Demo only';
     if (progress === 100) clearInterval(transferTimer);
   }, 230);
 }
@@ -184,13 +182,13 @@ function closeNavigation() {
 
 // Present review-safe stand-ins for flows that would otherwise mutate the live workspace.
 function runAction(action) {
-  if (action === 'upload') showActionDialog(albumNames[state.location] ? `Add to ${albumNames[state.location]}` : 'Make room for your next idea.', `<p>Photos, videos, and every detail that came with them. Drop them anywhere in your library.</p><p class="dialog-note">This is a design preview. Try a sample transfer to see the interaction; no files will be uploaded.</p><button class="button primary" id="simulate-transfer">${icon('Upload')}Try sample transfer</button>`);
-  if (action === 'devices') showActionDialog('Together, wherever you work.', `<p>Your library moves with you.</p><div class="dialog-device">${icon('Laptop')}<div><strong>My desktop</strong><p>Owner · this device</p></div><span>YOU</span></div><div class="dialog-device">${icon('Smartphone')}<div><strong>My phone</strong><p>Member · paired device</p></div></div><p class="dialog-note">Device names are sample data. Pairing and access management will be connected during implementation.</p>`);
-  if (action === 'help') showActionDialog('A little more flow.', '<p>Explore the new library, open an image, use the arrow keys, select a few files, or visit the empty “Next project” album.</p><p class="dialog-note">Everything here is sample data. Downloads, video playback, and pairing are outside this prototype. Demo changes reset when the page reloads.</p>');
-  if (action === 'demo-download') { if (element('viewer').open) showActionDialog('Original quality. Every time.', '<p>In the finished app, this action downloads the original file with its quality and metadata intact.</p><p class="dialog-note">Downloads are not connected in this design preview.</p>'); else showToast('Design preview — downloads will use the existing original-file flow.'); }
+  if (action === 'upload') showActionDialog(albumNames[state.location] ? `Add to ${albumNames[state.location]}` : 'Add files', `<p class="dialog-note">Demo only. No files will be uploaded.</p><button class="button primary" id="simulate-transfer">${icon('Upload')}Start demo</button>`);
+  if (action === 'devices') showActionDialog('Devices', `<div class="dialog-device">${icon('Laptop')}<div><strong>My desktop</strong><p>Owner · this device</p></div><span>YOU</span></div><div class="dialog-device">${icon('Smartphone')}<div><strong>My phone</strong><p>Member · paired device</p></div></div>`);
+  if (action === 'help') showActionDialog('Prototype', '<p class="dialog-note">Sample data. Downloads, video playback, and pairing are not connected.</p>');
+  if (action === 'demo-download') { if (element('viewer').open) showActionDialog('Download', '<p class="dialog-note">Not connected in this prototype.</p>'); else showToast('Download is not connected.'); }
   if (action === 'menu') { document.querySelector('.sidebar').classList.add('open'); element('nav-scrim').hidden = false; document.querySelector('[data-action="menu"]').setAttribute('aria-expanded','true'); document.querySelector('.workspace').inert = true; document.querySelector('.sidebar .wordmark').focus(); }
-  if (action === 'new-album') showActionDialog('A home for your next idea.', '<form id="album-form"><label>Album name<input id="album-name" required maxlength="60" placeholder="e.g. Autumn collection" autocomplete="off"></label><p id="album-error" class="form-error" hidden></p><button class="button primary" type="submit">Create sample album</button></form>');
-  if (action === 'add-to-album') showActionDialog('Keep good things together.', `<p>Add ${state.selected.size} selected ${state.selected.size === 1 ? 'file' : 'files'} to a sample album.</p>${['spaces','details','weekend'].map((album,index) => `<button class="dialog-album" data-assign-album="${album}"><img src="assets/${['interior','chair','architecture'][index]}.jpg" alt=""><span>${albumNames[album]}</span>${icon('ChevronRight')}</button>`).join('')}`);
+  if (action === 'new-album') showActionDialog('New album', '<form id="album-form"><label>Album name<input id="album-name" required maxlength="60" placeholder="Album name" autocomplete="off"></label><p id="album-error" class="form-error" hidden></p><button class="button primary" type="submit">Create album</button></form>');
+  if (action === 'add-to-album') showActionDialog('Add to album', `${['spaces','details','weekend'].map((album,index) => `<button class="dialog-album" data-assign-album="${album}"><img src="assets/${['interior','chair','architecture'][index]}.jpg" alt=""><span>${albumNames[album]}</span>${icon('ChevronRight')}</button>`).join('')}`);
   if (action === 'reset') window.location.reload();
 }
 

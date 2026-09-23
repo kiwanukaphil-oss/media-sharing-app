@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#282545">
+  <title>Relay — Colour themes</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme-options.js" defer></script>
+</head>
+<body>
+  <main class="theme-evaluator">
+    <header class="evaluation-header">
+      <h1>Colour themes</h1>
+      <span id="selected-theme" aria-live="polite">Midnight</span>
+    </header>
+
+    <div class="theme-options" role="group" aria-label="Colour themes">
+      <button class="theme-option selected" type="button" data-theme-option="midnight" aria-pressed="true">
+        <span class="swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <strong>Midnight</strong>
+      </button>
+      <button class="theme-option" type="button" data-theme-option="cobalt" aria-pressed="false">
+        <span class="swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <strong>Cobalt</strong>
+      </button>
+      <button class="theme-option" type="button" data-theme-option="plum" aria-pressed="false">
+        <span class="swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <strong>Plum</strong>
+      </button>
+      <button class="theme-option" type="button" data-theme-option="graphite" aria-pressed="false">
+        <span class="swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <strong>Graphite</strong>
+      </button>
+      <button class="theme-option" type="button" data-theme-option="clay" aria-pressed="false">
+        <span class="swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <strong>Clay</strong>
+      </button>
+    </div>
+
+    <section class="relay-preview" data-theme="midnight" aria-label="Relay theme preview">
+      <aside class="preview-sidebar" aria-label="Workspace navigation">
+        <a class="preview-brand" href="#"><span>↔</span>relay<b>.</b></a>
+        <div class="workspace-card"><span>S</span><div><strong>Studio workspace</strong><small>Shared library</small></div></div>
+        <p class="nav-label">Library</p>
+        <nav aria-label="Media">
+          <button class="preview-nav active" type="button"><span>▦</span>All files<small>8</small></button>
+          <button class="preview-nav" type="button"><span>▧</span>Originals<small>6</small></button>
+          <button class="preview-nav" type="button"><span>▶</span>Final cuts<small>2</small></button>
+        </nav>
+        <p class="nav-label album-heading">Albums <button type="button" aria-label="Create album">+</button></p>
+        <nav aria-label="Albums">
+          <button class="preview-nav album" type="button"><img src="../relay-app-refresh/assets/interior.jpg" alt="">Spaces &amp; stories<small>4</small></button>
+          <button class="preview-nav album" type="button"><img src="../relay-app-refresh/assets/chair.jpg" alt="">The little details<small>3</small></button>
+          <button class="preview-nav album" type="button"><img src="../relay-app-refresh/assets/architecture.jpg" alt="">Weekend light<small>1</small></button>
+        </nav>
+        <div class="sidebar-bottom">
+          <button class="preview-nav" type="button"><span>▣</span>Devices<small>2</small></button>
+          <button class="preview-nav" type="button"><span>♲</span>Trash</button>
+          <div class="storage-row"><span>Storage</span><strong>184 MB / 10 GB</strong></div>
+          <div class="storage-track"><span></span></div>
+        </div>
+      </aside>
+
+      <div class="preview-workspace">
+        <header class="preview-topbar">
+          <div class="breadcrumb"><button class="mobile-menu" type="button" aria-label="Open navigation">☰</button><span>Studio workspace</span><b>›</b><strong>Library</strong></div>
+          <div class="top-actions"><span class="synced"><i></i>Synced</span><button class="secondary-action" type="button">Pair device</button></div>
+        </header>
+
+        <div class="preview-content">
+          <div class="library-heading"><h2>Shared library<span>.</span></h2><button class="primary-action" type="button">＋ Add files</button></div>
+          <div class="library-toolbar">
+            <label class="library-search"><span>⌕</span><input type="search" placeholder="Search your library" aria-label="Search your library"></label>
+            <button class="filter-action active" type="button">☷ Filters</button>
+            <label class="sort-select"><span class="sr-only">Sort files</span><select aria-label="Sort files"><option>Newest first</option><option>Oldest first</option><option>Name A–Z</option></select></label>
+            <div class="view-actions" aria-label="View"><button class="active" type="button" aria-label="Grid view">▦</button><button type="button" aria-label="List view">☷</button></div>
+          </div>
+          <div class="filter-row">
+            <strong>Filters</strong>
+            <label>File type<select><option>Photos and videos</option><option>Photos</option><option>Videos</option></select></label>
+            <label>Date added<select><option>Any time</option><option>Today</option><option>Before today</option></select></label>
+            <button type="button">Reset</button>
+          </div>
+          <div class="results-heading"><div><strong>Recent additions</strong><span>8 files</span></div><span>Original quality</span></div>
+          <div class="media-grid">
+            <article class="media-card"><div class="media-cover"><img src="../relay-app-refresh/assets/studio.jpg" alt="A sunlit studio interior"><label><input type="checkbox" aria-label="Select Afternoon at the studio.jpg"></label></div><div><h3>Afternoon at the studio.jpg</h3><p>My phone · 8.4 MB</p></div></article>
+            <article class="media-card"><div class="media-cover"><img src="../relay-app-refresh/assets/living.jpg" alt="A quiet contemporary living room"><label><input type="checkbox" aria-label="Select A quieter kind of space.jpg"></label></div><div><h3>A quieter kind of space.jpg</h3><p>My phone · 6.2 MB</p></div></article>
+            <article class="media-card"><div class="media-cover"><img src="../relay-app-refresh/assets/architecture.jpg" alt="Modern architecture in daylight"><label><input type="checkbox" aria-label="Select Lines in the light.jpg"></label></div><div><h3>Lines in the light.jpg</h3><p>My phone · 7.1 MB</p></div></article>
+            <article class="media-card"><div class="media-cover"><img src="../relay-app-refresh/assets/chair.jpg" alt="A sculptural chair in a quiet room"><label><input type="checkbox" aria-label="Select A place to pause.jpg"></label></div><div><h3>A place to pause.jpg</h3><p>My phone · 5.8 MB</p></div></article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
