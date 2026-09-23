@@ -4,9 +4,9 @@ A high-fidelity HTML concept that keeps Relay recognisably an application: persi
 
 The theme adds presence without replacing the product structure:
 
-- midnight-indigo navigation with clearer active states;
-- a warm lilac-neutral canvas rather than document-white pages;
-- coral, periwinkle and gold accents tied to actions and status;
+- graphite navigation with clearer active states;
+- a cool neutral canvas rather than document-white pages;
+- clear blue, periwinkle and amber accents tied to actions and status;
 - elevated tool surfaces and more substantial media cards;
 - stronger hierarchy and more tactile hover, selection and progress states;
 - concise product language limited to labels, status, metadata, and required prototype notices.
