@@ -1292,6 +1292,8 @@ Earlier unchecked capacity entries are historical checkpoints superseded by this
 - [x] Product-owner review found the cinematic direction too far from the application model; retain it only as an exploration and do not carry it into production.
 - [x] Create an app-first refresh preserving persistent side navigation, visible filters, search, sorting, grid/list views, albums, storage, selection and the existing viewer while adding stronger colour, depth, hierarchy and interactive presence.
 - [x] Verify the revised desktop and 390-pixel responsive layouts, navigation drawer, selection controls, filtering and viewer in Chromium with no browser warnings or errors.
-- [ ] Review the app-refresh direction before selecting elements for production integration. Existing application functionality, API boundaries and release state are unchanged.
+- [x] Product-owner review approved the app-first structure and requested replacement of the green/teal theme.
+- [x] Revise the same app-refresh prototype to a non-green midnight-indigo, coral, periwinkle, amber and warm-lilac palette without changing its information architecture or interactions.
+- [ ] Review the revised colour system before selecting elements for production integration. Existing application functionality, API boundaries and release state are unchanged.
 
 [Cinematic exploration](../prototypes/relay-cinematic/README.md) and [app-refresh review guide](../prototypes/relay-app-refresh/README.md). These visual explorations do not change parent completion counts or deployment status.

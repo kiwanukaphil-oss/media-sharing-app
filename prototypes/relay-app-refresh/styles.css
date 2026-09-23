@@ -176,3 +176,82 @@ h1 span { color: #ef6547; }
   .media-grid { gap: 12px; }.media-card { padding: 6px 6px 9px; border-radius: 13px; }.cover { border-radius: 9px; }.card-caption { padding: 10px 3px 0; }.card-caption h3 { font-size: 11px; }.card-caption p { font-size: 9px; }
   .select-file { left: 13px; top: 13px; }.selection-bar,.toast { left: 50%; }
 }
+
+/* Midnight palette variant: indigo structure, coral actions, periwinkle status and warm neutral surfaces. */
+:root {
+  --ink: #302e42;
+  --muted: #746f7e;
+  --line: #e2dee6;
+  --canvas: #f7f5f8;
+  --sidebar: #262440;
+}
+body { background: var(--canvas); }
+.sidebar {
+  color: #faf8ff;
+  background:
+    radial-gradient(circle at 20% 2%, #504879 0, transparent 33%),
+    linear-gradient(165deg, #322f59 0%, #262342 58%, #1d1b35 100%);
+  box-shadow: 8px 0 30px #2624401c;
+}
+.brand-mark { color: #292641; background: #f7c95e; box-shadow: 0 7px 18px #1411284a, inset 0 1px #fff8; }
+.workspace-avatar { color: #302d4c; background: #dcd7ff; }
+.workspace-avatar > span { border-color: #39355d; background: #f6ca62; }
+.workspace-name div > span { color: #b9b5d3; }
+.nav-caption { color: #9792b9; }
+.nav-item { color: #c6c1dc; }
+.nav-item svg { color: #9d97be; }
+.nav-item small { color: #948eb3; }
+.nav-item.active small { color: #292641; background: #f6cb68; }
+.album-nav img { box-shadow: 0 2px 8px #12102766; }
+.album-nav .nav-item { color: #c0bbd7; }
+.album-caption { color: #9690b6; }
+.album-caption .icon-button { color: #dad6ea; }
+.device-count { color: #e3dff1; }
+.storage-summary > div:first-child, .storage-summary p { color: #aaa5c3; }
+.profile-icon { color: #302d4c; background: #e1def2; }
+.profile-icon svg { color: #4c476e; }
+.device-profile div > span, .device-profile .icon-button { color: #aaa5c2; }
+.workspace { background: radial-gradient(circle at 92% 3%, #eee9ff 0, transparent 24%), var(--canvas); }
+.topbar { border-color: #e2dee7; background: #fcfafcdd; }
+.breadcrumb { color: #777382; }
+.breadcrumb strong { color: #37334d; }
+.sync-status { color: #5c587e; }
+.status-dot { background: #7371e8; box-shadow: 0 0 0 4px #7371e818; }
+h1 { color: #312e48; }
+.page-heading p:last-child { color: #706b79; }
+.library-pulse article { border-color: #e3dfe8; box-shadow: 0 8px 24px #332e4d12; }
+.pulse-icon.blue { color: #5f5fbd; background: #ecebff; }
+.library-pulse strong { color: #39354e; }
+.library-pulse p { color: #817c89; }
+.pulse-dot { color: #5652a5; background: #efeffb; }
+.live-mark { color: #665fa0; background: #f1effb; }
+.live-mark i { background: #7b72e6; }
+.library-toolbar { border-color: #e1dde6; box-shadow: 0 7px 24px #332e4d10; }
+.search svg { color: #68627f; }
+.search input { color: #39354d; }
+.search kbd { color: #787287; border-color: #e2dee7; background: #f6f3f7; }
+.filter-button { border-color: #e1dde6; color: #514b68; background: #f8f6f9; }
+.sort-control select { color: #625d70; }
+.view-switch { border-color: #e1dde6; }
+.view-switch .active { color: #5751a4; background: #efedfa; }
+.filter-panel { border-color: #dfdbea; background: #f0eef8; }
+.filter-panel-label { color: #625b88; border-color: #d7d2e3; }
+.filter-panel label { color: #69637d; }
+.filter-panel select { color: #4c465f; border-color: #d6d1df; }
+.gallery-heading h2 { color: #4c475d; }
+.gallery-heading #result-count, .drop-hint { color: #827d8b; }
+.media-card { border-color: #e4e0e8; box-shadow: 0 6px 20px #332e4c10; }
+.media-card:hover { border-color: #d2ccda; box-shadow: 0 13px 34px #332e4c1b; }
+.media-card.selected { box-shadow: 0 0 0 3px #f064451d, 0 12px 28px #332e4c16; }
+.card-caption h3 { color: #3b374d; }
+.card-caption p, .card-caption .icon-button { color: #837e8b; }
+.card-caption p svg { color: #69628b; }
+.library-footer { border-color: #e0dce5; color: #7d7885; }
+.library-footer > span:first-child { color: #645e8a; }
+.selection-bar { color: #faf8ff; border-color: #4b476b; background: #2a2747; box-shadow: 0 14px 38px #17142f52; }
+.selection-bar .button:hover, .selection-bar .icon-button:hover { background: #403b63; }
+.toast { border-color: #e1dce8; color: #5c5679; }
+.transfer-tray, .action-dialog { border-color: #e1dde6; }
+.viewer { background: #1c1a32; }
+.viewer-details { background: #282541; }
+.action-dialog::backdrop { background: #24213f66; }
