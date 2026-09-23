@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111311">
+  <meta name="color-scheme" content="dark">
+  <title>Relay — Afterlight concept</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="prototype.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <aside class="rail" aria-label="Primary navigation">
+      <a class="brand" href="#home" aria-label="Relay home"><span>r</span><i></i></a>
+      <nav class="rail-nav">
+        <button class="rail-action is-active" data-view="home" aria-label="Home" aria-current="page"><svg><use href="assets/icons.svg#Image"/></svg></button>
+        <button class="rail-action" data-view="discover" aria-label="Discover"><svg><use href="assets/icons.svg#Grid2X2"/></svg></button>
+        <button class="rail-action" data-view="collections" aria-label="Collections"><svg><use href="assets/icons.svg#Folder"/></svg></button>
+      </nav>
+      <div class="rail-bottom">
+        <button class="rail-action notification-trigger" data-action="notifications" aria-label="Notifications" aria-expanded="false"><span class="bell">⌁</span><i class="notification-dot"></i></button>
+        <button class="avatar avatar-button" data-action="account" aria-label="Open account menu" aria-expanded="false">AK</button>
+      </div>
+    </aside>
+
+    <div class="page-shell">
+      <header class="topbar">
+        <button class="mobile-menu" data-action="mobile-menu" aria-label="Open navigation"><svg><use href="assets/icons.svg#Menu"/></svg></button>
+        <a class="mobile-brand" href="#home">relay<span>.</span></a>
+        <label class="search-field">
+          <svg><use href="assets/icons.svg#Search"/></svg>
+          <input id="site-search" type="search" placeholder="Search stories, people, places" autocomplete="off">
+          <kbd>⌘ K</kbd>
+        </label>
+        <div class="topbar-actions">
+          <button class="text-action" data-action="notifications">Activity <span class="activity-count">3</span></button>
+          <button class="button primary" data-action="upload"><svg><use href="assets/icons.svg#Plus"/></svg>Share work</button>
+        </div>
+      </header>
+
+      <main id="main-content" tabindex="-1">
+        <section class="page-view is-active" data-page="home">
+          <div class="editorial-heading reveal">
+            <div>
+              <p class="eyebrow">Tuesday, 23 September</p>
+              <h1>Good evening,<br><em>Amina.</em></h1>
+            </div>
+            <p class="heading-note">A quieter place for the photographs<br>you want to keep close.</p>
+          </div>
+
+          <section class="story-feature reveal" aria-label="Featured story">
+            <button class="feature-image image-button" data-open-photo="black-sand" aria-label="Open Into the wild">
+              <img src="assets/black-sand-coast.png" alt="A person walking on a black-sand coast below misty mountains">
+              <span class="feature-gradient"></span>
+              <span class="story-count"><b>01</b> / 24</span>
+              <span class="feature-open"><svg><use href="assets/icons.svg#ArrowUpRight"/></svg></span>
+            </button>
+            <div class="feature-copy">
+              <div class="feature-meta"><span class="avatar small">JM</span><span><b>Jonas M.</b><small>2 hours ago · Faroe Islands</small></span></div>
+              <h2>Into the wild</h2>
+              <p>Three days following the weather north. No plan, no signal—just the road and that impossible light.</p>
+              <div class="feature-actions">
+                <button class="circle-action reaction" aria-label="Appreciate story" aria-pressed="false"><span>♡</span></button><span class="reaction-count">184</span>
+                <button class="text-button" data-open-photo="black-sand">View story <svg><use href="assets/icons.svg#ArrowRight"/></svg></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="story-section reveal">
+            <div class="section-heading"><div><p class="eyebrow">From your circle</p><h2>Fresh perspectives</h2></div><button class="text-button" data-view="discover">See everything <svg><use href="assets/icons.svg#ArrowRight"/></svg></button></div>
+            <div class="story-grid">
+              <article class="story-card tall">
+                <button class="card-image image-button" data-open-photo="cliffs"><img src="assets/rust-coat-cliffs.png" alt="Woman in a rust coat looking over sea cliffs"><span class="photo-badge">8 photos</span><span class="hover-open"><svg><use href="assets/icons.svg#ArrowUpRight"/></svg></span></button>
+                <div class="card-copy"><div><p class="kicker">Field notes</p><h3>Where the land ends</h3><p>By Lena O. · 42 min</p></div><button class="circle-action reaction" aria-label="Appreciate Where the land ends" aria-pressed="false">♡</button></div>
+              </article>
+              <article class="story-card wide">
+                <button class="card-image image-button" data-open-photo="cabin"><img src="assets/coastal-cabin.png" alt="Concrete coastal cabin glowing warmly at dusk"><span class="photo-badge">12 photos</span><span class="hover-open"><svg><use href="assets/icons.svg#ArrowUpRight"/></svg></span></button>
+                <div class="card-copy"><div><p class="kicker">Architecture</p><h3>A light left on</h3><p>By Studio North · Yesterday</p></div><button class="circle-action reaction" aria-label="Appreciate A light left on" aria-pressed="false">♡</button></div>
+              </article>
+              <article class="story-card square">
+                <button class="card-image image-button" data-open-photo="details"><img src="assets/details.jpg" alt="Warm interior details in natural light"><span class="photo-badge">6 photos</span><span class="hover-open"><svg><use href="assets/icons.svg#ArrowUpRight"/></svg></span></button>
+                <div class="card-copy"><div><p class="kicker">Still life</p><h3>Things we notice</h3><p>By Noor A. · Monday</p></div><button class="circle-action reaction" aria-label="Appreciate Things we notice" aria-pressed="false">♡</button></div>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="page-view" data-page="discover">
+          <div class="page-title-row reveal"><div><p class="eyebrow">Explore the community</p><h1>Discover</h1></div><div class="filter-pills" role="group" aria-label="Discover filters"><button class="is-active">For you</button><button>Following</button><button>Popular</button></div></div>
+          <div class="masonry-grid reveal" id="discover-grid">
+            <button class="discovery-card portrait" data-open-photo="cliffs"><img src="assets/rust-coat-cliffs.png" alt="Woman overlooking sea cliffs"><span><b>Edge of weather</b><small>Lena O. · 132 appreciations</small></span></button>
+            <button class="discovery-card landscape" data-open-photo="black-sand"><img src="assets/black-sand-coast.png" alt="Black-sand coast and mountains"><span><b>The long way north</b><small>Jonas M. · 184 appreciations</small></span></button>
+            <button class="discovery-card square" data-open-photo="interior"><img src="assets/interior.jpg" alt="Minimal warm interior"><span><b>Sunday quiet</b><small>Noor A. · 76 appreciations</small></span></button>
+            <button class="discovery-card landscape" data-open-photo="cabin"><img src="assets/coastal-cabin.png" alt="Coastal cabin at blue hour"><span><b>Afterlight</b><small>Studio North · 211 appreciations</small></span></button>
+            <button class="discovery-card portrait" data-open-photo="chair"><img src="assets/chair.jpg" alt="Sculptural chair in a soft interior"><span><b>Objects with patience</b><small>Mara K. · 63 appreciations</small></span></button>
+            <button class="discovery-card square" data-open-photo="architecture"><img src="assets/architecture.jpg" alt="Geometric concrete architecture"><span><b>Hard lines, soft sun</b><small>Ezra P. · 98 appreciations</small></span></button>
+          </div>
+          <div class="empty-search" hidden><p class="eyebrow">No exact match</p><h2>Nothing here yet.</h2><p>Try a place, person, or a broader idea.</p><button class="button secondary" data-action="clear-search">Clear search</button></div>
+        </section>
+
+        <section class="page-view" data-page="collections">
+          <div class="page-title-row reveal"><div><p class="eyebrow">Your private library</p><h1>Collections</h1></div><button class="button secondary"><svg><use href="assets/icons.svg#Plus"/></svg>New collection</button></div>
+          <div class="collection-grid reveal">
+            <button class="collection-card"><span class="collection-covers"><img src="assets/black-sand-coast.png" alt=""><img src="assets/rust-coat-cliffs.png" alt=""><img src="assets/coastal-cabin.png" alt=""></span><span><b>Wild places</b><small>24 photographs · Updated today</small></span><svg><use href="assets/icons.svg#ArrowUpRight"/></svg></button>
+            <button class="collection-card"><span class="collection-covers"><img src="assets/interior.jpg" alt=""><img src="assets/chair.jpg" alt=""><img src="assets/details.jpg" alt=""></span><span><b>Slow interiors</b><small>18 photographs · Updated Monday</small></span><svg><use href="assets/icons.svg#ArrowUpRight"/></svg></button>
+            <button class="collection-card empty-collection"><span class="empty-collection-art"><svg><use href="assets/icons.svg#Plus"/></svg></span><span><b>Start a collection</b><small>Gather photographs around an idea.</small></span></button>
+          </div>
+        </section>
+
+        <section class="page-view" data-page="profile">
+          <div class="profile-hero reveal"><div class="profile-avatar">AK</div><div><p class="eyebrow">Kampala, Uganda</p><h1>Amina K.</h1><p>Photographer, observer, collector of quiet moments.</p><div class="profile-stats"><span><b>38</b> stories</span><span><b>1.2k</b> followers</span><span><b>184</b> following</span></div></div><button class="button secondary">Edit profile</button></div>
+          <div class="profile-tabs"><button class="is-active">Stories</button><button>Collections</button><button>Appreciated</button></div>
+          <div class="profile-grid reveal"><button data-open-photo="interior"><img src="assets/interior.jpg" alt="Warm minimal interior"></button><button data-open-photo="black-sand"><img src="assets/black-sand-coast.png" alt="Dramatic black-sand coast"></button><button data-open-photo="details"><img src="assets/details.jpg" alt="Interior detail"></button><button data-open-photo="cabin"><img src="assets/coastal-cabin.png" alt="Cabin at dusk"></button><button data-open-photo="chair"><img src="assets/chair.jpg" alt="Sculptural chair"></button><button data-open-photo="architecture"><img src="assets/architecture.jpg" alt="Concrete architecture"></button></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <aside class="activity-panel" id="activity-panel" aria-label="Recent activity" aria-hidden="true" inert>
+    <header><div><p class="eyebrow">What’s new</p><h2>Activity</h2></div><button class="icon-button" data-action="close-panels" aria-label="Close activity"><svg><use href="assets/icons.svg#X"/></svg></button></header>
+    <div class="activity-list">
+      <div class="activity-item is-new"><span class="avatar small rose">LO</span><p><b>Lena</b> appreciated your story <strong>Sunday quiet</strong><small>8 minutes ago</small></p></div>
+      <div class="activity-item is-new"><span class="avatar small gold">JM</span><p><b>Jonas</b> started following you.<small>1 hour ago</small></p></div>
+      <div class="activity-item is-new"><img src="assets/coastal-cabin.png" alt=""><p><b>Studio North</b> added 4 photos to <strong>A light left on</strong><small>Yesterday</small></p></div>
+      <div class="activity-item"><span class="avatar small">EP</span><p><b>Ezra</b> mentioned you in a comment.<small>Monday</small></p></div>
+    </div>
+    <button class="button secondary full">Mark all as read</button>
+  </aside>
+
+  <div class="account-menu" id="account-menu" hidden>
+    <div class="account-summary"><span class="avatar">AK</span><span><b>Amina K.</b><small>amina@example.com</small></span></div>
+    <button data-view="profile">View profile</button><button>Settings & privacy</button><button>Appearance</button><hr><button>Sign out</button>
+  </div>
+
+  <dialog class="upload-dialog" id="upload-dialog" aria-labelledby="upload-title">
+    <form method="dialog" class="dialog-shell">
+      <header><div><p class="eyebrow">New story</p><h2 id="upload-title">Share your work</h2></div><button class="icon-button" value="cancel" aria-label="Close upload"><svg><use href="assets/icons.svg#X"/></svg></button></header>
+      <button type="button" class="upload-drop" id="upload-drop"><span><svg><use href="assets/icons.svg#Upload"/></svg></span><b>Drop photographs here</b><small>or choose files from your device</small><em>JPG, PNG, HEIC or MP4 · up to 250 MB each</em></button>
+      <div class="upload-fields"><label>Story title<input value="A story worth keeping" aria-label="Story title"></label><label>Visibility<select aria-label="Visibility"><option>Your circle</option><option>Only you</option><option>Anyone with the link</option></select></label></div>
+      <footer><p><svg><use href="assets/icons.svg#ShieldCheck"/></svg>Original quality, always.</p><button class="button primary" value="cancel" data-action="publish-demo">Continue</button></footer>
+    </form>
+  </dialog>
+
+  <dialog class="viewer" id="viewer" aria-labelledby="viewer-title">
+    <div class="viewer-shell">
+      <header><button class="icon-button" data-action="close-viewer" aria-label="Close viewer"><svg><use href="assets/icons.svg#X"/></svg></button><div class="viewer-title"><p class="eyebrow" id="viewer-author">Jonas M.</p><h2 id="viewer-title">Into the wild</h2></div><div class="viewer-actions"><button class="circle-action reaction" aria-label="Appreciate photo" aria-pressed="false">♡</button><button class="button viewer-share">Share</button><button class="icon-button" data-action="viewer-details" aria-label="Toggle details" aria-expanded="false"><svg><use href="assets/icons.svg#Info"/></svg></button></div></header>
+      <div class="viewer-body"><button class="viewer-arrow previous" data-action="previous-photo" aria-label="Previous photo"><svg><use href="assets/icons.svg#ArrowLeft"/></svg></button><div class="viewer-stage"><img id="viewer-image" src="assets/black-sand-coast.png" alt=""></div><button class="viewer-arrow next" data-action="next-photo" aria-label="Next photo"><svg><use href="assets/icons.svg#ArrowRight"/></svg></button><aside class="viewer-details" id="viewer-details" aria-hidden="true" inert><p class="eyebrow">The photograph</p><h3 id="detail-title">Black shore, 18:42</h3><p id="detail-description">The rain cleared for seven minutes. Long enough to walk down and make one frame.</p><dl><div><dt>Captured</dt><dd>21 September 2026</dd></div><div><dt>Camera</dt><dd>Leica Q3 · 28mm</dd></div><div><dt>Location</dt><dd>Stokksnes, Iceland</dd></div><div><dt>Original</dt><dd>60 MP · 18.4 MB</dd></div></dl><button class="text-button">Download original <svg><use href="assets/icons.svg#Download"/></svg></button></aside></div>
+      <footer><div class="viewer-progress"><span id="viewer-index">01</span><i><b></b></i><span>06</span></div><p>Use arrow keys to browse · Esc to close</p></footer>
+    </div>
+  </dialog>
+
+  <div class="mobile-nav" aria-label="Mobile navigation"><button class="is-active" data-view="home"><svg><use href="assets/icons.svg#Image"/></svg><span>Home</span></button><button data-view="discover"><svg><use href="assets/icons.svg#Grid2X2"/></svg><span>Discover</span></button><button data-action="upload" class="mobile-create"><svg><use href="assets/icons.svg#Plus"/></svg><span>Share</span></button><button data-view="collections"><svg><use href="assets/icons.svg#Folder"/></svg><span>Saved</span></button><button data-view="profile"><span class="mini-avatar">AK</span><span>Profile</span></button></div>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="toast" id="toast" role="status" hidden><svg><use href="assets/icons.svg#Check"/></svg><span>Saved</span></div>
+</body>
+</html>

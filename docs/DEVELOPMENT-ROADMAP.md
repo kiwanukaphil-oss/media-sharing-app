@@ -1284,3 +1284,11 @@ The bounded first job runs in the open tab: up to 2 GiB with direct saving or 64
 - [x] Record exact built-Worker boundary/concurrency tests and live display acceptance in [combined storage evidence](COMBINED-STORAGE-IMPLEMENTATION.md). No production fill-to-limit test, migration or original deletion.
 
 Earlier unchecked capacity entries are historical checkpoints superseded by this acceptance. Remaining unrelated roadmap parents stay 22/47; provider disposition and feature-specific live acceptance still apply.
+
+### 23 September - cinematic UI direction prototype
+
+- [x] Create a separate, non-production HTML concept for a darker editorial theme with local photography, responsive home/discovery/collections/profile views, an immersive viewer, activity and upload states.
+- [x] Verify desktop and 390-pixel layouts, viewer metadata, search recovery, responsive upload simulation and activity presentation in Chromium; JavaScript syntax and repository whitespace checks pass.
+- [ ] Review the concept with the product owner before selecting elements for production integration. Existing application functionality, API boundaries and release state are unchanged.
+
+[Prototype and review guide](../prototypes/relay-cinematic/README.md). This visual exploration does not change parent completion counts or deployment status.
