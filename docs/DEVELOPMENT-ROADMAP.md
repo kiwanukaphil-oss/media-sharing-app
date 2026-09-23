@@ -1299,6 +1299,8 @@ Earlier unchecked capacity entries are historical checkpoints superseded by this
 - [x] Product-owner selected Graphite; apply its charcoal, blue, periwinkle and amber system to the approved app-refresh prototype and make it the evaluator default.
 - [x] Product-owner explicitly requested implementation; apply Graphite to the web application on `ui/graphite-refresh`, preserving navigation, filters, permissions, APIs and transfer workflows while replacing promotional copy with functional labels.
 - [x] Verify the production build, strict web lint, TypeScript, authenticated and signed-out desktop/mobile layouts, responsive navigation, search, filters, uploads, exact-byte downloads, Trash, viewer and pairing in Chromium, Edge, Firefox and WebKit.
-- [ ] Review and merge the branch before any deployment. Production remains unchanged.
+- [x] Product-owner revised the selection to Cobalt; preserve the Graphite branch and apply Cobalt navy, orange, blue and amber tokens on `ui/cobalt-refresh`, including the evaluator default, without changing the approved structure or product voice.
+- [x] Verify the Cobalt production build, strict web lint, TypeScript, authenticated and signed-out desktop/mobile layouts, responsive navigation, search, filters, uploads, exact-byte downloads, Trash and viewer in Chromium, Edge, Firefox and WebKit.
+- [ ] Review and merge `ui/cobalt-refresh` before any deployment. Production remains unchanged.
 
 [Cinematic exploration](../prototypes/relay-cinematic/README.md), [app-refresh review guide](../prototypes/relay-app-refresh/README.md) and [colour-theme evaluator](../prototypes/relay-theme-options/README.md). These visual explorations do not change parent completion counts or deployment status.
