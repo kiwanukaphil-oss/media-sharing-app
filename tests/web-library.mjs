@@ -34,14 +34,14 @@ try {
   await page.getByLabel('Search filenames').fill('library-000');
   await expect(page.locator('article')).toHaveCount(1);
   await expect(page.locator('article')).toContainText('library-000.raw');
-  await page.getByRole('button', { name: 'Pair a device', exact: true }).click();
+  await page.getByRole('button', { name: 'Pair device', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Pair a device', exact: true }).click();
   const link = await page.getByLabel('Invitation link').inputValue();
   assert.ok(link.includes('#join='));
   const receiver = await browser.newContext();
   const receiverPage = await receiver.newPage();
   await receiverPage.goto(link);
-  await receiverPage.getByLabel('This device', { exact: true }).fill('Paired web receiver');
+  await receiverPage.getByLabel('Device name', { exact: true }).fill('Paired web receiver');
   await receiverPage.getByRole('button', { name: 'Join shared space' }).click();
   await expect(receiverPage.locator('article')).toHaveCount(48);
   assert.equal(new URL(receiverPage.url()).hash, '');
