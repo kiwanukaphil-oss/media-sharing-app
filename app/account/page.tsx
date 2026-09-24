@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { EntryFrame, SignInPanel } from "@/components/relay-entry";
 import AccountLibraries from "@/components/account-libraries";
 import DeliveryInvitation from "@/components/delivery-invitation";
 import CollectionInvitation from "@/components/collection-invitation";
@@ -68,6 +69,9 @@ export default function AccountPage() {
       setError(failure instanceof Error ? failure.message : "Please try again.");
     } finally { setSigningOutId(null); }
   }
+
+  // The former inline sign-in section below is retained as a retirement candidate. New entry is shared with /login.
+  if (state?.enabled && !state.account) return <EntryFrame><div className="account-entry"><AccountInvitation sessionId={undefined} /><CollectionInvitation sessionId={undefined} /><DeliveryInvitation sessionId={undefined} /><SignInPanel failure={error} /></div></EntryFrame>;
 
   return <main className="account-page min-h-screen">
     <Link href="/" className="inline-flex items-center gap-2 text-sm text-[var(--muted)]"><ArrowLeft size={16} /> Back to library</Link>

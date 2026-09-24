@@ -33,6 +33,7 @@ export default function AccountWorkspaceNavigation({ spaceId }: { spaceId?: stri
       <p>Uploads keep their destination. Resume after switching.</p>
     </div>}
     {error && <p role="status" className="album-nav-empty">Libraries could not be loaded. <button className="text-button" onClick={() => setRevision(value => value + 1)}>Retry libraries</button></p>}
+    <a className="nav-item" href="/workspaces"><MonitorSmartphone size={18} />Choose workspace</a>
     <a className="nav-item" href="/account"><MonitorSmartphone size={18} />Account &amp; libraries</a>
   </>;
 }
