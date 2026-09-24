@@ -3,7 +3,7 @@
 ## Storage presentation - 24 September 2026
 
 - [x] Show used/available in navigation and replace explanatory panel with capacity, usage, Trash, reservations and upload actions. Local cross-browser, account and responsive checks pass.
-- [ ] Deploy and verify the compact storage display. [Evidence](STORAGE-PRESENTATION.md).
+- [x] Deploy source `6db29b4` as Worker `488d7388-274f-4a48-990e-3a6d7316d667` at 100%; both-origin probes and signed-in storage figures/layout pass. [Evidence](STORAGE-PRESENTATION.md).
 
 ## Album cover refinement - 24 September 2026
 
