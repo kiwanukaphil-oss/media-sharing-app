@@ -201,3 +201,34 @@
 
 /* Swatches wrap instead of overflowing narrow native dialogs. */
 .cover-options{flex-wrap:wrap}
+
+/* Storage facts replace the earlier explanatory meter/paragraph layout (retirement candidate). */
+.album-first .storage-nav{align-items:flex-start;gap:12px;height:auto;padding-block:12px}
+.storage-nav>svg{margin-top:2px;flex:none}
+.album-first .storage-nav .storage-nav-label{display:flex;flex-direction:column;gap:8px;min-width:0;margin:0;background:none;color:inherit;padding:0;flex:1;font-size:13px}
+.album-first .storage-nav .storage-nav-facts{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;background:none;color:#69745f;font-size:11px;font-weight:400;line-height:1.5}
+.album-first .storage-nav .storage-nav-facts>span{margin:0;padding:0;background:none;color:inherit;font-size:inherit}
+.storage-dashboard{color:#29382d;font-variant-numeric:tabular-nums}
+.storage-scope{font-size:11px;font-weight:500;color:#69745f;margin:0 0 24px}
+.storage-capacity{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:0}
+.storage-capacity dt{font-size:12px;color:#69745f;margin-bottom:8px}
+.storage-capacity dd{margin:0;font-size:19px;line-height:1.15;white-space:nowrap}
+.storage-capacity .storage-available dd{font-size:36px;letter-spacing:-1.2px;font-weight:500}
+.storage-capacity .storage-unknown{font-size:24px;letter-spacing:-.5px}
+.storage-usage-bar{display:block;width:100%;height:8px;border:0;border-radius:20px;overflow:hidden;margin:22px 0 10px;background:#e6eade;accent-color:#6f805f}
+.storage-usage-bar::-webkit-progress-bar{background:#e6eade;border-radius:20px}.storage-usage-bar::-webkit-progress-value{background:#6f805f;border-radius:20px}.storage-usage-bar::-moz-progress-bar{background:#6f805f;border-radius:20px}
+.storage-usage-caption{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#69745f}
+.storage-library-facts,.storage-upload-section{border-top:1px solid #dbe0d3;margin-top:26px;padding-top:20px}
+.storage-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.storage-section-heading h3{font-size:13px;font-weight:600;flex:none;margin:0}
+.storage-section-heading>span{font-size:11px;color:#69745f;text-align:right;overflow-wrap:anywhere;min-width:0}
+.storage-library-facts dl{margin:0}.storage-library-facts dl>div{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:8px 0;font-size:12px}
+.storage-library-facts dt small{display:block;font-size:10px;color:#7b8572;margin-top:4px}.storage-library-facts dd{margin:0;white-space:nowrap;font-weight:500}
+.storage-library-facts>.text-button{font-size:12px;margin-top:4px;min-height:44px}
+.storage-empty,.storage-access-note{font-size:12px;color:#69745f;line-height:1.6;margin:0}.storage-access-note{margin-top:18px}
+.storage-upload-list{list-style:none;padding:0;margin:0;max-height:240px;overflow-y:auto}
+.storage-upload-list li{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid #eceee6}
+.storage-upload-list li:first-child{border:0}.storage-upload-list li>div{min-width:0;overflow-wrap:anywhere}
+.storage-upload-list strong{font-size:12px;font-weight:500}.storage-upload-list small{display:block;font-size:11px;color:#69745f;margin-top:5px}
+.storage-upload-list .text-button{font-size:11px;flex-shrink:0;min-height:44px}
+@media(max-width:400px){.storage-capacity{gap:12px}.storage-capacity .storage-available dd{font-size:28px}.storage-capacity dd{font-size:16px}.storage-capacity .storage-unknown{font-size:20px}.storage-section-heading{align-items:flex-start}.storage-upload-list li{flex-wrap:wrap;gap:4px}}

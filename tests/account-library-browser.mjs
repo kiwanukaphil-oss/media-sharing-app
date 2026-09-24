@@ -50,13 +50,15 @@ try {
   await expect(page.getByRole('button', { name: 'Pair a device' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Connected devices' })).toHaveCount(0);
   await page.getByRole('button', { name: /^Storage/ }).click();
-  await expect(page.getByRole('heading', { name: 'Your combined storage' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Storage', exact: true })).toBeVisible();
   await expect(page.getByRole('progressbar', { name: 'Combined storage used' })).toHaveAttribute('value', String(30 * 1024 ** 3));
-  await expect(page.getByText('30.0 GB of 100.0 GB used across your personal and shared spaces.', { exact: false })).toBeVisible();
+  await expect(page.locator('.storage-available dd')).toHaveText('70.0 GB');
+  await expect(page.locator('.storage-usage-caption')).toContainText('30.0 GB used');
   await page.keyboard.press('Escape');
   commonOwner = false;
   await page.getByRole('button', { name: /^Storage/ }).click();
-  await expect(page.getByRole('progressbar', { name: 'This library storage used' })).toHaveAttribute('value', '4');
+  await expect(page.locator('.storage-available dd')).toHaveText('Unavailable');
+  await expect(page.getByRole('dialog').getByRole('progressbar')).toHaveCount(0);
   await expect(page.getByRole('progressbar', { name: 'Combined storage used' })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await page.getByRole('searchbox', { name: 'Search filenames' }).fill('original');
