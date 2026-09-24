@@ -10,7 +10,7 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 // Use actual browser-generated media to verify posters, playback and byte-preserving downloads together.
 try {
-  await page.goto(origin);
+  await page.goto(`${origin}/?view=files`);
   await page.getByLabel('Space name').fill('Studio workspace');
   await page.getByLabel('Device name', { exact: true }).fill('Studio desktop');
   await page.getByRole('button', { name: 'Create shared space' }).click();

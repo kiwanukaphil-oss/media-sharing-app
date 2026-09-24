@@ -11,7 +11,7 @@ const browser = await engine.launch(engineName === 'chrome' ? { channel: 'chrome
 const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
 const errors = []; page.on('pageerror', error => errors.push(error.message));
 try {
-  await page.goto(origin);
+  await page.goto(`${origin}/?view=files`);
   await page.getByLabel('Space name').fill('Album sections studio');
   await page.getByRole('button', { name: 'Create shared space' }).click();
   await page.getByRole('button', { name: 'New album', exact: true }).click();

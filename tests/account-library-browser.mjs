@@ -44,7 +44,7 @@ await page.route('**/api/**', async route => {
   throw new Error('Unexpected route: ' + url.pathname);
 });
 try {
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?space=${space}&view=files`);
   await expect(page.getByRole('heading', { name: item.name, exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Account', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pair a device' })).toHaveCount(0);
@@ -97,9 +97,9 @@ try {
   activeSpace = otherSpace;
   await page.getByRole('option', { name: 'My space', exact: true }).click();
   await page.waitForURL(`**/?space=${otherSpace}`);
-  await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toHaveValue('');
+  await expect(page.getByRole('searchbox', { name: 'Search albums' })).toHaveValue('');
   await expect(page.getByTitle('My space', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'My space.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A home for every story.', exact: true })).toBeVisible();
   await expect(page.getByText('Queued family.txt', { exact: true })).toBeVisible();
   await expect(page.getByText('Other person private.txt', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open destination' })).toHaveAttribute('href', `/?space=${space}`);
@@ -108,6 +108,10 @@ try {
   await page.getByRole('button', { name: 'Cancel upload', exact: true }).click();
   await expect.poll(() => cancelledDestination).toBe(space);
   await expect(page.getByText('Queued family.txt', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+  await page.locator('.library-utilities > summary').click();
+  await page.locator('.sidebar').getByRole('button', { name: /^All files/ }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
   forbidden = true;
   await page.getByRole('searchbox', { name: 'Search filenames' }).fill('revoked');
   await expect(page.getByRole('link', { name: 'Sign in or choose a library' })).toBeVisible();

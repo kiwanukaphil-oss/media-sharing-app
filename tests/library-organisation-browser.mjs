@@ -17,14 +17,14 @@ async function verifyOrganisation(engine, options, label) {
   page.on('dialog', dialog => dialog.accept());
   const bytes = Buffer.from('Original source bytes, preserved after organisation.');
   try {
-    await page.goto(origin);
+    await page.goto(`${origin}/?view=files`);
     await page.getByLabel('Space name').fill(`Studio library ${label}`);
     await page.getByRole('button', { name: 'Create shared space' }).click();
     await page.getByRole('button', { name: 'New album', exact: true }).click();
     await page.getByLabel('Album name', { exact: true }).fill('September product shoot');
     await page.getByLabel('Description', { exact: true }).fill('Originals and finished work from our September shoot.');
     await page.getByRole('button', { name: 'Create album', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'September product shoot.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'September product shoot' })).toBeVisible();
     // The styled listbox supports keyboard dismissal and returns focus to its trigger.
     const sort = page.getByRole('combobox', { name: 'Sort', exact: true });
     await sort.click();
@@ -80,7 +80,7 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByRole('button', { name: 'New album', exact: true }).click();
     await page.getByLabel('Album name', { exact: true }).fill('Portfolio');
     await page.getByRole('button', { name: 'Create album', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Portfolio.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Portfolio' })).toBeVisible();
     const portfolioId = await page.getByLabel('Browse library').getAttribute('data-value');
     await chooseWorkspaceOption(page, 'Browse library', albumId);
     await expect(page.locator('article')).toHaveCount(2);
@@ -120,6 +120,7 @@ async function verifyOrganisation(engine, options, label) {
     await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeEnabled();
+    await page.locator('.library-utilities > summary').click();
     await page.locator('.sidebar').getByRole('button', { name: /^All files/ }).click();
     await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', '');
     await page.goBack();

@@ -9,7 +9,7 @@ page.on('pageerror', error => errors.push(error.message));
 // Delayed and failed reads must never masquerade as an empty library or enable uploads into Trash.
 try {
   await page.route('**/api/session', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Temporary interruption' }) }));
-  await page.goto(origin);
+  await page.goto(`${origin}/?view=files`);
   await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
   await expect(page.getByText('Open a library', { exact: true })).toHaveCount(0);
   await page.unroute('**/api/session');

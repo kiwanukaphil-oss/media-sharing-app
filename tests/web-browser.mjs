@@ -23,7 +23,7 @@ async function verifyBrowser(engine, options, label) {
   page.on('requestfailed', request => diagnostics.push({event:'requestfailed',url:request.url(),failure:request.failure(),intentionalOffline}));
   page.on('dialog', dialog => dialog.accept());
   try {
-    await page.goto(origin);
+    await page.goto(`${origin}/?view=files`);
     await page.getByLabel('Space name').fill(`Browser verification ${label}`);
     await page.getByLabel('Device name', { exact: true }).fill(`${label} desktop`);
     await page.getByRole('button', { name: 'Create shared space' }).click();
@@ -64,6 +64,7 @@ async function verifyBrowser(engine, options, label) {
     await expect(card.getByRole('button', { name: 'Delete permanently', exact: true })).toBeFocused();
     await card.getByRole('button', { name: 'Restore', exact: true }).click();
     await page.getByRole('button', { name: 'Back to files' }).click();
+    await page.locator('.library-utilities > summary').click();
     await page.locator('.category-navigation summary').click();
     await page.locator('.sidebar').getByRole('button', { name: /Final cuts/ }).click();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'finished-export.mov', mimeType: 'video/quicktime', buffer: payload });
