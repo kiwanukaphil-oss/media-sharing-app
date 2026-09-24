@@ -3,7 +3,8 @@
 ## Intentional entry and workspace gate - 24 September 2026
 
 - [x] Implement branded entry, explicit workspace selection before albums, invitation/paired compatibility and distinct failure recovery; local initial builds, API and browser acceptance pass. [Evidence](ENTRY-EXPERIENCE.md).
-- [ ] Complete final polish, deploy and verify live entry, then publish matching hosted credential branding.
+- [x] Final cross-browser polish, deployment `f74624dd-74b1-42fe-b1ed-b624ba098e6d`, both-origin probes and real workspace-to-albums checks pass. Auth0 logo, core palette and Relay copy are published and visually verified.
+- [ ] Optional detailed hosted-theme refinement is blocked by Auth0 visual-editor publication errors; standard branding is live. See the evidence record.
 
 ## Storage presentation - 24 September 2026
 

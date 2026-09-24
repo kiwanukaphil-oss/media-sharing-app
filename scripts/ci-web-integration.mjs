@@ -41,7 +41,8 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
       ...(intakePausedChecks ? {RELAY_INTAKE_PAUSED:'true'} : {}),
       ...(deliveryChecks ? {RELAY_DELIVERIES_ENABLED:'true'} : {}) } } : {}),
     ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
-    ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
+    // Browser fixtures share one loopback IP across independent journeys. Keep production limits for API/security tests.
+    ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, browserChecks && name === "PAIR_RATE_LIMIT" ? { ...rule, simple: { ...rule.simple, limit: 3000 } } : rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
   }],
 }));
