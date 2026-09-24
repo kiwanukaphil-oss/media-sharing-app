@@ -6,7 +6,7 @@ The user approved the HTML concept and requested live execution. The isolated `u
 
 - [x] Implement abstract album-only arrival, creation/templates, scoped gallery navigation, explicit upload destinations and responsive approved styling using existing APIs.
 - [x] Verify the real album workflow in Chrome/Firefox/WebKit, responsive layouts and existing D1/R2 API regressions. No migration or access change required.
-- [ ] Finish existing browser regression, deploy, and verify live signed-in navigation and both-origin health. Existing phase counts remain unchanged pending acceptance.
+- [x] Existing live browser regression, deployment readback, signed-in album/personal/shared navigation and both-origin health pass. Worker `5919b3c0-0e51-4ec8-a467-5669171b31d1` serves runtime `3ff3193` at 100%; schema stays 0020. Existing phase counts remain unchanged.
 
 **Last updated:** 22 September 2026
 **Scope:** Web app and supporting backend; preserve compatibility with existing clients. Native UI development is outside scope.
