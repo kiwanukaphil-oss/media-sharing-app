@@ -39,3 +39,11 @@ Deployed 24 September 2026 at 11:04 UTC to `relayalbums.com` and the workers.dev
 ## Development branch compatibility
 
 Forward-ported without deploying the unreleased backend. Existing access-scope authority and scoped album creation are preserved. Local build, TypeScript and focused lint pass. Additional browser checks pass for access scopes, personal favourites, activity, duplicate verification (three engines), metadata export, original ZIP packages (three engines), intake and delivery. Folder import passes preview cancellation/reopening, exact-byte upload, lost-response retry and plain-file fallback; synchronous Escape cancellation prevents a delayed native close event from clearing a newly opened preview. This folder-import fix is development-only.
+
+## Cover and dropdown refinement - 24 September 2026
+
+Requested follow-up: prominent names on album covers, creation month/year, editable cover colours and consistent dropdown styling. Covers now state `Created <month> <year>` from the stored creation timestamp in UTC (the earlier `26` was the creation year). Edit cover previews a palette before explicit Save; Cancel/Escape preserves the original. The setting retains its labelled browser-local scope. Shared portal dropdowns use the warm neutral/olive palette, including workspace switching, filters, album/section pickers and creation templates; the remaining native album sort/template controls now use the keyboard-accessible shared selector.
+
+- [x] Implement cover identity/date, editable colour preview and shared dropdown theme without API/schema changes.
+- [x] Verify actual album creation/templates, save/reload/cancel, no home thumbnail requests, and responsive navigation in Chrome/Firefox/WebKit. Inspect desktop, cover editor and dropdown captures.
+- [ ] Complete narrow editor/list and existing picker regression, deploy isolated live source and verify production.

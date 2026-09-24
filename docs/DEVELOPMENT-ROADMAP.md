@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Album cover refinement - 24 September 2026
+
+- [x] Implement names on covers, explicit creation month/year, editable colour preview and consistent shared dropdowns.
+- [ ] Complete refinement release checks and deploy; see [release evidence](ALBUM-LIBRARY-RELEASE.md). No backend activation is included.
+
 ## Album-first release — 24 September 2026
 
 The user approved the HTML concept and requested live execution. The isolated `ui/album-library-live` branch starts from the verified schema-0020 Cobalt baseline. [Implementation and release evidence](ALBUM-LIBRARY-RELEASE.md).

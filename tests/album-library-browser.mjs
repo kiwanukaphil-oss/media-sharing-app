@@ -23,7 +23,7 @@ try {
   await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
   await page.getByRole('button', { name: 'New album', exact: true }).click();
   await page.getByLabel('Album name', { exact: true }).fill('Slow Sundays');
-  await page.getByLabel('Album template').selectOption('story');
+  await chooseWorkspaceOption(page, 'Album template', 'story');
   await page.getByRole('radio', { name: 'Clay', exact: true }).check();
   await page.screenshot({ path: `outputs/album-library/${engineName}-create.png` });
   await page.getByRole('button', { name: 'Create album', exact: true }).click();
@@ -49,6 +49,28 @@ try {
   }
   await page.reload();
   await expect(page.locator('.collection-card')).toHaveCount(6);
+  // Saved/cancelled edits must remain local, survive reload, and leave durable album data intact.
+  const cover = page.getByRole('button', { name: 'Open album Slow Sundays', exact: true }).locator('.collection-cover');
+  await expect(cover.locator('.cover-name')).toHaveText('Slow Sundays');
+  const createdDate = new Date(albumState.albums.find(album => album.id === albumId).createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  await expect(cover.locator('.cover-created')).toHaveText(`Created ${createdDate}`);
+  await page.getByRole('button', { name: 'Edit cover for Slow Sundays', exact: true }).click();
+  await page.getByRole('radio', { name: 'Forest', exact: true }).check();
+  await page.getByRole('button', { name: 'Save cover', exact: true }).click();
+  await page.reload();
+  await expect(cover).toHaveClass(/cover-art-5/);
+  await page.getByRole('button', { name: 'Edit cover for Slow Sundays', exact: true }).click();
+  await page.getByRole('radio', { name: 'Blue', exact: true }).check();
+  await expect(page.locator('.cover-editor .collection-cover')).toHaveClass(/cover-art-2/);
+  await expect(page.locator('.cover-editor .collection-cover')).toHaveCSS('color', 'rgb(53, 75, 88)');
+  await page.locator('.cover-editor').screenshot({ path: `outputs/album-library/${engineName}-edit-cover.png` });
+  await page.keyboard.press('Escape');
+  await expect(cover).toHaveClass(/cover-art-5/);
+  await page.getByRole('combobox', { name: 'Sort albums', exact: true }).click();
+  await expect(page.locator('.workspace-select-menu')).toHaveCSS('background-color', 'rgb(255, 254, 250)');
+  await expect(page.getByRole('option', { name: 'Name A-Z', exact: true })).toBeVisible();
+  await page.locator('.workspace-select-menu').screenshot({ path: `outputs/album-library/${engineName}-dropdown.png` });
+  await page.keyboard.press('Escape');
   const requestCount = mediaRequests.length;
   await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
   await page.screenshot({ path: `outputs/album-library/${engineName}-desktop.png`, fullPage: true });
@@ -60,7 +82,7 @@ try {
   await page.getByRole('searchbox', { name: 'Search albums' }).fill('no matching collection');
   await expect(page.getByRole('heading', { name: 'No matching albums.' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear album search' }).click();
-  await page.getByLabel('Sort albums').selectOption('name');
+  await chooseWorkspaceOption(page, 'Sort albums', 'name');
   await expect(page.locator('.collection-open h2').first()).toHaveText('Along the coast');
   await page.getByRole('button', { name: 'Album list view' }).click();
   await expect(page.locator('.collection-grid')).toHaveClass(/collection-list/);
@@ -69,6 +91,14 @@ try {
     await page.setViewportSize({ width, height: 900 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), { message: `Album overflow ${width}` }).toBe(true);
   }
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.getByRole('button', { name: 'Album list view' }).click();
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'List view fits narrow phones');
+  await page.getByRole('button', { name: 'Edit cover for Slow Sundays', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Save cover', exact: true })).toBeVisible();
+  assert.ok(await page.locator('.cover-editor').evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth), 'Cover editor has no horizontal overflow');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Album grid view' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: `outputs/album-library/${engineName}-mobile.png`, fullPage: true });
   assert.equal(mediaRequests.length, requestCount, 'Arrival must not request any thumbnails');
