@@ -42,4 +42,7 @@ Requested follow-up: prominent names on album covers, creation month/year, edita
 
 - [x] Implement cover identity/date, editable colour preview and shared dropdown theme without API/schema changes.
 - [x] Verify actual album creation/templates, save/reload/cancel, no home thumbnail requests, and responsive navigation in Chrome/Firefox/WebKit. Inspect desktop, cover editor and dropdown captures.
-- [ ] Complete narrow editor/list and existing picker regression, deploy isolated live source and verify production.
+- [x] Narrow editor/list checks at 320px pass. Existing library organisation and workspace switching pass Chromium/Firefox/WebKit; section template, move/Undo, rename and picker checks pass. Main forward-port build/type checks and album journey pass.
+- [x] Deploy isolated source `b9f4fea` as Worker `86791371-16db-4cd4-a219-6950927bccbb` at 100% on 24 September 2026, 12:50 UTC. Both-origin health/private-access probes pass. Signed-in live screenshot confirms cover names, creation dates and themed menu; editor opens and cancels without changing the user preference. Schema remains 0020.
+
+Hosted follow-up [36001573480](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/36001573480) was still running at this record update; local acceptance above is complete. Rollback for this refinement is prior Worker `5919b3c0-0e51-4ec8-a467-5669171b31d1`.

@@ -3,7 +3,7 @@
 ## Album cover refinement - 24 September 2026
 
 - [x] Implement names on covers, explicit creation month/year, editable colour preview and consistent shared dropdowns.
-- [ ] Complete refinement release checks and deploy; see [release evidence](ALBUM-LIBRARY-RELEASE.md). No backend activation is included.
+- [x] Complete local cross-browser/picker/mobile acceptance and deploy source `b9f4fea` as Worker `86791371-16db-4cd4-a219-6950927bccbb` at 100%. Both-origin and signed-in live checks pass; see [release evidence](ALBUM-LIBRARY-RELEASE.md). No backend activation is included.
 
 ## Album-first release — 24 September 2026
 
