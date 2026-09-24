@@ -7,6 +7,14 @@
 
 ## Album-first navigation concept — 24 September 2026
 
+**Latest design iteration:** [Album library HTML concept](../prototypes/relay-album-library/README.md) implements closed abstract covers so even cover photos are absent from arrival. It adds working album creation, optional section templates, album-scoped search/type filters, pinning, grid/list views, explicit upload destinations, local-only media previews and deliberate Unorganised navigation. This separate folder preserves the existing local deletion of the previous prototype below.
+
+- [x] Build the revised album library concept and document the aesthetic, information hierarchy, empty states, interaction rationale and production boundaries.
+- [x] Verify the revised concept in Chrome: zero media elements on arrival/return, album/section filtering, creation, destination-specific filing, sample workspace separation, local photo preview, browser Back and mobile drawer focus. No page errors or failed responses; no horizontal overflow at 320–1440px. Visually inspect five saved screenshots. Reproduction: `node prototypes/relay-album-library/verify.mjs` with its documented local server.
+- [ ] Integrate the mockup direction into the authenticated app and complete production-specific regression/release acceptance. This user-requested HTML-first deliverable changes no live application behaviour, schema or release status.
+
+The earlier prototype record below is retained as historical evidence; its folder was already deleted in the working tree before this iteration. The new concept and screenshots above are the current review artifact.
+
 The product owner requested an album-focused arrival screen so opening Relay does not immediately display every photo and video. The first deliverable is a reviewable HTML mockup; production behaviour is unchanged.
 
 - [x] Build a standalone [album-first prototype](../prototypes/relay-album-first/README.md) with an album-only landing view, prominent creation, scoped album detail and sections, new-album empty state, and deliberate Unorganised and Browse all files routes.

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f1">
+  <title>Relay — Your albums</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23252c29'/%3E%3Cpath d='M10 14h20l-5-5M30 26H10l5 5' stroke='%23fff' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script src="prototype.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to albums</a>
+  <aside id="sidebar" aria-label="Main navigation">
+    <a class="brand" href="#"><span class="brand-icon">⇄</span> relay<span class="brand-dot">.</span></a>
+    <button id="close-menu" class="icon-button mobile-only" aria-label="Close navigation">×</button>
+    <div class="space-control"><span class="space-avatar">P</span><label>Your workspace<select id="space" aria-label="Workspace"><option value="personal">Personal space</option><option value="shared">Studio space</option></select></label></div>
+    <p class="nav-label">LIBRARY</p>
+    <nav><a href="#" class="nav-link" id="albums-link"><span data-icon="albums"></span>Albums<span id="nav-count" class="nav-count">6</span></a><a href="#pinned" class="nav-link" id="pinned-link"><span data-icon="pin"></span>Pinned albums</a></nav>
+    <div class="sidebar-note"><span class="tiny-line"></span><p>A place for every<br>part of your story.</p></div>
+    <div class="sidebar-bottom"><a href="#inbox" class="nav-link" id="inbox-link"><span data-icon="inbox"></span>Unorganised<span class="nav-count" id="inbox-count">3</span></a><p class="inbox-help">Files waiting for an album</p><div class="profile"><span class="avatar">JD</span><div><strong>Jamie Davis</strong><small>Sample account</small></div><span class="status-dot" title="Local prototype"></span></div><button id="about" class="prototype-label">INTERACTIVE CONCEPT <span>↗</span></button></div>
+  </aside>
+  <button id="scrim" aria-label="Close navigation" hidden></button>
+  <div class="workspace">
+    <header class="topbar"><button id="open-menu" class="icon-button mobile-only" aria-label="Open navigation" aria-expanded="false"><span data-icon="menu"></span></button><nav aria-label="Breadcrumb" id="breadcrumb"></nav><div class="topbar-end"><span class="scope-label" id="scope-label"><span data-icon="lock"></span>Personal space</span><span class="avatar small">JD</span></div></header>
+    <main id="main" tabindex="-1"></main>
+    <footer class="workspace-footer"><span>Made for the things you want to keep.</span><span>RELAY / ALBUM LIBRARY</span></footer>
+  </div>
+  <dialog id="create-dialog" aria-labelledby="create-title">
+    <form id="create-form"><div class="dialog-heading"><span class="eyebrow">MAKE ROOM FOR SOMETHING</span><button type="button" class="icon-button" data-close aria-label="Close new album">×</button></div><h2 id="create-title">Start a new album.</h2><p class="muted">A trip, a project, an ordinary Tuesday. Give it a home.</p><div class="destination"><span data-icon="albums"></span><span id="create-destination"></span></div><label class="field">Album name<input id="album-name" name="name" maxlength="70" placeholder="e.g. A weekend away" required></label><label class="field">Description <span class="optional">Optional</span><textarea name="description" maxlength="200" rows="2" placeholder="A little context for this collection"></textarea></label><fieldset><legend>Cover colour</legend><div id="colour-options" class="colour-options"></div></fieldset><label class="field">Start with<select name="template" aria-label="Start with"><option value="blank">An empty album</option><option value="story">Story sections: Moments, Details, Films</option><option value="project">Project sections: Sources, Shortlist, Finals</option></select></label><p class="form-note" id="audience-note"></p><div class="dialog-actions"><button type="button" class="button" data-close>Cancel</button><button class="button primary" type="submit">Create album <span>↗</span></button></div></form>
+  </dialog>
+  <dialog id="add-dialog" aria-labelledby="add-title"><div class="dialog-heading"><span class="eyebrow">AN INTENTIONAL DESTINATION</span><button class="icon-button" data-close aria-label="Close add files">×</button></div><h2 id="add-title">Add to this album</h2><p class="destination" id="upload-destination"></p><label class="upload-zone"><span data-icon="upload"></span><strong>Choose photos & videos</strong><span>Local previews only · nothing is uploaded</span><input id="local-files" type="file" accept="image/*,video/*" multiple></label><div class="divider-label">OR USE SAMPLE FILES</div><div id="existing-files"></div><div class="dialog-actions"><button class="button" data-close>Cancel</button><button id="add-samples" class="button primary">Add selected files</button></div></dialog>
+  <dialog id="viewer" aria-labelledby="viewer-title"><div class="viewer-toolbar"><h2 id="viewer-title"></h2><button class="icon-button" data-close aria-label="Close preview">×</button></div><div id="viewer-content"></div><p id="viewer-caption"></p></dialog>
+  <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-heading"><span class="eyebrow">DESIGN NOTES</span><button class="icon-button" data-close aria-label="Close design notes">×</button></div><h2 id="about-title">Albums come first.</h2><p>Closed, illustrated covers keep photographs and videos out of the arrival screen. Titles, counts and sections help you choose a destination before seeing its contents.</p><p>Search stays within the current space or album. Unorganised files have a deliberate route. Adding files always names the destination.</p><p>This local HTML concept uses sample content. Changes reset on reload. Workspace switching simulates separate libraries; it does not implement access control. Albums organise files; they do not create privacy permissions.</p><button class="button primary" data-close>Back to the collection</button></dialog>
+  <div id="announcement" role="status" aria-live="polite"></div>
+</body>
+</html>
