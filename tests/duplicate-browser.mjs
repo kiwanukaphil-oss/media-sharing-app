@@ -30,7 +30,7 @@ await page.route('**/api/**',async route=>{
   throw new Error('Unexpected metadata UI request '+url.pathname);
 });
 try {
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?view=files&space=${space}`);
   await page.getByRole('checkbox',{name:/Select loaded files/}).click();
   await page.getByRole('button',{name:'Find duplicate originals',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Duplicate originals',exact:true});await expect(dialog.getByText('Existing original.jpg',{exact:true})).toBeVisible();

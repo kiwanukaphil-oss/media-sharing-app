@@ -13,7 +13,7 @@ const browser=await chromium.launch(process.env.CI?{}:{channel:'chrome'});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const errors=[];page.on('pageerror',error=>errors.push(error.message));
 try {
-  await page.goto(origin);await page.getByLabel('Space name').fill('Folder import fixture');
+  await page.goto(`${origin}/?view=files`);await page.getByLabel('Space name').fill('Folder import fixture');
   await page.getByRole('button',{name:'Create shared space'}).click();
   await expect(page.getByRole('button',{name:'Import folder',exact:true})).toBeVisible();
   await page.getByLabel('Choose folder to import',{exact:true}).setInputFiles(root);
@@ -57,7 +57,7 @@ try {
     assert.ok(originals.some(([,bytes])=>Buffer.from(bytes).equals(downloaded)));}
   assert.deepEqual(errors,[]);
   const fallback=await browser.newPage();await fallback.addInitScript(()=>{delete HTMLInputElement.prototype.webkitdirectory;});
-  await fallback.goto(origin);await fallback.getByLabel('Space name').fill('File fallback fixture');await fallback.getByRole('button',{name:'Create shared space'}).click();
+  await fallback.goto(`${origin}/?view=files`);await fallback.getByLabel('Space name').fill('File fallback fixture');await fallback.getByRole('button',{name:'Create shared space'}).click();
   await expect(fallback.getByRole('button',{name:'Import files',exact:true})).toBeVisible();
   await fallback.getByLabel('Choose files to import',{exact:true}).setInputFiles({name:'plain.bin',mimeType:'application/octet-stream',buffer:Buffer.from('plain')});
   await expect(fallback.getByText('This browser does not supply folder structure. Selected files will go directly into the new album.')).toBeVisible();

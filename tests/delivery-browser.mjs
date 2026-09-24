@@ -45,7 +45,7 @@ await page.route('**/api/**',async route=>{
   throw new Error('Unexpected delivery browser request '+path);
 });
 try{
-  await page.goto(`${origin}/?space=${space}&scope=${scope}`);
+  await page.goto(`${origin}/?view=files&space=${space}&scope=${scope}`);
   await page.getByRole('checkbox',{name:`Select ${file.name}`,exact:true}).click();
   await page.getByRole('button',{name:'Create delivery',exact:true}).click();
   await page.getByLabel('Delivery title',{exact:true}).fill('Your event originals');

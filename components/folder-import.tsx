@@ -56,7 +56,7 @@ export function FolderImport({ disabled, spaceName, accessScopeId = null, audien
     <input ref={input} type="file" multiple {...(supported ? { webkitdirectory: "" } : {})} className="visually-hidden" tabIndex={-1}
       aria-label={supported ? "Choose folder to import" : "Choose files to import"} onChange={event => { if (event.target.files) previewFolder(Array.from(event.target.files)); event.target.value = ""; }} />
     {error && !preview && <p role="alert" className="error-banner">{error}</p>}
-    {preview && <dialog ref={dialog} className="modal library-dialog folder-import-dialog" aria-labelledby={titleId} onClose={() => setPreview(null)} onCancel={event => { if (busy) event.preventDefault(); }}>
+    {preview && <dialog ref={dialog} className="modal library-dialog folder-import-dialog" aria-labelledby={titleId} onClose={() => setPreview(null)} onCancel={event => { event.preventDefault(); if (!busy) setPreview(null); }}>
       <div className="modal-heading"><h2 id={titleId}>Review folder import</h2><button className="icon-button" aria-label="Close folder import" disabled={busy} onClick={() => dialog.current?.close()}><X size={20} /></button></div>
       <p>{preview.files.length} files · {formatBytes(preview.plan.totalBytes)} · {spaceName}</p>
       <p className="small-muted">Creates a new album in this library. Sections inherit its audience; folder names do not make content private. Files keep their original bytes and names.</p>

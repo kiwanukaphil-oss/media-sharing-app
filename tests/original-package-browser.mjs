@@ -30,7 +30,7 @@ await page.route('**/api/**',async route=>{
   throw new Error('Unexpected metadata UI request '+url.pathname);
 });
 try {
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?view=files&space=${space}`);
   await page.getByRole('checkbox',{name:/Select loaded files/}).click();
   await expect(page.getByRole('button',{name:'Rename selected',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Move selected to Trash',exact:true})).toHaveCount(0);

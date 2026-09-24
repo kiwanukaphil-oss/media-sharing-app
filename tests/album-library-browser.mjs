@@ -1,0 +1,110 @@
+import assert from 'node:assert/strict';
+import { mkdir, readFile } from 'node:fs/promises';
+import { chromium, firefox, webkit, expect } from '@playwright/test';
+import { chooseWorkspaceOption } from './browser-controls.mjs';
+
+const origin = process.env.RELAY_TEST_ORIGIN || 'http://127.0.0.1:8812';
+assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname), 'Use isolated storage');
+const engineName = process.env.RELAY_ALBUM_BROWSER || (process.env.CI ? 'chromium' : 'chrome');
+const browser = await ({ firefox, webkit }[engineName] || chromium).launch(engineName === 'chrome' ? { channel: 'chrome' } : {});
+const page = await browser.newPage({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'reduce', acceptDownloads: true });
+const errors = [];
+const mediaRequests = [];
+page.on('pageerror', error => errors.push(error.message));
+page.on('request', request => { if (/\/media\/[^/]+\/(thumbnail|preview)/.test(request.url())) mediaRequests.push(request.url()); });
+await mkdir('outputs/album-library', { recursive: true });
+
+try {
+  // Use the actual built Worker and durable album/section/upload APIs, not mocked successful writes.
+  await page.goto(origin);
+  await page.getByLabel('Space name').fill('The personal collection');
+  await page.getByRole('button', { name: 'Create shared space', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your first chapter starts here.' })).toBeVisible();
+  await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
+  await page.getByRole('button', { name: 'New album', exact: true }).click();
+  await page.getByLabel('Album name', { exact: true }).fill('Slow Sundays');
+  await page.getByLabel('Album template').selectOption('story');
+  await page.getByRole('radio', { name: 'Clay', exact: true }).check();
+  await page.screenshot({ path: `outputs/album-library/${engineName}-create.png` });
+  await page.getByRole('button', { name: 'Create album', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Slow Sundays', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A little space for your story.' })).toBeVisible();
+  const albumId = new URL(page.url()).searchParams.get('album');
+  assert.ok(albumId);
+  const albumState = await (await page.request.get(`${origin}/api/albums`)).json();
+  assert.deepEqual(albumState.sections.filter(section => section.albumId === albumId).map(section => section.name), ['Moments', 'Details', 'Films']);
+  const detailsId = albumState.sections.find(section => section.name === 'Details').id;
+  await chooseWorkspaceOption(page, 'Album section', detailsId);
+  await expect(page.locator('.album-destination')).toContainText('Slow Sundays / Details');
+  const original = await readFile('prototypes/relay-polish/assets/chair.jpg');
+  await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'Quiet corner.jpg', mimeType: 'image/jpeg', buffer: original });
+  // Changing navigation while upload runs must leave the captured album/section destination intact.
+  await page.getByRole('button', { name: '← Back to albums', exact: true }).click();
+  await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
+  await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
+  await page.getByRole('button', { name: 'Dismiss completed transfers', exact: true }).click();
+  for (const [name, description] of [['Spaces & stories', 'Rooms and places worth remembering.'], ['Along the coast', 'A collection for the next escape.'], ['The little details', 'Shapes and small discoveries.'], ['Everyday, lately', 'Ordinary days.'], ['The next chapter', 'Something new starts here.']]) {
+    const response = await page.request.post(`${origin}/api/albums`, { headers: { origin }, data: { name, description } });
+    assert.equal(response.status(), 200);
+  }
+  await page.reload();
+  await expect(page.locator('.collection-card')).toHaveCount(6);
+  const requestCount = mediaRequests.length;
+  await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
+  await page.screenshot({ path: `outputs/album-library/${engineName}-desktop.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Pin Slow Sundays', exact: true }).click();
+  await page.getByRole('button', { name: /^Pinned/ }).click();
+  await expect(page.locator('.collection-card')).toHaveCount(1);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Unpin Slow Sundays', exact: true })).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Search albums' }).fill('no matching collection');
+  await expect(page.getByRole('heading', { name: 'No matching albums.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear album search' }).click();
+  await page.getByLabel('Sort albums').selectOption('name');
+  await expect(page.locator('.collection-open h2').first()).toHaveText('Along the coast');
+  await page.getByRole('button', { name: 'Album list view' }).click();
+  await expect(page.locator('.collection-grid')).toHaveClass(/collection-list/);
+  await page.getByRole('button', { name: 'Album grid view' }).click();
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), { message: `Album overflow ${width}` }).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: `outputs/album-library/${engineName}-mobile.png`, fullPage: true });
+  assert.equal(mediaRequests.length, requestCount, 'Arrival must not request any thumbnails');
+  await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Open navigation' })).toBeFocused();
+  await page.getByRole('button', { name: 'Open album Slow Sundays', exact: true }).click();
+  await expect(page.locator('.media-card')).toHaveCount(1);
+  await chooseWorkspaceOption(page, 'Album section', detailsId);
+  await expect(page.getByRole('heading', { name: 'Quiet corner.jpg', exact: true })).toBeVisible();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Album detail mobile overflow');
+  await page.screenshot({ path: `outputs/album-library/${engineName}-album-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1050 });
+  await page.screenshot({ path: `outputs/album-library/${engineName}-album.png`, fullPage: true });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Quiet corner.jpg', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Album section', { exact: true })).toHaveAttribute('data-value', detailsId);
+  await page.getByRole('button', { name: 'Preview Quiet corner.jpg', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '← Back to albums', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Quiet corner.jpg', exact: true })).toBeVisible();
+  await page.goForward();
+  await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
+  await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
+  await page.getByRole('button', { name: 'Organise files', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Unorganised', exact: true })).toBeVisible();
+  await expect(page.locator('.media-card')).toHaveCount(0);
+  const exactFile = await (await page.request.get(`${origin}/api/feed?album=${albumId}&section=${detailsId}`)).json();
+  assert.equal(exactFile.items.length, 1);
+  assert.deepEqual(errors, []);
+  console.log(`PASS ${engineName}: album-only arrival without thumbnail requests, actual creation/templates, durable upload destination across navigation, scoped sections/deep links, pins, search/sort/views, responsive 320–1440px, preview, browser history and mobile keyboard navigation.`);
+} catch (error) {
+  console.log(await page.locator('body *').evaluateAll(nodes => nodes.map(node => ({tag:node.tagName,cls:node.className,right:node.getBoundingClientRect().right,width:node.getBoundingClientRect().width})).filter(node => node.right > innerWidth + 1 && node.width > 0).slice(0,30)));
+  await page.screenshot({ path: `outputs/album-library/${engineName}-failure.png`, fullPage: true });
+  throw error;
+} finally { await browser.close(); }

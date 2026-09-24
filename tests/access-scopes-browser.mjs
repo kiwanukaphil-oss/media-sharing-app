@@ -51,12 +51,12 @@ await page.route('**/api/**',async route=>{
 });
 const choose=async(label,name)=>{await page.getByRole('combobox',{name:label,exact:true}).click();await page.getByRole('option',{name,exact:true}).click();};
 try {
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?view=files&space=${space}`);
   await expect(page.getByRole('combobox',{name:'Browse audience'})).toBeVisible();
   await expect(page.getByText(file.name,{exact:true})).toHaveCount(0);
   await choose('Browse audience','Client private');
   await expect(page.getByText(file.name,{exact:true})).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Restricted library.'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Restricted library'})).toBeVisible();
   assert.equal(new URL(page.url()).searchParams.get('scope'),scope);
   await page.getByRole('button',{name:`Preview ${file.name}`,exact:true}).click();
   await page.getByRole('button',{name:'Copy to another audience',exact:true}).click();

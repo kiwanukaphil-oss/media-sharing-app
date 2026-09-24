@@ -31,7 +31,7 @@ await page.route('**/api/**',async route=>{
   throw new Error('Unexpected favourites UI request '+url.pathname);
 });
 try {
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?view=files&space=${space}`);
   await expect(page.getByRole('button',{name:'Add files',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Add to my favourites',exact:true}).click();
   await expect(page.getByRole('button',{name:'Remove from my favourites',exact:true})).toHaveAttribute('aria-pressed','true');
@@ -46,6 +46,8 @@ try {
   await expect(page.getByRole('heading',{name:'No files'})).toBeVisible();
   await page.getByRole('button',{name:'Clear search and filters',exact:true}).click();
   await expect(page.getByRole('button',{name:'Add to my favourites',exact:true})).toBeVisible();
+  // Dismiss the previous removal notice before reaching the mobile card beneath it.
+  await page.getByRole('button',{name:'Dismiss feedback',exact:true}).click();
   deny=true;
   await page.getByRole('button',{name:'Add to my favourites',exact:true}).click();
   await expect(page.getByText('Library access changed. Refresh before updating favourites.')).toBeVisible();

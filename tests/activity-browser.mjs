@@ -27,7 +27,7 @@ await page.route('**/api/**',async route=>{
 });
 try {
   await page.clock.install();
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?view=files&space=${space}`);
   const opener=page.getByRole('button',{name:'Library activity',exact:true});await opener.click();
   const dialog=page.getByRole('dialog',{name:'Activity',exact:true});await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Renamed files',{exact:true})).toBeVisible();

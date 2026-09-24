@@ -61,7 +61,7 @@ try{
   assert.equal(receipt.id,originalId);assert.equal(reservations,2);assert.equal(partAttempts,2);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await mkdir('outputs/intake',{recursive:true});await page.screenshot({path:'outputs/intake/recipient-mobile.png',fullPage:true});
-  await page.goto(`${origin}/?space=${space}`);
+  await page.goto(`${origin}/?view=files&space=${space}`);
   await page.getByRole('button',{name:'Open navigation',exact:true}).click();
   await page.getByRole('button',{name:'Upload requests',exact:true}).click();
   await page.getByRole('button',{name:'New request'}).click();

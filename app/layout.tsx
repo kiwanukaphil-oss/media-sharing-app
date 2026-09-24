@@ -3,6 +3,7 @@ import "./globals.css";
 import "./creative-workspace.css";
 import "./interaction-polish.css";
 import "./cobalt-theme.css";
+import "./album-library.css";
 
 export const metadata: Metadata = {
   title: "Relay",

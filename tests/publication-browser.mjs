@@ -51,7 +51,7 @@ try {
     await page.getByRole('button', { name: 'Publish shared copy', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Publish a shared copy', exact: true })).toBeVisible();
   };
-  await page.goto(`${origin}/?space=${personal}`);
+  await page.goto(`${origin}/?space=${personal}&view=files`);
   await openPublication();
   await expect(page.getByText('Who can see this copy', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();

@@ -16,7 +16,7 @@ member.on('dialog', dialog => dialog.accept());
 
 // Two isolated browsers exercise the actual invitation, owner controls and sign-out cookie lifecycle.
 try {
-  await owner.goto(origin);
+  await owner.goto(`${origin}/?view=files`);
   await owner.getByRole('button', { name: 'Create shared space' }).click();
   await expect(owner.getByLabel('Search filenames')).toBeVisible();
   await owner.getByRole('button', { name: 'Pair device', exact: true }).click();
@@ -27,6 +27,8 @@ try {
   await member.goto(invitation);
   await member.getByLabel('Device name', { exact: true }).fill('Member browser fixture');
   await member.getByRole('button', { name: 'Join shared space' }).click();
+  await expect(member.getByLabel('Search albums')).toBeVisible();
+  await member.goto(`${origin}/?view=files`);
   await expect(member.getByLabel('Search filenames')).toBeVisible();
   await member.getByRole('button', { name: 'Devices', exact: true }).click();
   const memberDialog = member.getByRole('dialog', { name: 'Your connected devices' });
