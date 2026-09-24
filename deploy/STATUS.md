@@ -1,5 +1,9 @@
 # Direct Cloudflare deployment
 
+## Cobalt UI schema-compatible correction - 24 September 2026
+
+Worker `fd0a29f5-4aaa-4e5e-ba49-ef8d890bae35` serves 100% from 04:26 UTC, source `25c2096` on `hotfix/cobalt-schema0020`. The first Cobalt deployment inadvertently included unreleased backend work that expected migrations 0021-0027 while production correctly remained on schema 0020; authenticated feed and album requests returned 500. Production was immediately restored to known-good Worker `37d3cc5f-9811-4ddc-94f0-fa00a82e9767`, then the Cobalt presentation and functional copy changes were isolated onto that schema-0020-compatible source and redeployed. No migration or binding change occurred. Both public origins pass production probes, and a fresh reload of the real signed-in library shows the existing three active files, one Trash item and `Random Stuff` album without an error. The complete local Chromium, Firefox and WebKit suite passes.
+
 ## Scoped collaboration roles - 22 September 2026
 
 Worker `7a64bb09-c235-4958-91d9-b0ce10fd2526` is at **100%**, deployed at 12:02 UTC from `2e2c531`. Editor, Contributor and Viewer are available through explicit owner role changes. Current-authority and exact contribution checks cover file mutations, uploads, publication and legacy credentials. Existing members and devices keep their grants; no real membership was changed during verification.
