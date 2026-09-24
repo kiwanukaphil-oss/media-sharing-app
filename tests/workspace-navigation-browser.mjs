@@ -37,7 +37,7 @@ for (const engine of [chromium, firefox, webkit]) {
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toHaveText(/My space/);
     await page.waitForLoadState('networkidle');
     await page.getByRole('link', { name: 'Account', exact: true }).click();
-    await page.getByRole('link', { name: 'Back to library' }).click();
+    await page.getByRole('link', { name: 'Relay home', exact: true }).click();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
     await page.getByRole('combobox', { name: 'Switch library' }).click();

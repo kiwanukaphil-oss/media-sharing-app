@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Intentional entry and workspace gate - 24 September 2026
+
+- [x] Implement branded entry, explicit workspace selection before albums, invitation/paired compatibility and distinct failure recovery; local initial builds, API and browser acceptance pass. [Evidence](ENTRY-EXPERIENCE.md).
+- [ ] Complete final polish, deploy and verify live entry, then publish matching hosted credential branding.
+
 ## Storage presentation - 24 September 2026
 
 - [x] Show used/available in navigation and replace explanatory panel with capacity, usage, Trash, reservations and upload actions. Local cross-browser, account and responsive checks pass.

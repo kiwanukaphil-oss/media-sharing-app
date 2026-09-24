@@ -120,11 +120,11 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: '.sites-runtime/account-preview/desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out this browser', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Sign in securely' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Sign in securely' })).toHaveAttribute('href', '/api/auth/login?session=temporary');
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toHaveAttribute('href', '/api/auth/login?session=temporary');
   await expect(page.getByRole('checkbox', { name: /Keep me signed in/ })).not.toBeChecked();
   await page.getByRole('checkbox', { name: /Keep me signed in/ }).check();
-  await expect(page.getByRole('link', { name: 'Sign in securely' })).toHaveAttribute('href', '/api/auth/login?session=trusted');
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toHaveAttribute('href', '/api/auth/login?session=trusted');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: '.sites-runtime/account-preview/sign-in-mobile.png', fullPage: true });
   await page.keyboard.press('Tab');

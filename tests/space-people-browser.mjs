@@ -104,7 +104,7 @@ try {
   await expect(page.getByText(/Sign in below with the email address/)).toBeVisible();
   assert.equal(new URL(page.url()).hash, '');
   assert.equal(acceptances, 0);
-  await page.getByRole('link', { name: 'Sign in securely' }).click();
+  await page.getByRole('link', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Join Family archive?' })).toBeVisible();
   assert.equal(acceptances, 0, 'Returning from sign-in cannot silently accept an invitation');
   await page.getByRole('button', { name: 'Dismiss invitation' }).click();

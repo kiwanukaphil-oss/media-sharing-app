@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspaceUnavailable } from "./relay-entry";
 import { StorageSummary, StorageNavigationSummary } from "./storage-summary";
 
 /* eslint-disable @next/next/no-img-element -- Authenticated thumbnails and local QR data URLs must bypass public image optimizers. */
@@ -566,6 +567,8 @@ function RelayWorkspace() {
   const canSelectFiles = isOrganiser || session?.role === "contributor";
   const canEditFile = (item: MediaItem) => isOrganiser || (session?.role === "contributor" && Boolean(item.canEdit));
   const isLastOwner = isOwner && !devices.some(device => !device.current && device.role === "owner");
+
+  if (sessionFailure && !session && accountSpaceId !== undefined) return <WorkspaceUnavailable retry={() => void loadSession()} />;
 
   return <div className={`app-shell album-first ${librarySurface === "albums" ? "albums-arrival" : "album-files"} ${transfers.length || download ? "has-transfers" : ""}`} onDragEnter={event => { if (canUpload && librarySurface === "files" && event.dataTransfer.types.includes("Files")) { event.preventDefault(); dragDepth.current++; setDragging(true); } }} onDragOver={event => event.preventDefault()} onDragLeave={event => { event.preventDefault(); dragDepth.current--; if (dragDepth.current <= 0) setDragging(false); }} onDrop={event => { event.preventDefault(); dragDepth.current = 0; setDragging(false); if (canUpload) void selectOriginals(event.dataTransfer.files); }}>
     <a className="skip-link" href="#main-content">Skip to content</a>

@@ -36,11 +36,11 @@ async function finishAccountLogin(request: Request, database: D1Database, settin
     const identity = await provider.complete(settings, url, transaction, binding);
     const session = await createAccountSession(database, settings, identity, readAccountToken(request), Date.now(), transaction.sessionMode);
     headers.append("Set-Cookie", accountCookie(session.token, transaction.sessionMode));
-    headers.set("Location", `${settings.appOrigin}/account`);
+    headers.set("Location", `${settings.appOrigin}/workspaces`);
     return new Response(null, { status: 303, headers });
   } catch (error) {
     const reason = error instanceof AccountError && error.message.startsWith("Verify your email") ? "verify-email" : "failed";
-    headers.set("Location", `${settings.appOrigin}/account?signin=${reason}`);
+    headers.set("Location", `${settings.appOrigin}/login?signin=${reason}`);
     return new Response(null, { status: 303, headers });
   }
 }

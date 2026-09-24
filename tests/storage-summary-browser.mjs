@@ -13,6 +13,7 @@ page.on('pageerror', error => errors.push(error.message));
 // Controlled billing snapshots prove remaining-space arithmetic, restricted totals and compact presentation.
 await page.route('**/api/**', async route => {
   const path = new URL(route.request().url()).pathname;
+  if (path === '/api/auth/session') return route.fulfill({ json: { enabled: false, account: null } });
   if (path === '/api/auth/spaces') return route.fulfill({ json: { spaces: [] } });
   if (path === '/api/session') return route.fulfill({ json: { authentication: 'device', deviceId: 'owner', role: 'owner', transport: 'local', space: { id: 'fixture', name: 'Studio archive', kind: 'shared' } } });
   if (path === '/api/feed') return route.fulfill({ json: { items: [], total: 0, counts: { all: 0, trash: 0 }, role: 'owner' } });
