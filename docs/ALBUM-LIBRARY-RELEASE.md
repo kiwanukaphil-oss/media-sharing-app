@@ -34,7 +34,7 @@ Reproduce: `npm run build`, then `node scripts/ci-web-integration.mjs --browser`
 
 ## Deployment and rollback
 
-Deployed 24 September 2026 at 11:04 UTC to `relayalbums.com` and the workers.dev origin with `--keep-vars`. Deployment readback confirms 100% traffic. No migration was applied. Hosted verification run [35990906130](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35990906130) passed its verify job; browser job was still running at this record update. Local browser and API acceptance above is complete. The prior live version above remains the schema-compatible rollback target; remote secrets and storage-pool configuration were preserved. Rollback would restore the old arrival behaviour, not change files. No permanent deletion or schema rollback is authorised or required.
+Deployed 24 September 2026 at 11:04 UTC to `relayalbums.com` and the workers.dev origin with `--keep-vars`. Deployment readback confirms 100% traffic. No migration was applied. Hosted verification run [35990906130](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35990906130) passed both verify and browser jobs. Local browser and API acceptance above is complete. The prior live version above remains the schema-compatible rollback target; remote secrets and storage-pool configuration were preserved. Rollback would restore the old arrival behaviour, not change files. No permanent deletion or schema rollback is authorised or required.
 
 ## Development branch compatibility
 
