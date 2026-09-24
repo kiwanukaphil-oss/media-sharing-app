@@ -35,3 +35,11 @@ Reproduce: `npm run build`, then `node scripts/ci-web-integration.mjs --browser`
 ## Deployment and rollback
 
 Deployed 24 September 2026 at 11:04 UTC to `relayalbums.com` and the workers.dev origin with `--keep-vars`. Deployment readback confirms 100% traffic. No migration was applied. Hosted verification run [35990906130](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/35990906130) passed both verify and browser jobs. Local browser and API acceptance above is complete. The prior live version above remains the schema-compatible rollback target; remote secrets and storage-pool configuration were preserved. Rollback would restore the old arrival behaviour, not change files. No permanent deletion or schema rollback is authorised or required.
+
+## Cover and dropdown refinement - 24 September 2026
+
+Requested follow-up: prominent names on album covers, creation month/year, editable cover colours and consistent dropdown styling. Covers now state `Created <month> <year>` from the stored creation timestamp in UTC (the earlier `26` was the creation year). Edit cover previews a palette before explicit Save; Cancel/Escape preserves the original. The setting retains its labelled browser-local scope. Shared portal dropdowns use the warm neutral/olive palette, including workspace switching, filters, album/section pickers and creation templates; the remaining native album sort/template controls now use the keyboard-accessible shared selector.
+
+- [x] Implement cover identity/date, editable colour preview and shared dropdown theme without API/schema changes.
+- [x] Verify actual album creation/templates, save/reload/cancel, no home thumbnail requests, and responsive navigation in Chrome/Firefox/WebKit. Inspect desktop, cover editor and dropdown captures.
+- [ ] Complete narrow editor/list and existing picker regression, deploy isolated live source and verify production.
