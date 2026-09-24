@@ -33,7 +33,8 @@ const emulator = new Miniflare(convertV4MiniflareOptions({
       ...(storagePoolChecks ? {RELAY_STORAGE_POOL:JSON.stringify({spaceIds:['11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222'],limitBytes:10})} : {}),
       ...(closureTrackingChecks ? {RELAY_CLOSURE_TRACKING_ENABLED:'true'} : {}) } } : {}),
     ...(backupCoordinationChecks ? {bindings:{RELAY_BACKUP_COORDINATION_ENABLED:'true',RELAY_BACKUP_COORDINATION_SECRET:'c'.repeat(64)}} : {}),
-    ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, rule])),
+    // Browser fixtures share one loopback IP across independent journeys. Keep production limits for API/security tests.
+    ratelimits: Object.fromEntries(config.ratelimits.map(({ name, ...rule }) => [name, browserChecks && name === "PAIR_RATE_LIMIT" ? { ...rule, simple: { ...rule.simple, limit: 3000 } } : rule])),
     ...((servePreview || browserChecks) ? { assets: { directory: resolve('dist/client'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } } : {}),
   }],
 }));
