@@ -14,7 +14,6 @@ type Preview = { accessScopeId: string | null; audienceName?: string; id: string
 export function FolderImport({ disabled, spaceName, accessScopeId = null, audienceName, queue }: { disabled: boolean; spaceName: string; accessScopeId?: string | null; audienceName?: string; queue: (files: MappedImportFile[]) => Promise<void> }) {
   const { requestJson } = useLibraryApi();
   const input = useRef<HTMLInputElement>(null), dialog = useRef<HTMLDialogElement>(null), titleId = useId();
-  const [inputGeneration, setInputGeneration] = useState(0);
   const [preview, setPreview] = useState<Preview | null>(null), [supported, setSupported] = useState(false);
   const [busy, setBusy] = useState(false), [created, setCreated] = useState(false), [queued, setQueued] = useState(false), [error, setError] = useState("");
   useEffect(() => {
@@ -53,9 +52,9 @@ export function FolderImport({ disabled, spaceName, accessScopeId = null, audien
     new Set(preview.sections.map(section => section.name.trim().toLowerCase())).size === preview.sections.length;
   return <>
     <button className="button secondary" disabled={disabled} onClick={() => input.current?.click()}><FolderInput size={17} />{supported ? "Import folder" : "Import files"}</button>
-    {/* A fresh native input avoids reusing browser directory-selection state after Cancel/reselect. */}
-    <input key={inputGeneration} ref={input} type="file" multiple {...(supported ? { webkitdirectory: "" } : {})} className="visually-hidden" tabIndex={-1}
-      aria-label={supported ? "Choose folder to import" : "Choose files to import"} onChange={event => { if (event.target.files) previewFolder(Array.from(event.target.files)); event.target.value = ""; setInputGeneration(value=>value+1); }} />
+    {/* Keep one cleared input: remounting it breaks repeated directory selection in Chromium. */}
+    <input ref={input} type="file" multiple {...(supported ? { webkitdirectory: "" } : {})} className="visually-hidden" tabIndex={-1}
+      aria-label={supported ? "Choose folder to import" : "Choose files to import"} onChange={event => { if (event.target.files) previewFolder(Array.from(event.target.files)); event.target.value = ""; }} />
     {error && !preview && <p role="alert" className="error-banner">{error}</p>}
     {preview && <dialog ref={dialog} className="modal library-dialog folder-import-dialog" aria-labelledby={titleId} onClose={() => setPreview(null)} onCancel={event => { if (busy) event.preventDefault(); }}>
       <div className="modal-heading"><h2 id={titleId}>Review folder import</h2><button className="icon-button" aria-label="Close folder import" disabled={busy} onClick={() => dialog.current?.close()}><X size={20} /></button></div>
