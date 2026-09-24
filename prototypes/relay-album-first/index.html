@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102b59">
+  <title>Relay — Album-first navigation concept</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="prototype.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+      <div class="sidebar-top"><div class="brand"><span class="brand-symbol">↔</span><span>relay<span class="brand-dot">.</span></span></div><button class="icon-button mobile-close" id="close-navigation" aria-label="Close navigation"><svg><use href="../relay-app-refresh/assets/icons.svg#X"/></svg></button></div>
+      <button class="space-switcher" type="button" aria-label="Current space: My space"><span class="space-avatar">M</span><span><strong>My space</strong><small>Personal library</small></span><svg><use href="../relay-app-refresh/assets/icons.svg#ChevronDown"/></svg></button>
+      <div class="nav-group"><p class="nav-caption">YOUR SPACE</p><nav aria-label="Main navigation">
+        <button class="nav-item active" data-route="albums" aria-current="page"><svg><use href="../relay-app-refresh/assets/icons.svg#Images"/></svg><span>Albums</span><span class="nav-count" id="album-nav-count">4</span></button>
+        <button class="nav-item" data-route="unorganised"><svg><use href="../relay-app-refresh/assets/icons.svg#Folder"/></svg><span>Unorganised</span><span class="nav-count" id="unorganised-nav-count">3</span></button>
+        <button class="nav-item" data-route="library"><svg><use href="../relay-app-refresh/assets/icons.svg#Grid2X2"/></svg><span>Browse all files</span></button>
+      </nav></div>
+      <div class="sidebar-rule"></div>
+      <div class="nav-group"><p class="nav-caption">MANAGE</p><nav aria-label="Management navigation">
+        <button class="nav-item" data-demo-notice="Transfers stay tied to their original destination."><svg><use href="../relay-app-refresh/assets/icons.svg#Upload"/></svg><span>Transfers</span></button>
+        <button class="nav-item" data-demo-notice="Trash is available in the full app."><svg><use href="../relay-app-refresh/assets/icons.svg#Trash2"/></svg><span>Trash</span></button>
+      </nav></div>
+      <div class="sidebar-bottom"><div class="storage-label"><span>Storage · example</span><strong>12.4 of 100 GB</strong></div><div class="storage-track"><span></span></div><button class="account-link" data-demo-notice="Account settings are available in the full app."><span class="account-avatar">PK</span><span>Account &amp; libraries</span><svg><use href="../relay-app-refresh/assets/icons.svg#ArrowUpRight"/></svg></button></div>
+    </aside>
+    <button class="mobile-scrim" id="navigation-scrim" aria-label="Close navigation" hidden></button>
+    <div class="workspace">
+      <header class="topbar"><div class="topbar-left"><button class="icon-button mobile-menu" id="open-navigation" aria-label="Open navigation" aria-expanded="false"><svg><use href="../relay-app-refresh/assets/icons.svg#Menu"/></svg></button><div class="crumbs"><span>My space</span><svg><use href="../relay-app-refresh/assets/icons.svg#ChevronRight"/></svg><strong id="topbar-location">Albums</strong></div></div><div class="topbar-right"><span class="sync-indicator"><i></i> Concept preview</span><button class="account-button" data-demo-notice="Account settings are available in the full app.">Account</button></div></header>
+      <main id="main-content" tabindex="-1">
+        <section id="albums-view" class="view" aria-labelledby="albums-title">
+          <div class="heading-row"><div><p class="eyebrow">YOUR COLLECTION</p><h1 id="albums-title">Albums<span class="accent-period">.</span></h1><p class="heading-copy">A place for every project, trip and moment.</p></div><button class="button primary" id="create-album"><svg><use href="../relay-app-refresh/assets/icons.svg#Plus"/></svg>New album</button></div>
+          <div class="album-toolbar"><div class="search-field"><svg><use href="../relay-app-refresh/assets/icons.svg#Search"/></svg><input id="album-search" type="search" placeholder="Find an album" aria-label="Find an album"><kbd>/</kbd></div><label class="sort-field"><span>Sort</span><select id="album-sort" aria-label="Sort albums"><option value="recent">Recently updated</option><option value="name">Name A–Z</option></select><svg><use href="../relay-app-refresh/assets/icons.svg#ChevronDown"/></svg></label></div>
+          <div class="section-heading"><div><h2>All albums</h2><span id="album-count">4 albums</span></div><span class="section-note">Open an album to see its files</span></div>
+          <div class="album-grid" id="album-grid"></div>
+          <div class="no-results" id="album-no-results" hidden><svg><use href="../relay-app-refresh/assets/icons.svg#Search"/></svg><h2>No matching albums</h2><p>Try a different name or create a new album.</p><button class="button secondary" id="clear-album-search">Clear search</button></div>
+          <button class="unorganised-strip" data-route="unorganised"><span class="strip-symbol"><svg><use href="../relay-app-refresh/assets/icons.svg#Folder"/></svg></span><span><strong>Files waiting for an album</strong><small id="unorganised-summary">3 unorganised files · organise them when you’re ready</small></span><svg class="strip-arrow"><use href="../relay-app-refresh/assets/icons.svg#ArrowRight"/></svg></button>
+        </section>
+        <section id="detail-view" class="view" aria-labelledby="detail-title" hidden><div class="detail-heading"><button class="back-link" data-route="albums"><svg><use href="../relay-app-refresh/assets/icons.svg#ArrowLeft"/></svg>All albums</button><div class="heading-row"><div><p class="eyebrow" id="detail-eyebrow">ALBUM</p><h1 id="detail-title"></h1><p class="heading-copy" id="detail-description"></p></div><button class="button primary" id="add-files"><svg><use href="../relay-app-refresh/assets/icons.svg#Plus"/></svg>Add files</button></div></div><div class="detail-meta"><span id="detail-count"></span><span class="meta-dot"></span><span id="detail-audience">Only you can access this space</span></div><div class="detail-controls"><div class="section-tabs" role="group" aria-label="Album sections" id="section-tabs"></div><label class="sort-field detail-sort"><span>Sort</span><select id="file-sort" aria-label="Sort files"><option value="recent">Newest first</option><option value="name">Name A–Z</option></select><svg><use href="../relay-app-refresh/assets/icons.svg#ChevronDown"/></svg></label></div><div class="file-grid" id="file-grid"></div><div class="album-empty" id="album-empty" hidden><div class="empty-icon"><svg><use href="../relay-app-refresh/assets/icons.svg#Images"/></svg></div><h2 id="empty-title">Your album is ready</h2><p id="empty-copy">Add photos and videos to start filling it.</p><button class="button primary" id="empty-add-files"><svg><use href="../relay-app-refresh/assets/icons.svg#Plus"/></svg>Add files</button></div></section>
+      </main>
+    </div>
+  </div>
+  <dialog id="create-dialog" class="create-dialog" aria-labelledby="dialog-title"><form id="create-form" method="dialog"><div class="dialog-head"><div class="dialog-icon"><svg><use href="../relay-app-refresh/assets/icons.svg#FolderPlus"/></svg></div><button type="button" class="icon-button" id="close-dialog" aria-label="Close dialog"><svg><use href="../relay-app-refresh/assets/icons.svg#X"/></svg></button></div><p class="eyebrow">MAKE SPACE FOR SOMETHING NEW</p><h2 id="dialog-title">Create an album</h2><p class="dialog-copy">Give related photos and videos a home. You can add files after creating it.</p><label class="field-label" for="new-album-name">Album name</label><input id="new-album-name" name="albumName" type="text" maxlength="60" required placeholder="e.g. September in the city"><span id="name-error" class="field-error" role="alert"></span><div class="dialog-note"><svg><use href="../relay-app-refresh/assets/icons.svg#ShieldCheck"/></svg><span>This album stays in My space.</span></div><div class="dialog-actions"><button type="button" class="button secondary" id="cancel-create">Cancel</button><button type="submit" class="button primary">Create album<svg><use href="../relay-app-refresh/assets/icons.svg#ArrowRight"/></svg></button></div></form></dialog>
+  <dialog id="viewer" class="viewer" aria-labelledby="viewer-title"><div class="viewer-top"><div><p class="eyebrow" id="viewer-album"></p><h2 id="viewer-title"></h2></div><button class="icon-button" id="close-viewer" aria-label="Close viewer"><svg><use href="../relay-app-refresh/assets/icons.svg#X"/></svg></button></div><img id="viewer-image" alt=""><video id="viewer-video" controls hidden></video><div class="viewer-bottom"><span id="viewer-position"></span><div><button class="icon-button" id="viewer-previous" aria-label="Previous file"><svg><use href="../relay-app-refresh/assets/icons.svg#ArrowLeft"/></svg></button><button class="icon-button" id="viewer-next" aria-label="Next file"><svg><use href="../relay-app-refresh/assets/icons.svg#ArrowRight"/></svg></button></div></div></dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

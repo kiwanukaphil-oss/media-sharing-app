@@ -1,9 +1,19 @@
 # Relay development roadmap
 
-**Last updated:** 23 September 2026
+**Last updated:** 24 September 2026
 **Scope:** Web app and supporting backend; preserve compatibility with existing clients. Native UI development is outside scope.
 **Product reference:** [Product direction, organisation and privacy](PRODUCT-DIRECTION-AND-PRIVACY.md)
 **Purpose:** Living development guide and source of truth for progress, outstanding work, decisions and release evidence.
+
+## Album-first navigation concept — 24 September 2026
+
+The product owner requested an album-focused arrival screen so opening Relay does not immediately display every photo and video. The first deliverable is a reviewable HTML mockup; production behaviour is unchanged.
+
+- [x] Build a standalone [album-first prototype](../prototypes/relay-album-first/README.md) with an album-only landing view, prominent creation, scoped album detail and sections, new-album empty state, and deliberate Unorganised and Browse all files routes.
+- [x] Inspect desktop and narrow browser layouts; exercise open album, section filtering, creation, mobile drawer, Unorganised and 320/390px overflow. The landing screen rendered zero file tiles; the sample album rendered four, its Details section two, and Unorganised three. Browser page errors: none.
+- [ ] Adapt the reviewed direction to the authenticated web app while preserving current-space access, deep links, transfer destinations, section placement, existing clients and the explicit broad-library route. Verify desktop/mobile and relevant browser/API regressions before release.
+
+The mockup uses sample content and transient local interactions. Its preview images are checked in beside the HTML for visual review. This concept does not complete a roadmap parent item or imply a deployed feature.
 
 ## Urgent navigation repair - live
 
