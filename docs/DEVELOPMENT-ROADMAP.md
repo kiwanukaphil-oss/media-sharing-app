@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Storage presentation - 24 September 2026
+
+- [x] Show used/available in navigation and replace explanatory panel with capacity, usage, Trash, reservations and upload actions. Local cross-browser, account and responsive checks pass.
+- [ ] Deploy and verify the compact storage display. [Evidence](STORAGE-PRESENTATION.md).
+
 ## Album cover refinement - 24 September 2026
 
 - [x] Implement names on covers, explicit creation month/year, editable colour preview and consistent shared dropdowns.
