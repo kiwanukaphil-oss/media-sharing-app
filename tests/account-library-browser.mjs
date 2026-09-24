@@ -112,6 +112,8 @@ try {
   await page.locator('.library-utilities > summary').click();
   await page.locator('.sidebar').getByRole('button', { name: /^All files/ }).click();
   await expect(page.getByRole('searchbox', { name: 'Search filenames' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: item.name, exact: true })).toBeVisible();
+  await page.waitForLoadState('networkidle');
   forbidden = true;
   await page.getByRole('searchbox', { name: 'Search filenames' }).fill('revoked');
   await expect(page.getByRole('link', { name: 'Sign in or choose a library' })).toBeVisible();
