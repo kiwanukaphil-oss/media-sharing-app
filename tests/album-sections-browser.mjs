@@ -17,8 +17,10 @@ try {
   await page.getByRole('button', { name: 'New album', exact: true }).click();
   await page.getByLabel('Album name', { exact: true }).fill('A day together');
   await page.getByRole('button', { name: 'Create album', exact: true }).click();
+  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'Use template', exact: true }).click();
   await page.getByRole('button', { name: 'Create template sections', exact: true }).click();
+  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'New section', exact: true }).click();
   await page.getByLabel('Section name', { exact: true }).fill('Favourite moments');
   await page.getByRole('button', { name: 'Create section', exact: true }).click();
@@ -32,16 +34,20 @@ try {
   await expect(page.getByRole('heading', { name: 'moment.raw', exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: 'Select moment.raw', exact: true }).click();
   await page.getByRole('button', { name: 'Move to section', exact: true }).click();
-  await page.getByRole('button', { name: 'Move files', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Move to section' }).getByRole('button', { name: 'Unsectioned', exact: true }).click();
+  await page.getByRole('button', { name: 'Move file', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'moment.raw', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'moment.raw', exact: true })).toBeVisible();
+  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'Manage section', exact: true }).click();
   await page.getByRole('button', { name: 'Earlier', exact: true }).click();
+  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'Manage section', exact: true }).click();
   await page.getByLabel('Section name', { exact: true }).fill('The best moments');
   await page.getByRole('button', { name: 'Save section', exact: true }).click();
   await expect(section).toContainText('The best moments');
+  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'Manage section', exact: true }).click();
   await page.getByRole('button', { name: 'Remove section', exact: true }).click();
   await expect(section).toContainText('Unsectioned');
@@ -55,9 +61,12 @@ try {
   await expect(page.getByRole('heading', { name: 'cover.jpg', exact: true })).toBeVisible({ timeout: 30000 });
   await expect(page.locator('.media-card').filter({ has: page.getByRole('heading', { name: 'cover.jpg', exact: true }) }).locator('.media-cover img')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Select cover.jpg', exact: true }).click();
+  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'Manage section', exact: true }).click();
   await page.getByRole('button', { name: 'Use selected file as cover', exact: true }).click();
   await expect(page.locator('.section-cover')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear selection', exact: true }).click();
+  await page.getByRole('button', { name: 'Dismiss completed transfers', exact: true }).click();
   await mkdir('outputs/sections' , { recursive: true });
   await page.screenshot({ path: 'outputs/sections/desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -66,6 +75,41 @@ try {
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)){await page.screenshot({path:'outputs/sections/mobile-overflow.png',fullPage:true});console.log('OVERFLOW',await page.locator('body *').evaluateAll(nodes=>nodes.map(node=>({tag:node.tagName,class:node.className,width:node.getBoundingClientRect().width,right:node.getBoundingClientRect().right})).filter(node=>node.right>innerWidth+1&&node.width>0).slice(-20)));}
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: 'outputs/sections/mobile.png', fullPage: true });
+  // Phone arrival exposes media immediately; management and legacy labels stay out of the browsing path.
+  await page.evaluate(() => scrollTo(0, 0));
+  assert.ok((await page.locator('.media-grid').boundingBox()).y < 450, 'First media row should fit above 450px on a phone');
+  await expect(page.locator('.category-filter-disclosure')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Manage section', exact: true })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Album settings', exact: true })).toBeVisible();
+  await chooseWorkspaceOption(page, 'Album section', '');
+  await page.getByRole('checkbox', { name: 'Select cover.jpg', exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Select moment.raw', exact: true }).check();
+  await page.getByRole('button', { name: 'Move to section', exact: true }).click();
+  const placement = page.getByRole('dialog', { name: 'Move to section', exact: true });
+  await placement.getByRole('button', { name: /^Final cuts/ }).click();
+  await placement.getByRole('button', { name: 'Move files', exact: true }).click();
+  await expect(page.locator('.section-badge').filter({ hasText: 'Final cuts' })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator('.section-badge').filter({ hasText: 'The best moments' })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Move cover.jpg to section', exact: true }).click();
+  await placement.getByRole('button', { name: /^Originals/ }).click();
+  // Failed mutations retain the chosen section, allow retry and never fake a successful placement.
+  await page.route('**/api/library/sections', route => route.fulfill({ status: 409, json: { error: 'The file changed. Retry with the latest version.' } }));
+  await placement.getByRole('button', { name: 'Move file', exact: true }).click();
+  await expect(placement.getByRole('alert')).toContainText('file changed');
+  await expect(placement.getByRole('button', { name: /^Originals/ })).toHaveAttribute('aria-pressed', 'true');
+  await page.unroute('**/api/library/sections');
+  await placement.getByRole('button', { name: 'Move file', exact: true }).click();
+  await expect(page.locator('.section-badge').filter({ hasText: 'Originals' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Preview cover.jpg', exact: true }).click();
+  await page.getByRole('button', { name: 'Move to section', exact: true }).click();
+  await expect(placement).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(placement).toHaveCount(0);
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `No overflow at ${width}px`);
+  }
   assert.deepEqual(errors, []);
   console.log(`PASS ${engineName}: template, custom section, queued destination, move/Undo, reorder, rename, remove/restore, deep link, keyboard, cover selection and narrow layout.`);
 } finally { await browser.close(); }

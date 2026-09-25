@@ -1,5 +1,6 @@
 export type Category = "original" | "final";
 export type MediaItem = {
+  sectionId?: string | null; sectionName?: string | null;
   accessScopeId?: string | null; id: string; name: string; mime: string; size: number; sha256: string;
   category: Category; createdAt: number; deviceName: string;
   isFavorite?: boolean; canEdit?: boolean; hasPreview?: boolean; archivedAt?: number | null;

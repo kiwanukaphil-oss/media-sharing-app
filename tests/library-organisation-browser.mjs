@@ -25,7 +25,9 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByLabel('Description', { exact: true }).fill('Originals and finished work from our September shoot.');
     await page.getByRole('button', { name: 'Create album', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'September product shoot' })).toBeVisible();
+    await page.getByRole('button', { name: 'Dismiss feedback', exact: true }).click();
     // The styled listbox supports keyboard dismissal and returns focus to its trigger.
+    await page.getByRole('button', { name: /^Filters/ }).click();
     const sort = page.getByRole('combobox', { name: 'Sort', exact: true });
     await sort.click();
     await expect(page.getByRole('listbox')).toBeVisible();
@@ -40,7 +42,6 @@ async function verifyOrganisation(engine, options, label) {
     await expect(sort).toHaveAttribute('data-value', 'oldest');
     await chooseWorkspaceOption(page, 'Sort', 'newest');
     const albumId = await page.getByLabel('Browse library').getAttribute('data-value');
-    await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles([
       { name: 'camera-one.raw', mimeType: 'application/octet-stream', buffer: bytes },
       { name: 'camera-two.raw', mimeType: 'application/octet-stream', buffer: bytes },
@@ -115,7 +116,7 @@ async function verifyOrganisation(engine, options, label) {
     await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByRole('button', { name: 'Clear date / batch filters', exact: true }).click();
     await expect(page.locator('article')).toHaveCount(2);
-    await page.getByRole('button', { name: 'Manage album', exact: true }).click();
+    await page.getByRole('button', { name: 'Album settings', exact: true }).click();
     await page.getByRole('button', { name: 'Archive album', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
@@ -126,7 +127,7 @@ async function verifyOrganisation(engine, options, label) {
     await page.goBack();
     await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', portfolioId);
     // Removing the grouping is immediate and undoable; both originals remain in the library.
-    await page.getByRole('button', { name: 'Manage album', exact: true }).click();
+    await page.getByRole('button', { name: 'Album settings', exact: true }).click();
     await page.getByRole('button', { name: 'Remove album', exact: true }).click();
     await expect(page.getByLabel('Browse library')).toHaveAttribute('data-value', '');
     await expect(page.locator('article')).toHaveCount(2);
