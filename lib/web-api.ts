@@ -77,10 +77,14 @@ export async function readFeed(request: Request, device: ActiveDevice) {
       values.push(cursor.createdAt, cursor.createdAt, cursor.id);
     } catch { throw new ApiError(400, "This page link is invalid. Refresh the feed."); }
   }
+  // Placement is projected only for the already-authorised album; general feeds reveal no other album memberships.
   const editable = fileEditAuthority(device);
   const result = await database().prepare(`SELECT (${editable.sql}) AS canEdit, media.id, media.name, media.mime, media.size, media.sha256, media.category,
-    COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName
-    FROM media JOIN devices ON devices.id = media.device_id WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(...editable.bindings, ...values, limit + 1).all<MediaItem & { sortValue: number }>();
+    COALESCE(media.original_name, media.name) AS originalName, media.captured_at AS capturedAt, media.upload_batch AS uploadBatch, media.revision, ${sortColumn} AS sortValue, media.created_at AS createdAt, media.archived_at AS archivedAt, media.preview_ready AS hasPreview, devices.name AS deviceName, placement_section.id AS sectionId, placement_section.name AS sectionName
+    FROM media JOIN devices ON devices.id = media.device_id
+    LEFT JOIN album_media placement ON placement.media_id = media.id AND placement.album_id = ?
+    LEFT JOIN album_sections placement_section ON placement_section.id = placement.section_id AND placement_section.album_id = placement.album_id AND placement_section.deleted_at IS NULL
+    WHERE ${where} ORDER BY ${sortColumn} ${direction}, media.id ${direction} LIMIT ?`).bind(...editable.bindings, album && album !== "unorganised" ? album : "", ...values, limit + 1).all<MediaItem & { sortValue: number }>();
   const items = result.results.slice(0, limit);
   const last = items.at(-1);
   const counts = await database().prepare(`SELECT COUNT(CASE WHEN archived_at IS NULL THEN 1 END) AS "all",

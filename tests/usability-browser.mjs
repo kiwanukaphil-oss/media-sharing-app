@@ -28,9 +28,8 @@ try {
       await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Temporary service interruption' }) });
     } else await route.continue();
   });
-  await page.locator('.category-filter-disclosure summary').click();
-    await page.locator('.filter-tabs').getByRole('button', { name: /Final cuts/ }).click();
-  await expect(page.getByText('Loading files...', { exact: true })).toBeVisible();
+  await page.goto(`${origin}/?view=files&category=final`);
+  await expect(page.getByText('Opening your space…', { exact: true })).toBeVisible();
   await expect(page.getByText('No files', { exact: true })).toHaveCount(0);
   release();
   await expect(page.getByRole('button', { name: 'Retry loading files' })).toBeVisible();

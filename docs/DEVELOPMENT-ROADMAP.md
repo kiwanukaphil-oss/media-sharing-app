@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Compact album workflow - 25 September 2026
+
+- [x] Prioritise photos, collapse album administration, make sections album-local in the interface and add individual/preview/bulk placement with Undo. Responsive and cross-browser section acceptance, D1/API isolation and main compatibility checks pass. [Evidence](ALBUM-WORKFLOW.md).
+- [ ] Complete full browser regression and deploy/verify the schema-0020 live increment.
+
 ## Intentional entry and workspace gate - 24 September 2026
 
 - [x] Implement branded entry, explicit workspace selection before albums, invitation/paired compatibility and distinct failure recovery; local initial builds, API and browser acceptance pass. [Evidence](ENTRY-EXPERIENCE.md).

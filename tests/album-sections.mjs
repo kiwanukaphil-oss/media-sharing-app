@@ -50,6 +50,8 @@ assert.equal((await move(moveInput, album.id, member)).status, 403);
 assert.equal((await move(moveInput, album.id, outsider)).status, 409);
 const moved = await json(await move(moveInput));
 assert.equal((await feed(album.id, shortlist.id)).total, 2);
+assert.ok((await feed(album.id)).items.every(file => file.sectionId === shortlist.id && typeof file.sectionName === 'string'));
+assert.ok((await feed(secondAlbum.id)).items.every(file => file.sectionId === null && file.sectionName === null), 'Another album does not inherit section metadata');
 assert.equal((await feed(secondAlbum.id, 'unsectioned')).total, 1);
 assert.equal((await move(moveInput)).status, 409, 'Stale move must not partially apply.');
 await json(await move(moved.previous));

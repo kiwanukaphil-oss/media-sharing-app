@@ -65,8 +65,9 @@ async function verifyBrowser(engine, options, label) {
     await card.getByRole('button', { name: 'Restore', exact: true }).click();
     await page.getByRole('button', { name: 'Back to files' }).click();
     await page.locator('.library-utilities > summary').click();
-    await page.locator('.category-navigation summary').click();
-    await page.locator('.sidebar').getByRole('button', { name: /Final cuts/ }).click();
+    // Existing client category deep links remain compatible; normal navigation now uses album sections.
+    await page.goto(`${origin}/?view=files&category=final`);
+    await expect(page.getByLabel("Search filenames")).toBeVisible();
     await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'finished-export.mov', mimeType: 'video/quicktime', buffer: payload });
     await expect(page.locator('article').filter({ hasText: 'finished-export.mov' })).toBeVisible();
     await page.locator('.sidebar').getByRole('button', { name: /^Storage/ }).click();

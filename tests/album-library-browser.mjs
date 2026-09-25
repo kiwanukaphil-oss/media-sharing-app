@@ -35,7 +35,7 @@ try {
   assert.deepEqual(albumState.sections.filter(section => section.albumId === albumId).map(section => section.name), ['Moments', 'Details', 'Films']);
   const detailsId = albumState.sections.find(section => section.name === 'Details').id;
   await chooseWorkspaceOption(page, 'Album section', detailsId);
-  await expect(page.locator('.album-destination')).toContainText('Slow Sundays / Details');
+  await expect(page.locator('.album-destination')).toContainText('Adding to Details');
   const original = await readFile('prototypes/relay-polish/assets/chair.jpg');
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'Quiet corner.jpg', mimeType: 'image/jpeg', buffer: original });
   // Changing navigation while upload runs must leave the captured album/section destination intact.

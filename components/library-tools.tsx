@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
+import { FolderInput, Settings, FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
 import { AlbumSections } from "./album-sections";
 import { WorkspaceSelect } from "./workspace-select";
 import { useLibraryApi } from "./library-scope";
@@ -11,6 +11,8 @@ import type { Album, AlbumSection, MediaItem, RenameEntry } from "@/lib/contract
 export type LibraryQuery = { album: string; section: string; dateMode: string; from: string; to: string; sort: string; batch: string; type: string; uploader: string };
 export const emptyLibraryQuery: LibraryQuery = { album: "", section: "", dateMode: "uploaded", from: "", to: "", sort: "newest", batch: "", type: "", uploader: "" };
 type Props = {
+  managementTools?: React.ReactNode;
+  onMoveSection: (files: MediaItem[]) => void;
   albums: Album[]; sections: AlbumSection[]; query: LibraryQuery; onQuery: (query: LibraryQuery) => void; canOrganise: boolean; canSelectFiles?: boolean;
   selected: MediaItem[]; loadedCount: number; onSelectLoaded: () => void; onClearSelection: () => void;
   refresh: () => Promise<void>; renameItems: MediaItem[]; onRename: (items: MediaItem[]) => void;
@@ -103,15 +105,17 @@ export function LibraryTools(props: Props) {
     setMessage("Capture date updated. Original file metadata is unchanged."); onDate(null);
   }
 
-  return <section className="library-tools" aria-label="Library organisation">
+  return <section className={`library-tools${activeAlbum ? " in-album-tools" : ""}`} aria-label="Library organisation">
     <div className="library-command-row">
       {props.children}
       <button className="button secondary compact filter-toggle" aria-expanded={filtersOpen} aria-controls={filterPanelId} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={16} />Filters{activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}</button>
-      <div className="library-sort"><WorkspaceSelect label="Sort" value={query.sort} onChange={sort => onQuery({ ...query, sort })} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} /></div>
+      {!activeAlbum && <>      <div className="library-sort"><WorkspaceSelect label="Sort" value={query.sort} onChange={sort => onQuery({ ...query, sort })} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} /></div>
       {props.viewControls}
-      {canOrganise && <button className="button compact new-album-button" aria-label="New album" title="New album" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor("new"); }}><FolderPlus size={17} /><span>New album</span></button>}
+      {canOrganise && !activeAlbum && <button className="button compact new-album-button" aria-label="New album" title="New album" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor("new"); }}><FolderPlus size={17} /><span>New album</span></button>}</>}
+      {canOrganise && activeAlbum && <button className="icon-button album-settings-trigger" aria-label="Album settings" title="Album settings" onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Settings size={19} /></button>}
     </div>
     <div id={filterPanelId} className="library-filter-panel" hidden={!filtersOpen}>
+    {activeAlbum && <div className="album-view-options"><WorkspaceSelect label="Sort" value={query.sort} onChange={sort => onQuery({ ...query, sort })} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} />{props.viewControls}{canOrganise && <button className="button compact" aria-label="New album" onClick={() => { setFailure(""); setAlbumEditor("new"); }}><FolderPlus size={17} />New album</button>}</div>}
     <div className="library-location">
       <div className="filter-field"><span>Browse</span><WorkspaceSelect label="Browse library" value={query.album} onChange={album => onQuery({ ...query, album, section: "" })} options={[{ value: "", label: "All files" }, { value: "unorganised", label: "Unorganised" }, ...albums.map(album => ({ value: album.id, label: `${album.name} (${album.count})`, group: album.archivedAt ? "Archived albums" : "Albums" }))]} /></div>
     </div>
@@ -125,7 +129,7 @@ export function LibraryTools(props: Props) {
     </div>
     {query.dateMode === "captured" && <p className="library-context">Camera date where available; otherwise date uploaded (UTC). Missing dates are labelled on each file.</p>}
     </div>
-    {(activeAlbum || query.album === "unorganised") && <div className="album-context-row"><p className="library-context">{activeAlbum ? `${activeAlbum.description || "Everyone in this space can view and save these files."}${activeAlbum.archivedAt ? " · Archived — unarchive to upload here." : " · Uploads here go directly into this album."}` : "Files that are not in an album yet. Adding them to an album keeps them in All files."}</p>{canOrganise && activeAlbum && <button className="button compact" disabled={busy} onClick={() => { setFailure(""); setAlbumEditor(activeAlbum); }}><Pencil size={15} />Manage album</button>}</div>}
+    {query.album === "unorganised" && <p className="library-context">Files that have not been added to an album.</p>}
     {activeAlbum && <AlbumSections album={activeAlbum} sections={props.sections.filter(section => section.albumId === activeAlbum.id)} query={query} onQuery={onQuery} selected={selected} canOrganise={canOrganise} canMoveSelection={editableSelection} refresh={refresh} clearSelection={props.onClearSelection} feedback={props.feedback} />}
     {activeFilterCount > 0 && <div className="active-library-filters" aria-label="Active filters">
       {query.type && <button className="filter-chip" onClick={() => onQuery({ ...query, type: "" })}>{({ photo: "Photos", video: "Videos", other: "Other files" } as Record<string, string>)[query.type] || "File type"}<X size={13} /></button>}
@@ -136,7 +140,7 @@ export function LibraryTools(props: Props) {
       <button className="text-button" onClick={() => onQuery({ ...query, dateMode: "uploaded", from: "", to: "", batch: "", type: "", uploader: "" })}>Clear all filters</button>
     </div>}
     {(canOrganise || props.canSelectFiles) && <div className={`selection-toolbar${selected.length ? " has-selection" : ""}`} aria-label="Bulk file actions">
-      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>{!editableSelection && <span role="status">Contributors can edit only their own files. Adjust your selection.</span>}
+      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>{activeAlbum && <button className="button section-move-action" disabled={busy || !editableSelection || Boolean(activeAlbum.archivedAt) || selected.some(file => file.archivedAt)} onClick={() => props.onMoveSection(selected)}><FolderInput size={18} />Move to section</button>}{!editableSelection && <span role="status">Contributors can edit only their own files. Adjust your selection.</span>}
         <button className="icon-button" title="Add to album" aria-label="Add to album" disabled={busy || !editableSelection || selected.some(file => file.archivedAt)} onClick={() => { setTargetAlbum(""); setAlbumPickerOpen(true); }}><FolderPlus size={19} /></button>
         {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
         {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy || !editableSelection} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}
@@ -149,6 +153,7 @@ export function LibraryTools(props: Props) {
     {failure && !albumEditor && !renameItems.length && !dateItem && <p className="error-banner" role="alert">{failure}</p>}
     {albumEditor && <LibraryDialog title={albumEditor === "new" ? "New album" : "Manage album"} close={() => { if (!busy) setAlbumEditor(null); }}>
       <AlbumForm album={albumEditor === "new" ? null : albumEditor} busy={busy} failure={failure} save={(name, description) => void performMutation(() => saveAlbum(name, description))} />
+      {albumEditor !== "new" && props.managementTools}
       {albumEditor !== "new" && <div className="album-management"><button className="button secondary" disabled={busy} onClick={() => void performMutation(async () => { await updateAlbum(albumEditor, { archived: !albumEditor.archivedAt }); setAlbumEditor(null); })}>{albumEditor.archivedAt ? "Unarchive album" : "Archive album"}</button>
         <button className="text-button danger" disabled={busy} onClick={() => void performMutation(async () => { await updateAlbum(albumEditor, { deleted: true }); setAlbumEditor(null); })}>Remove album</button></div>}
     </LibraryDialog>}
