@@ -23,6 +23,9 @@ try {
   await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
   await page.getByRole('button', { name: 'New album', exact: true }).click();
   await page.getByLabel('Album name', { exact: true }).fill('Slow Sundays');
+  await expect(page.getByLabel('Album name', { exact: true })).toHaveCSS('outline-color', 'rgb(82, 107, 71)');
+  await page.getByLabel('Description', { exact: false }).fill('Quiet moments');
+  await expect(page.getByLabel('Description', { exact: false })).toHaveCSS('outline-color', 'rgb(82, 107, 71)');
   await chooseWorkspaceOption(page, 'Album template', 'story');
   await page.getByRole('radio', { name: 'Clay', exact: true }).check();
   await page.screenshot({ path: `outputs/album-library/${engineName}-create.png` });
@@ -80,6 +83,9 @@ try {
   await page.reload();
   await expect(page.getByRole('button', { name: 'Unpin Slow Sundays', exact: true })).toBeVisible();
   await page.getByRole('searchbox', { name: 'Search albums' }).fill('no matching collection');
+  await expect(page.getByRole('searchbox', { name: 'Search albums' }).locator('..')).toHaveCSS('outline-color', 'rgb(82, 107, 71)');
+  await expect(page.getByRole('searchbox', { name: 'Search albums' })).toHaveCSS('box-shadow', 'none');
+  await page.screenshot({ path: `outputs/album-library/${engineName}-search-focus.png` });
   await expect(page.getByRole('heading', { name: 'No matching albums.' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear album search' }).click();
   await chooseWorkspaceOption(page, 'Sort albums', 'name');
@@ -124,6 +130,8 @@ try {
   await expect(page.locator('.media-card')).toHaveCount(1);
   await chooseWorkspaceOption(page, 'Album section', detailsId);
   await expect(page.getByRole('heading', { name: 'Quiet corner.jpg', exact: true })).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Search filenames' }).focus();
+  await expect(page.getByRole('searchbox', { name: 'Search filenames' }).locator('..')).toHaveCSS('outline-color', 'rgb(82, 107, 71)');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Album detail mobile overflow');
   await page.screenshot({ path: `outputs/album-library/${engineName}-album-mobile.png`, fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1050 });
@@ -133,6 +141,7 @@ try {
   await expect(page.getByLabel('Album section', { exact: true })).toHaveAttribute('data-value', detailsId);
   await page.getByRole('button', { name: 'Preview Quiet corner.jpg', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.locator('.media-viewer')).toHaveCSS('background-color', 'rgb(23, 33, 27)');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '← Back to albums', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();

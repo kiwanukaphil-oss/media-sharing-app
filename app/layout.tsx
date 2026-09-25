@@ -5,6 +5,7 @@ import "./interaction-polish.css";
 import "./cobalt-theme.css";
 import "./album-library.css";
 import "./entry.css";
+import "./theme-controls.css";
 
 export const metadata: Metadata = {
   title: "Relay",

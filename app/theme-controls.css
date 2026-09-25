@@ -1,0 +1,68 @@
+/* Current Relay interaction palette. Legacy presentation rules remain retirement
+   candidates; these final overrides also cover controls rendered outside the app shell. */
+:root{--relay-ink:#29312d;--relay-muted:#68706a;--relay-paper:#fffefa;--relay-line:#d2d8c9;--relay-focus:#526b47;--relay-focus-soft:#526b471f;--relay-soft:#e6ebdf;--relay-dark:#26372b}
+input:focus,textarea:focus,select:focus,.album-first :is(input,textarea,select):focus{border-color:var(--relay-focus);box-shadow:0 0 0 3px var(--relay-focus-soft)}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--relay-focus);outline-offset:2px}
+.album-first :is(button,a,summary):focus-visible,.album-first .icon-button:focus-visible,.workspace-select:focus-visible{outline:2px solid var(--relay-focus);outline-offset:3px}
+.selection-control input:focus-visible+.selection-mark,.cover-options input:focus-visible+span{outline-color:var(--relay-focus)}
+/* Search has a single visible ring; text-entry focus is visible for pointer and keyboard. */
+.search-field:focus-within{outline:2px solid var(--relay-focus);outline-offset:2px;border-radius:7px}
+.search-field input:focus{outline:none;box-shadow:none}
+.album-first .search-field input:focus{box-shadow:none}
+.search-field input::placeholder,.search-field .search-symbol{color:var(--relay-muted)}
+.library-tools :is(input,select),.library-form :is(input,textarea),.account-page :is(input,textarea){color:var(--relay-ink);background:var(--relay-paper);border-color:var(--relay-line)}
+.library-tools :is(input,select):focus,.library-form :is(input,textarea):focus,.account-page :is(input,textarea):focus{border-color:var(--relay-focus)}
+.library-tools label,.library-form>label{color:var(--relay-ink)}
+.library-filters input[type=date][data-empty=true]:not(:focus){color:var(--relay-muted)}
+.library-filters input[type=date][data-empty=true]:not(:focus)::-webkit-datetime-edit{color:var(--relay-muted)}
+.view-toggle{background:var(--relay-paper);border-color:var(--relay-line)}
+.view-toggle button{color:var(--relay-muted)}
+.view-toggle button[aria-pressed=true]{color:var(--relay-ink);background:var(--relay-soft);box-shadow:none}
+.album-first .filter-toggle[aria-expanded=true],.album-first .filter-chip{color:#34492d;background:var(--relay-soft);border-color:var(--relay-line)}
+.album-first .filter-chip:hover,.album-first .new-album-button:hover{background:#dce5d1}
+.album-first .new-album-button,.album-first .album-context-row .button{color:var(--relay-focus)}
+.album-first .selection-control:hover .selection-mark{border-color:var(--relay-focus);background:var(--relay-soft)}
+.album-first .selection-control input:checked+.selection-mark,.album-first .selection-control input:indeterminate+.selection-mark{background:var(--relay-focus);border-color:var(--relay-focus)}
+.album-first .media-card.is-selected{border-color:var(--relay-focus);box-shadow:0 0 0 2px var(--relay-focus-soft)}
+.album-first .media-card.is-selected .media-cover{box-shadow:inset 0 0 0 3px var(--relay-focus)}
+.album-first .media-list .list-category{color:#34492d;background:var(--relay-soft)}
+.album-first .selection-toolbar.has-selection{background:var(--relay-dark);color:#f6f5f1;border-color:#445641;box-shadow:0 14px 38px #29312d33}
+.album-first .selection-toolbar.has-selection :is(.text-button,.icon-button){color:#f6f5f1}
+.album-first .selection-toolbar.has-selection :is(.text-button,.icon-button):hover{background:#43583d}
+.album-first .selection-toolbar.has-selection .clear-selection{border-color:#697b62}
+.album-first .library-feedback .text-button{color:var(--relay-focus)}
+.confirmation-symbol:not(.is-danger){color:var(--relay-focus);background:var(--relay-soft)}
+.action-confirmation p,.rename-preview,.album-management{color:var(--relay-muted)}
+.rename-preview,.rename-preview :is(th,td),.album-management{border-color:var(--relay-line)}
+.rename-preview th{background:#eef1e7;color:var(--relay-ink)}
+.album-first .help-step>span,.album-first .device-symbol,.album-first .transfer-file-icon{color:var(--relay-focus);background:var(--relay-soft)}
+.album-first .help-note,.album-first .pair-panel{color:var(--relay-muted);background:#eef1e7;border-color:var(--relay-line)}
+.album-first .pair-panel>svg,.album-first .tray-heading svg{color:var(--relay-focus)}
+.album-first .drop-overlay{color:var(--relay-focus);border-color:var(--relay-focus);background:#f6f5f1ef}
+.album-first .transfer-tray,.album-first .tray-heading,.album-first .transfer-row{border-color:var(--relay-line)}
+.album-first .transfer-information>div,.album-first .transfer-information p,.album-first .tray-note{color:var(--relay-muted)}
+.album-first .tray-note{background:var(--relay-paper)}
+.album-first .toast{background:var(--relay-dark)}
+.album-first .modal::backdrop,.album-first .navigation-scrim{background:#202a2366}
+/* The viewer stays dark for photographs, using neutral olive instead of violet/blue. */
+.album-first .media-viewer,.album-first .media-viewer::backdrop{background:#17211b;color:#f6f5f1}
+.album-first .viewer-details{background:#222e25}
+.album-first :is(.viewer-file p,.viewer-details dt,.viewer-details .small-muted,.viewer-position,.viewer-keyboard-hint,.viewer-details-intro,.viewer-details .detail-metadata,.viewer-details .integrity-details){color:#bdc8b8}
+.album-first .viewer-details dd{color:#f6f5f1}
+.album-first .viewer-details .text-button{color:#c2d7b2}
+.album-first .viewer-details .button.secondary{color:#f6f5f1;border-color:#687b5d;background:#344330}
+.album-first .viewer-details .integrity-details code{color:#e5ecdf;background:#17211b}
+.album-first .viewer-filmstrip>button[aria-current=true]{outline-color:#adc798}
+.album-first .viewer-save{color:var(--relay-ink);background:var(--relay-soft)}
+.album-first .preview-loading{color:#dce5d1}
+.album-first .viewer-stage .file-preview,.album-first .viewer-stage .file-preview small{color:#bdc8b8}
+
+/* Small inherited details found by the rendered-colour audit. */
+.skip-link{color:var(--relay-focus)}
+.album-first .space-avatar{border-color:var(--relay-line)}
+.album-first .breadcrumb svg{color:#8b9586}
+.album-first .status-dot:not(.online){background:#8b9586}
+.album-first .selection-mark{border-color:#7b876f}
+.album-first .media-cover{box-shadow:inset 0 0 0 1px #29312d09}
+.album-first .file-selection,.library-form p,.file-details dt{color:var(--relay-muted)}
+.album-first .art-card span{background:#c5cebb}
