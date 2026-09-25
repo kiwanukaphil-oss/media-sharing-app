@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Album and section navigation performance - 25 September 2026
+
+- [x] Implement bounded workspace memory for recent views and shared thumbnails, selective intent preloading and remembered album positions. Cross-browser performance/correctness fixtures and existing browser regressions pass. [Evidence](NAVIGATION-PERFORMANCE.md).
+- [ ] Final release-build acceptance and live deployment/readback.
+
 ## Visible album sections - 25 September 2026
 
 - [x] Implement visible section names/counts, responsive horizontal navigation, direct creation and overflow directory; cross-browser, responsive and existing section workflows pass. [Evidence](ALBUM-WORKFLOW.md).
