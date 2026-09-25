@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, FolderInput, Image as ImageIcon, LayoutTemplate, Mo
 import type { Album, AlbumSection, MediaItem, FeedPage } from "@/lib/contracts";
 import { useLibraryApi } from "./library-scope";
 import type { LibraryQuery } from "./library-tools";
+import { SectionNavigation } from "./section-navigation";
 import { WorkspaceSelect } from "./workspace-select";
 
 type Props = {
@@ -90,13 +91,11 @@ export function AlbumSections({ album, sections, query, onQuery, selected, canOr
       {/* Authenticated section covers must not pass through a public image cache. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {active?.coverMediaId && <img className="section-cover" src={apiUrl(`media/${active.coverMediaId}/thumbnail`)} alt="" width={36} height={36} />}
-      <WorkspaceSelect label="Album section" value={query.section} onChange={section => onQuery({ ...query, section })} options={[
-        { value: "", label: `All in this album (${album.count})` },
-        { value: "unsectioned", label: `Unsectioned (${Math.max(0, album.count - sections.reduce((sum, section) => sum + section.count, 0))})` },
-        ...sections.map(section => ({ value: section.id, label: `${section.name} (${section.count})` })),
-      ]} />
-      {canEdit && <details className="section-options" onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}><summary aria-label="Section options" title="Section options"><MoreHorizontal size={17} /><span>Sections</span></summary><div className="section-options-menu" onClick={event => { if ((event.target as HTMLElement).closest("button")) (event.currentTarget.parentElement as HTMLDetailsElement).open = false; }}>
-      {canEdit && <button className="button compact" onClick={() => { setFailure(""); setEditor("new"); }}><Plus size={16} />New section</button>}
+      {/* The previous section dropdown is superseded by visible navigation; its CSS is a retirement candidate. */}
+      <SectionNavigation sections={sections} count={album.count} value={query.section} onChange={section => onQuery({ ...query, section })} />
+      {canEdit && <button className="icon-button section-create" aria-label="New section" title="New section" onClick={() => { setFailure(""); setEditor("new"); }}><Plus size={19} /></button>}
+      {canEdit && (active || !sections.length) && <details className="section-options" onKeyDown={event => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}><summary aria-label="Section options" title="Section settings"><MoreHorizontal size={17} /><span className="visually-hidden">Section settings</span></summary><div className="section-options-menu" onClick={event => { if ((event.target as HTMLElement).closest("button")) (event.currentTarget.parentElement as HTMLDetailsElement).open = false; }}>
+      {/* New section now has a dedicated plus button beside the visible tabs. */}
       {canEdit && !sections.length && <button className="button compact" disabled={busy} onClick={() => void previewTemplate()}><LayoutTemplate size={16} />Use template</button>}
       {canEdit && active && <button className="icon-button" aria-label="Manage section" title="Manage section" onClick={() => { setFailure(""); setEditor(active); }}><Pencil size={16} /></button>}
       </div></details>}

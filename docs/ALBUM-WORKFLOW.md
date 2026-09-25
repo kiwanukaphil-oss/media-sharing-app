@@ -17,6 +17,13 @@ Each file displays its section or Unsectioned. Its Move to section action and th
 - [x] Main-only folder import and metadata export browser checks pass after the shared UI changes.
 - [x] All live-compatible browser journeys pass locally. The full run passed through publication; its final presentation check still expected the old New album command position. Updated it to assert Settings aligns with Filters, then reran presentation and editor checks successfully. Deployment dry run passes.
 - [x] Deployed runtime source `e2e0320` as Worker `d3881a26-a4f8-475d-9694-fd0ef7009a82` at 100% on 25 September 2026, 03:34 UTC. Both origins pass entry, security headers, storage/database health and anonymous-feed denial. Signed-in existing album confirms compact controls, no global labels, Settings dialog, section menu, file badges and individual move dialog with its real album-local destination. Cancelled without moving user files.
-- [ ] Hosted follow-up [36090901553](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/36090901553) is running; it includes the final presentation-test adjustment. The preceding run was cancelled after that stale assertion was identified locally.
+- [x] Hosted follow-up [36090901553](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/36090901553) passes; it includes the final presentation-test adjustment. The preceding run was cancelled after that stale assertion was identified locally.
 
 No database migration, authentication or access-policy change is included. Section metadata is additive and scoped to the already-authorised album feed. Existing clients retain category API compatibility. Previous Worker `f74624dd-74b1-42fe-b1ed-b624ba098e6d` is the schema-compatible rollback target.
+
+## Visible section navigation - 25 September 2026
+
+- [x] Replace the hidden section picker with visible name/count buttons. All photos and custom sections remain a single horizontal row; Unsectioned appears when populated or currently selected. Olive active styling, horizontal overflow fade, a visible plus action and a compact View all sections directory expose the structure without stacking controls.
+- [x] The overflow directory lists full names/counts and current selection; Escape restores focus. Resize observation keeps the active section visible. Management stays in the overflow menu for the selected section, with template setup available before sections exist. Legacy picker CSS is marked as a retirement candidate.
+- [x] Builds and TypeScript checks pass on both branches; focused lint passes. Actual album section workflows pass Chromium, Firefox and WebKit. Album-library and presentation regressions pass. Mobile screenshot inspected: first media row is about 443px down at 390px, including the local-only banner. Width checks pass at 320, 390, 768 and 1440px. Deployment dry run passes. No backend/schema change.
+- [ ] Publish and verify the live tabs.
