@@ -23,6 +23,7 @@ Mouse movement or keyboard focus over an album/section schedules a small intent 
 - [x] The repeated image retains the same blob URL and one thumbnail request; a second album reuses that file's thumbnail. Intent preload stops after six. Remembered section/scroll, rename invalidation and revoked-access clearing pass.
 - [x] Full live-compatible browser regression passes, including uploads/downloads, album/section CRUD, presentation privacy, failure recovery, sharing and workspace navigation. Main-only audience revocation and folder import checks also pass.
 - [x] Final release build passes the cache fixture across all three engines, actual section/upload/Undo workflow, account-access clearing and delayed/error/Trash usability checks. Dry run passes.
-- [ ] Publish and check production.
+- [x] Published live-compatible source `acbb8f7` as Worker `668eadcc-82c7-4d93-bed0-b96c34377cce` at 100%, 25 September 2026 04:12 UTC. Both production origins pass entry, headers, database/storage readiness and anonymous-feed protection. Signed-in live gallery thumbnails render correctly; visiting another album and returning restores Unsectioned and shows all five existing photos while the background Updating state is still active. No user files were changed.
+- [ ] Hosted follow-up [36093521984](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/36093521984) is running at this record update.
 
 This is a UI/runtime optimisation on the schema-0020 live branch. No migrations, storage bindings, authentication settings or new backend features are activated. Prior Worker `15003cc6-04a5-4dd2-8689-b2ea0156924c` is the compatible rollback target.

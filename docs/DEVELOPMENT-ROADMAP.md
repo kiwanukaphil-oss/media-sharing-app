@@ -3,7 +3,7 @@
 ## Album and section navigation performance - 25 September 2026
 
 - [x] Implement bounded workspace memory for recent views and shared thumbnails, selective intent preloading and remembered album positions. Cross-browser performance/correctness fixtures and existing browser regressions pass. [Evidence](NAVIGATION-PERFORMANCE.md).
-- [ ] Final release-build acceptance and live deployment/readback.
+- [x] Final release checks pass. Deployed `acbb8f7` as Worker `668eadcc-82c7-4d93-bed0-b96c34377cce` at 100%; both-origin probes and signed-in cached album return/remembered section pass. Hosted follow-up is recorded in the evidence.
 
 ## Visible album sections - 25 September 2026
 
