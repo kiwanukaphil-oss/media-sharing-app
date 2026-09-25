@@ -1,5 +1,7 @@
 "use client";
 
+import { CachedThumbnail } from "./cached-thumbnail";
+import { LibraryMemoryProvider, useLibraryMemory } from "./library-memory";
 import { SectionPlacement } from "./section-placement";
 import { WorkspaceUnavailable } from "./relay-entry";
 import { StorageSummary, StorageNavigationSummary } from "./storage-summary";
@@ -62,8 +64,8 @@ function MediaPreview({ item, large = false }: { item: MediaItem; large?: boolea
   const photo = /^image\/(jpeg|png|webp|gif|avif)$/.test(item.mime);
   if (!failed && large && /^video\/(mp4|webm|quicktime)$/.test(item.mime)) return <video controls playsInline preload="metadata" aria-label={`Play ${item.name}`} poster={item.hasPreview ? apiUrl(`media/${item.id}/thumbnail`) : undefined} onError={() => setFailed(true)} src={apiUrl(`media/${item.id}/preview`)} className="media-image" />;
   if (!failed && ((large && photo) || item.hasPreview)) return <div className={`preview-image-frame${loaded ? " is-loaded" : ""}`}>
-    {large && !loaded && item.hasPreview && <img className="preview-placeholder" src={apiUrl(`media/${item.id}/thumbnail`)} alt="" aria-hidden="true" />}
-    <img loading={large ? "eager" : "lazy"} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} src={apiUrl(`media/${item.id}/${large && photo ? "preview" : "thumbnail"}`)} alt={item.name} className="media-image" />
+    {large && !loaded && item.hasPreview && <CachedThumbnail className="preview-placeholder" src={apiUrl(`media/${item.id}/thumbnail`)} alt="" aria-hidden="true" />}
+    {large && photo ? <img loading="eager" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} src={apiUrl(`media/${item.id}/preview`)} alt={item.name} className="media-image" /> : <CachedThumbnail decoding="async" onFailure={setFailed} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} src={apiUrl(`media/${item.id}/thumbnail`)} alt={item.name} className="media-image" />}
     {large && !loaded && <span className="preview-loading" role="status"><LoaderCircle size={18} className="spin" /><span>Loading preview…</span></span>}
   </div>;
   const Icon = item.mime.startsWith("video/") ? FileVideo : FileImage;
@@ -72,12 +74,14 @@ function MediaPreview({ item, large = false }: { item: MediaItem; large?: boolea
 
 // The working surface shares one durable feed; browser storage tracks only this device's queue.
 export default function RelayApp({ accountSpaceId }: { accountSpaceId?: string }) {
-  return <LibraryScope.Provider value={accountSpaceId}><PresentationShield><RelayWorkspace key={accountSpaceId ?? "legacy"} /></PresentationShield></LibraryScope.Provider>;
+  return <LibraryScope.Provider value={accountSpaceId}><PresentationShield><LibraryMemoryProvider key={accountSpaceId ?? "legacy"}><RelayWorkspace /></LibraryMemoryProvider></PresentationShield></LibraryScope.Provider>;
 }
 
 // Isolate library state across account spaces and legacy device access.
 function RelayWorkspace() {
   const { requestJson, apiUrl, accountSpaceId } = useLibraryApi();
+  const memory = useLibraryMemory()!;
+  const pendingScroll = useRef<number | null>(null);
   const libraryAccessLost = useRef(false);
   const verifiedDownload = useRef<AbortController | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -153,17 +157,32 @@ function RelayWorkspace() {
   const feedRevision = useRef(0);
   const audienceRef = useRef("");
 
+  // Changing audience discards cached content before any new scoped reads start.
+  const resetAudienceState = useCallback((scope: string) => {
+    if (scope === audienceRef.current) return;
+    memory.invalidate("access");
+    audienceRef.current = scope; ++feedRevision.current;
+    setItems([]); setAlbums([]); setSections([]); setCounts({ all: 0, original: 0, final: 0, trash: 0 });
+    setTotal(0); setNextCursor(null); setSelectedIds(new Set()); setRenameItems([]); setDateItem(null); setPublicationItem(null); setScopeCopyItem(null);
+    setFeedbackMessage(""); setUndoLibraryAction(null); setModal(null);
+  }, [memory]);
+
   // Refresh every loaded page with stable cursors, keeping filters and cross-device changes consistent.
   const refreshFeed = useCallback(async (signal?: AbortSignal) => {
     const revision = ++feedRevision.current;
     const query = feedQuery.current;
     try {
-      let cursor: string | null = null; const collected: MediaItem[] = []; let result: FeedPage;
-      for (let page = 0; page < pageDepth.current; page++) {
-        result = await requestJson<FeedPage>(`feed?${query}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, { signal });
-        collected.push(...result.items); cursor = result.nextCursor;
-        if (!cursor) break;
-      }
+      const depth = pageDepth.current;
+      const result = await memory.readFeed(query, depth, async requestSignal => {
+        let cursor: string | null = null; const collected: MediaItem[] = []; let pageResult: FeedPage;
+        for (let page = 0; page < depth; page++) {
+          pageResult = await requestJson<FeedPage>(`feed?${query}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, { signal: requestSignal });
+          collected.push(...pageResult.items); cursor = pageResult.nextCursor;
+          if (!cursor) break;
+        }
+        return { ...pageResult!, items: collected, nextCursor: cursor };
+      }, signal);
+      const collected = result.items, cursor = result.nextCursor;
       if (signal?.aborted || revision !== feedRevision.current || libraryAccessLost.current) return;
       setLoadedQuery(query); setFeedFailure(null);
       setItems(collected); setCounts(result!.counts); setTotal(result!.total); setNextCursor(cursor); setOnline(true);
@@ -178,7 +197,7 @@ function RelayWorkspace() {
       setSelectedIds(current => new Set([...current].filter(id => currentItems.has(id))));
       setSession(current => current && current.role !== result!.role ? { ...current, role: result!.role } : current);
     } catch (failure) {
-      if (signal?.aborted || revision !== feedRevision.current) return;
+      if (signal?.aborted || revision !== feedRevision.current || (failure instanceof Error && failure.name === "AbortError")) return;
       if (accountSpaceId !== undefined && failure instanceof RequestError && [401, 403].includes(failure.status)) {
         libraryAccessLost.current = true;
         controllers.current.forEach(controller => controller.abort());
@@ -191,7 +210,7 @@ function RelayWorkspace() {
       setFeedFailure({ query, message: failure instanceof Error ? failure.message : "Couldn't load files." });
       throw failure;
     }
-  }, [accountSpaceId, requestJson]);
+  }, [accountSpaceId, requestJson, memory]);
   async function loadMore() {
     setFeedBusy(true); pageDepth.current++;
     try { await refreshFeed(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't load more files."); }
@@ -229,6 +248,8 @@ function RelayWorkspace() {
       const body = await response.json() as Session & { error?: string };
       if (!response.ok) throw new Error(body.error);
       const current = body as Session;
+      const identity = `${current.space.id}:${current.deviceId}:${current.authentication || "legacy"}`;
+      memory.setIdentity(identity);
       libraryAccessLost.current = false;
       setSession(current);
       const accountSpaces = accountSpaceId === undefined ? undefined : (await requestAccountJson<{ spaces: AccountLibrary[] }>("auth/spaces")).spaces;
@@ -237,7 +258,7 @@ function RelayWorkspace() {
       await Promise.all([refreshFeed(), refreshDevices(), refreshStorage(), refreshAlbums()]);
     } catch (failure) { setSessionFailure(true); setError(failure instanceof Error ? failure.message : "Couldn't open this space."); }
     finally { setLoading(false); }
-  }, [accountSpaceId, apiUrl, requestJson, refreshDevices, refreshFeed, refreshStorage, refreshAlbums]);
+  }, [accountSpaceId, apiUrl, requestJson, refreshDevices, refreshFeed, refreshStorage, refreshAlbums, memory]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- Pairing fragments and browser capabilities must be read after hydration. */
   useEffect(() => {
@@ -248,6 +269,7 @@ function RelayWorkspace() {
     catch { /* Restricted browser storage keeps the default grid usable. */ }
     setVerifiedSaveAvailable(supportsVerifiedSave());
     const restoreLibraryLocation = () => {
+      pendingScroll.current = null;
       setSectionMoveItems([]);
       const params = new URLSearchParams(location.search);
       const restored = { ...emptyLibraryQuery };
@@ -267,7 +289,7 @@ function RelayWorkspace() {
     void loadSession();
     const active = controllers.current;
     return () => { active.forEach(controller => controller.abort()); window.removeEventListener("popstate", restoreLibraryLocation); };
-  }, [loadSession]);
+  }, [loadSession, resetAudienceState]);
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!session) return;
@@ -275,9 +297,10 @@ function RelayWorkspace() {
       setOnline(navigator.onLine);
       if (failure instanceof RequestError && failure.status === 401) { setSession(null); setItems([]); setError(failure.message); }
     });
-  }, [session, refreshFeed, refreshAlbums]);
+  }, [session, refreshFeed, refreshAlbums, memory]);
   useEffect(() => {
     if (!session) return;
+    const controller = new AbortController();
     const timer = setTimeout(() => {
       const audienceChanged = audienceRef.current !== libraryQuery.scope;
       audienceRef.current = libraryQuery.scope;
@@ -285,11 +308,17 @@ function RelayWorkspace() {
       feedQuery.current = new URLSearchParams({ category: filter, q: search, ...libraryQuery }).toString();
       history.replaceState(null, "", `${location.pathname}?${feedQuery.current}&view=${librarySurface}${accountSpaceId === undefined ? "" : `&space=${encodeURIComponent(accountSpaceId)}`}${location.hash}`);
       setSelectedIds(new Set()); selectionAnchor.current = null;
-      pageDepth.current = 1; setFeedBusy(true);
-      void refreshFeed().catch(() => {}).finally(() => setFeedBusy(false));
+      const cached = memory.peek(feedQuery.current);
+      pageDepth.current = cached?.depth ?? 1;
+      if (cached) {
+        setItems(cached.page.items); setLoadedQuery(feedQuery.current); setCounts(cached.page.counts);
+        setTotal(cached.page.total); setNextCursor(cached.page.nextCursor); setFeedFailure(null);
+      }
+      setFeedBusy(true);
+      void refreshFeed(controller.signal).catch(() => {}).finally(() => { if (!controller.signal.aborted) setFeedBusy(false); });
     }, search ? 250 : 0);
-    return () => clearTimeout(timer);
-  }, [accountSpaceId, filter, search, libraryQuery, librarySurface, session, refreshFeed, refreshAlbums]);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [accountSpaceId, filter, search, libraryQuery, librarySurface, session, refreshFeed, refreshAlbums, memory]);
   useEffect(() => {
     const update = () => { setOnline(navigator.onLine); if (navigator.onLine && session) void refreshFeed().catch(() => {}); };
     window.addEventListener("online", update); window.addEventListener("offline", update);
@@ -410,7 +439,7 @@ function RelayWorkspace() {
         runningTransfers.current.add(transfer.id);
         const completed = await uploadOriginal(file, transfer, controller.signal, updateTransfer);
         if (completed.state === "needs-file") files.current.delete(transfer.id);
-        if (completed.state === "complete") { files.current.delete(transfer.id); await Promise.all([refreshFeed(), refreshStorage(), refreshAlbums()]); }
+        if (completed.state === "complete") { memory.invalidate("lists"); files.current.delete(transfer.id); await Promise.all([refreshFeed(), refreshStorage(), refreshAlbums()]); }
       } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't save transfer progress."); }
       finally { controllers.current.delete(transfer.id); runningTransfers.current.delete(transfer.id); transferTasks.current.delete(transfer.id); }
     });
@@ -583,14 +612,25 @@ function RelayWorkspace() {
   // Navigation preserves deep links; selection never leaks into a different album or date range.
   // Audience changes invalidate in-flight reads and close content dialogs immediately. Transfers
   // retain their captured destination and continue independently from this browsing selection.
-  function resetAudienceState(scope: string) {
-    if (scope === audienceRef.current) return;
-    audienceRef.current = scope; ++feedRevision.current;
-    setItems([]); setAlbums([]); setSections([]); setCounts({ all: 0, original: 0, final: 0, trash: 0 });
-    setTotal(0); setNextCursor(null); setSelectedIds(new Set()); setRenameItems([]); setDateItem(null); setPublicationItem(null); setScopeCopyItem(null);
-    setFeedbackMessage(""); setUndoLibraryAction(null); setModal(null);
+
+  function rememberAlbumPosition() {
+    if (librarySurface === "files" && libraryQuery.album) {
+      const key = `${new URLSearchParams(feedQuery.current).get("scope") || ""}:${libraryQuery.album}`;
+      memory.albumPositions.delete(key);
+      memory.albumPositions.set(key, { section: libraryQuery.section, y: window.scrollY });
+      if (memory.albumPositions.size > 40) memory.albumPositions.delete(memory.albumPositions.keys().next().value!);
+    }
   }
+  // Recent albums reopen at their last section and position; fresh and section-only navigation starts at the top.
   function changeLibraryQuery(query: LibraryQuery) {
+    rememberAlbumPosition();
+    const scope = new URLSearchParams(query as unknown as Record<string, string>).get("scope") || "";
+    const remembered = memory.albumPositions.get(`${scope}:${query.album}`);
+    if (query.album && query.album !== libraryQuery.album && !query.section && remembered) {
+      const section = remembered.section === "unsectioned" || sections.some(item => item.id === remembered.section && item.albumId === query.album) ? remembered.section : "";
+      query = { ...query, section };
+      pendingScroll.current = section === remembered.section ? remembered.y : 0;
+    } else if (query.album !== libraryQuery.album || query.section !== libraryQuery.section) pendingScroll.current = 0;
     setSectionMoveItems([]);
     const changed = query.scope !== audienceRef.current;
     resetAudienceState(query.scope);
@@ -599,6 +639,7 @@ function RelayWorkspace() {
     setLibrarySurface("files"); setLibraryQuery(query); setSelectedIds(new Set());
   }
   function openAlbumLibrary() {
+    rememberAlbumPosition();
     setSectionMoveItems([]);
     history.pushState(null, "", `${location.pathname}?${new URLSearchParams({ view: "albums", scope: libraryQuery.scope, ...(accountSpaceId === undefined ? {} : { space: accountSpaceId }) })}`);
     setLibrarySurface("albums"); setLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope }); setFilter("all"); setSearch("");
@@ -613,10 +654,11 @@ function RelayWorkspace() {
   const refreshLibrary = useCallback(async () => { await Promise.all([refreshFeed(), refreshAlbums(), refreshStorage()]); }, [refreshFeed, refreshAlbums, refreshStorage]);
   // Grant updates clear content-dependent dialogs and Undo before refreshing current authority.
   const refreshAudienceAccess = useCallback(async () => {
+    memory.invalidate("access");
     setItems([]); setAlbums([]); setSections([]); setSelectedIds(new Set()); setModal(null);
     setRenameItems([]); setDateItem(null); setPublicationItem(null); setScopeCopyItem(null); setFeedbackMessage(""); setUndoLibraryAction(null);
     await refreshLibrary();
-  }, [refreshLibrary]);
+  }, [refreshLibrary, memory]);
   // Shift selection is bounded to the visible result order and the 100-file bulk action limit.
   function toggleSelection(id: string, shift: boolean) {
     const anchor = visibleItems.findIndex(item => item.id === selectionAnchor.current);
@@ -632,9 +674,40 @@ function RelayWorkspace() {
   }
   const currentAlbum = albums.find(album => album.id === libraryQuery.album);
   const desiredQuery = new URLSearchParams({ category: filter, q: search, ...libraryQuery }).toString();
-  const feedReady = loadedQuery === desiredQuery;
+  const cachedView = loadedQuery !== desiredQuery ? memory.peek(desiredQuery) : undefined;
+  const feedReady = loadedQuery === desiredQuery || Boolean(cachedView);
+  const displayedTotal = cachedView?.page.total ?? total;
+  const displayedCursor = cachedView ? cachedView.page.nextCursor : nextCursor;
   const currentFeedFailure = feedFailure?.query === desiredQuery ? feedFailure.message : "";
-  const visibleItems = feedReady ? items : [];
+  const visibleItems = cachedView?.page.items ?? (feedReady ? items : []);
+  useEffect(() => memory.subscribe(reason => {
+    if (reason !== "access") return;
+    setItems([]); setLoadedQuery(""); setSelectedIds(new Set()); setModal(null); setSectionMoveItems([]);
+    setRenameItems([]); setDateItem(null); setPublicationItem(null); setFeedbackMessage(""); setUndoLibraryAction(null);
+    setScopeCopyItem(null);
+  }), [memory]);
+  useEffect(() => {
+    if (!feedReady || pendingScroll.current === null) return;
+    const y = pendingScroll.current; pendingScroll.current = null;
+    const frame = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
+    return () => cancelAnimationFrame(frame);
+  }, [feedReady, desiredQuery]);
+  // Hover/focus warms only an intended destination and its first six thumbnails, never the whole library.
+  useEffect(() => {
+    if (!session) return;
+    memory.setWarmView((album, section) => memory.scheduleWarm(async () => {
+      const params = album ? new URLSearchParams({ category: "all", q: "", ...emptyLibraryQuery, album }) : new URLSearchParams(feedQuery.current);
+      const scope = new URLSearchParams(feedQuery.current).get("scope");
+      if (scope !== null) params.set("scope", scope);
+      params.set("section", section ?? memory.albumPositions.get(`${scope || ""}:${album}`)?.section ?? "");
+      if (!params.get("album") || libraryAccessLost.current) return;
+      const query = params.toString();
+      const cached = memory.peek(query);
+      const page = cached?.page ?? await memory.readFeed(query, 1, signal => requestJson<FeedPage>(`feed?${query}`, { signal }));
+      await Promise.allSettled(page.items.filter(item => item.hasPreview).slice(0, 6).map(item => memory.loadThumbnail(apiUrl(`media/${item.id}/thumbnail`))));
+    }));
+    return () => { memory.setWarmView(undefined); };
+  }, [memory, session, requestJson, apiUrl]);
   const activeTransfers = transfers.filter(item => item.state !== "complete");
   const originalCount = counts.original;
   const finalCount = counts.final;
@@ -671,7 +744,7 @@ function RelayWorkspace() {
         </details>
       </nav>
       {session && <><p className="nav-label albums-label">ALBUMS</p><nav className="album-navigation" aria-label="Albums">
-        {albums.filter(album => !album.archivedAt).map(album => <button className={`nav-item${libraryQuery.album === album.id ? " active" : ""}`} aria-current={libraryQuery.album === album.id ? "page" : undefined} key={album.id} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, album: album.id }); }}><Folder size={18} /><span className="album-name">{album.name}</span><span>{album.count}</span></button>)}
+        {albums.filter(album => !album.archivedAt).map(album => <button className={`nav-item${libraryQuery.album === album.id ? " active" : ""}`} aria-current={libraryQuery.album === album.id ? "page" : undefined} key={album.id} onPointerMove={() => memory.warmView?.(album.id)} onPointerLeave={() => memory.cancelWarm()} onFocus={() => memory.warmView?.(album.id)} onBlur={() => memory.cancelWarm()} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, album: album.id }); }}><Folder size={18} /><span className="album-name">{album.name}</span><span>{album.count}</span></button>)}
         {!albums.some(album => !album.archivedAt) && <p className="album-nav-empty">No albums</p>}
         <button className={`nav-item${libraryQuery.album === "unorganised" ? " active" : ""}`} aria-current={libraryQuery.album === "unorganised" ? "page" : undefined} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, album: "unorganised" }); }}><Grid2X2 size={17} /><span className="album-name">Unorganised</span></button>
       </nav></>}
@@ -704,13 +777,13 @@ function RelayWorkspace() {
           </LibraryTools>
           {!currentAlbum && (filter === "original" || filter === "final") && <div className={`feed-toolbar${libraryQuery.album ? " album-toolbar" : ""}`}><details className="category-filter-disclosure"><summary>File labels{filter === "original" ? ": Originals" : filter === "final" ? ": Final cuts" : ""}</summary><div className="filter-tabs" aria-label="File categories">{(["all", "original", "final"] as Filter[]).map(value => <button key={value} aria-pressed={filter === value} className={filter === value ? "selected" : ""} onClick={() => setFilter(value)}>{value === "all" ? "All files" : value === "original" ? "Originals" : "Final cuts"}{!libraryQuery.album && <span>{value === "all" ? counts.all : value === "original" ? originalCount : finalCount}</span>}</button>)}</div></details><span className="sort-label">{libraryQuery.sort === "oldest" ? "Oldest first" : "Newest first"}<ArrowDown size={14} /></span></div>}
           {currentFeedFailure && <div className="error-banner" role="alert"><span>Couldn&apos;t refresh files. {currentFeedFailure}</span><button className="button secondary compact" disabled={feedBusy} onClick={() => { setFeedBusy(true); void refreshFeed().catch(() => {}).finally(() => setFeedBusy(false)); }}>Retry loading files</button></div>}
-          {!feedReady ? <section className="loading-panel" role="status">{currentFeedFailure ? <p>Connection unavailable.</p> : <><LoaderCircle className="spin" size={25} /><p>Loading files...</p></>}</section> : visibleItems.length ? <><div className="feed-label"><span>{canSelectFiles && <SelectionControl label={`Select loaded files (${Math.min(visibleItems.length, 100)})`} checked={visibleItems.slice(0, 100).every(item => selectedIds.has(item.id))} mixed={visibleItems.some(item => selectedIds.has(item.id)) && !visibleItems.slice(0, 100).every(item => selectedIds.has(item.id))} disabled={mediaActionBusy} onToggle={() => setSelectedIds(visibleItems.slice(0, 100).every(item => selectedIds.has(item.id)) ? new Set() : new Set(visibleItems.slice(0, 100).map(item => item.id)))} />}{filter === "trash" ? "Removed files" : search ? "Search results" : currentAlbum ? "In this album" : "Recent additions"}<span className="inline-drop-hint">{filter !== "trash" && canUpload && <><Upload size={13} />Drop files anywhere to add</>}</span></span><span aria-live="polite">{visibleItems.length} of {total} files{feedBusy ? " · Updating…" : ""}</span></div><div className={`media-grid${libraryView === "list" ? " media-list" : ""}${selectedIds.size ? " has-selection" : ""}`}>{visibleItems.map(item => <article className={`media-card${selectedIds.has(item.id) ? " is-selected" : ""}`} key={item.id}><button className="media-cover" onClick={() => setModal(item)} aria-label={`Preview ${item.name}`}><MediaPreview item={item} />{currentAlbum ? <span className="category-badge section-badge">{item.sectionName || "Unsectioned"}</span> : (filter === "original" || filter === "final") && <span className={`category-badge ${item.category}`}>{item.category === "final" ? <CheckCheck size={12} /> : <ShieldCheck size={12} />}{item.category === "final" ? "Final cut" : "Original"}</span>}{item.mime.startsWith("video/") && <span className="play-badge"><Play size={14} fill="currentColor" /></span>}</button><div className="media-card-body"><div className="card-name-row">{canSelectFiles && <SelectionControl className="file-selection" label={`Select ${item.name}`} checked={selectedIds.has(item.id)} disabled={mediaActionBusy} onToggle={shift => toggleSelection(item.id, shift)} />}<h3 title={item.name}>{item.name}</h3></div><p>{formatBytes(item.size)}<span>·</span>{item.deviceName}<span className="list-category">{currentAlbum ? item.sectionName || "Unsectioned" : ""}</span></p><div className="card-bottom"><span className="file-date">{libraryQuery.dateMode === "captured" && item.capturedAt ? `Taken ${item.capturedAt.slice(0, 10)}` : `Uploaded ${new Date(item.createdAt).toISOString().slice(0, 10)}${libraryQuery.dateMode === "captured" ? " - date taken unknown" : ""}`}</span></div><div className="item-actions" aria-label={`Actions for ${item.name}`}>
+          {!feedReady ? <section className="loading-panel" role="status">{currentFeedFailure ? <p>Connection unavailable.</p> : <><LoaderCircle className="spin" size={25} /><p>Loading files...</p></>}</section> : visibleItems.length ? <><div className="feed-label"><span>{canSelectFiles && <SelectionControl label={`Select loaded files (${Math.min(visibleItems.length, 100)})`} checked={visibleItems.slice(0, 100).every(item => selectedIds.has(item.id))} mixed={visibleItems.some(item => selectedIds.has(item.id)) && !visibleItems.slice(0, 100).every(item => selectedIds.has(item.id))} disabled={mediaActionBusy} onToggle={() => setSelectedIds(visibleItems.slice(0, 100).every(item => selectedIds.has(item.id)) ? new Set() : new Set(visibleItems.slice(0, 100).map(item => item.id)))} />}{filter === "trash" ? "Removed files" : search ? "Search results" : currentAlbum ? "In this album" : "Recent additions"}<span className="inline-drop-hint">{filter !== "trash" && canUpload && <><Upload size={13} />Drop files anywhere to add</>}</span></span><span aria-live="polite">{visibleItems.length} of {displayedTotal} files{feedBusy ? " · Updating…" : ""}</span></div><div className={`media-grid${libraryView === "list" ? " media-list" : ""}${selectedIds.size ? " has-selection" : ""}`}>{visibleItems.map(item => <article className={`media-card${selectedIds.has(item.id) ? " is-selected" : ""}`} key={item.id}><button className="media-cover" onClick={() => setModal(item)} aria-label={`Preview ${item.name}`}><MediaPreview item={item} />{currentAlbum ? <span className="category-badge section-badge">{item.sectionName || "Unsectioned"}</span> : (filter === "original" || filter === "final") && <span className={`category-badge ${item.category}`}>{item.category === "final" ? <CheckCheck size={12} /> : <ShieldCheck size={12} />}{item.category === "final" ? "Final cut" : "Original"}</span>}{item.mime.startsWith("video/") && <span className="play-badge"><Play size={14} fill="currentColor" /></span>}</button><div className="media-card-body"><div className="card-name-row">{canSelectFiles && <SelectionControl className="file-selection" label={`Select ${item.name}`} checked={selectedIds.has(item.id)} disabled={mediaActionBusy} onToggle={shift => toggleSelection(item.id, shift)} />}<h3 title={item.name}>{item.name}</h3></div><p>{formatBytes(item.size)}<span>·</span>{item.deviceName}<span className="list-category">{currentAlbum ? item.sectionName || "Unsectioned" : ""}</span></p><div className="card-bottom"><span className="file-date">{libraryQuery.dateMode === "captured" && item.capturedAt ? `Taken ${item.capturedAt.slice(0, 10)}` : `Uploaded ${new Date(item.createdAt).toISOString().slice(0, 10)}${libraryQuery.dateMode === "captured" ? " - date taken unknown" : ""}`}</span></div><div className="item-actions" aria-label={`Actions for ${item.name}`}>
                 {currentAlbum && canEditFile(item) && !currentAlbum.archivedAt && filter !== "trash" && <button className="icon-button file-section-action" aria-label={`Move ${item.name} to section`} title="Move to section" disabled={mediaActionBusy} onClick={() => setSectionMoveItems([item])}><FolderInput size={17} /></button>}
                 <button className="icon-button" aria-label="Save to device" title="Save to device" disabled={savingVerified} onClick={() => void saveOriginal(item)}><ArrowDownToLine size={17} /></button>
                 {session.authentication === "account" && <button className="icon-button" aria-label={item.isFavorite ? "Remove from my favourites" : "Add to my favourites"} aria-pressed={Boolean(item.isFavorite)} title={item.isFavorite ? "Remove from my favourites" : "Add to my favourites (only you)"} disabled={mediaActionBusy} onClick={() => void toggleFavorite(item)}><Star size={16} fill={item.isFavorite ? "currentColor" : "none"} /></button>}
                 {canEditFile(item) && filter !== "trash" && <button className="icon-button" aria-label="Rename" title="Rename" disabled={mediaActionBusy} onClick={() => setRenameItems([item])}><Pencil size={16} /></button>}
                 {canEditFile(item) && (filter === "trash" ? <><button className="icon-button" aria-label="Restore" title="Restore" disabled={mediaActionBusy} onClick={() => void changeMedia(item, "restore")}><Undo2 size={17} /></button>{isOwner && <button className="icon-button item-trash" aria-label="Delete permanently" title="Delete permanently" disabled={mediaActionBusy} onClick={event => { event.currentTarget.focus(); void changeMedia(item, "delete"); }}><Trash2 size={17} /></button>}</> : <button className="icon-button item-trash" aria-label="Move to Trash" title="Move to Trash" disabled={mediaActionBusy} onClick={() => void changeMedia(item, "archive")}><Trash2 size={17} /></button>)}
-              </div></div></article>)}</div>{nextCursor && <div className="load-more"><button className="button secondary" disabled={feedBusy} onClick={() => void loadMore()}>{feedBusy ? "Loading…" : "Load more files"}</button></div>}</> : <section className="empty-feed"><div className="empty-art" aria-hidden="true"><span className="art-card back"><Clapperboard size={31} strokeWidth={1.2} /></span><span className="art-card front"><FileImage size={35} strokeWidth={1.2} /><span /><span /></span><span className="art-arrow"><ArrowDown size={18} /></span></div><h2>{search ? "No matches" : filter === "trash" ? "Trash is empty" : currentAlbum ? libraryQuery.section ? "No files in this section." : "A little space for your story." : "No files"}</h2>{!canUpload && filter !== "trash" && <p>You can browse and save files in this library.</p>}{search || libraryQuery.from || libraryQuery.to || libraryQuery.batch || libraryQuery.type || libraryQuery.uploader || libraryQuery.favorites ? <button className="button secondary empty-primary" onClick={() => { setSearch(""); changeLibraryQuery({ ...libraryQuery, from: "", to: "", batch: "", type: "", uploader: "", favorites: "" }); }}>Clear search and filters</button> : filter !== "trash" && canUpload && <button className="button primary empty-primary" disabled={session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={() => fileInput.current?.click()}><Plus size={18} />Add files</button>}</section>}
+              </div></div></article>)}</div>{displayedCursor && <div className="load-more"><button className="button secondary" disabled={feedBusy} onClick={() => void loadMore()}>{feedBusy ? "Loading…" : "Load more files"}</button></div>}</> : <section className="empty-feed"><div className="empty-art" aria-hidden="true"><span className="art-card back"><Clapperboard size={31} strokeWidth={1.2} /></span><span className="art-card front"><FileImage size={35} strokeWidth={1.2} /><span /><span /></span><span className="art-arrow"><ArrowDown size={18} /></span></div><h2>{search ? "No matches" : filter === "trash" ? "Trash is empty" : currentAlbum ? libraryQuery.section ? "No files in this section." : "A little space for your story." : "No files"}</h2>{!canUpload && filter !== "trash" && <p>You can browse and save files in this library.</p>}{search || libraryQuery.from || libraryQuery.to || libraryQuery.batch || libraryQuery.type || libraryQuery.uploader || libraryQuery.favorites ? <button className="button secondary empty-primary" onClick={() => { setSearch(""); changeLibraryQuery({ ...libraryQuery, from: "", to: "", batch: "", type: "", uploader: "", favorites: "" }); }}>Clear search and filters</button> : filter !== "trash" && canUpload && <button className="button primary empty-primary" disabled={session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={() => fileInput.current?.click()}><Plus size={18} />Add files</button>}</section>}
         </>}
       </main>
     </div>

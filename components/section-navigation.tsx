@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLibraryMemory } from "./library-memory";
 import { Check, List, X } from "lucide-react";
 import type { AlbumSection } from "@/lib/contracts";
 
@@ -8,6 +9,7 @@ import type { AlbumSection } from "@/lib/contracts";
 export function SectionNavigation({ sections, count, value, onChange }: {
   sections: AlbumSection[]; count: number; value: string; onChange: (value: string) => void;
 }) {
+  const memory = useLibraryMemory();
   const rail = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const directoryTrigger = useRef<HTMLButtonElement>(null);
@@ -55,7 +57,7 @@ export function SectionNavigation({ sections, count, value, onChange }: {
   return <div className="section-browser">
     <div className={`section-tab-viewport${moreRight ? " has-more-sections" : ""}`}>
       <div ref={rail} className="section-tabs" role="group" aria-label="Album section" data-value={value}>
-        {choices.map(choice => <button key={choice.id} type="button" className="section-tab" data-value={choice.id} aria-pressed={value === choice.id} title={`${choice.name} (${choice.count})`} onClick={() => onChange(choice.id)}><span>{choice.name}</span><small>{choice.count}</small></button>)}
+        {choices.map(choice => <button key={choice.id} type="button" className="section-tab" data-value={choice.id} aria-pressed={value === choice.id} title={`${choice.name} (${choice.count})`} onPointerMove={() => memory?.warmView?.(undefined, choice.id)} onPointerLeave={() => memory?.cancelWarm()} onBlur={() => memory?.cancelWarm()} onFocus={() => memory?.warmView?.(undefined, choice.id)} onClick={() => onChange(choice.id)}><span>{choice.name}</span><small>{choice.count}</small></button>)}
       </div>
     </div>
     {overflow && <button ref={directoryTrigger} className="section-directory-trigger" onClick={() => setDirectoryOpen(true)}><List size={14} />View all sections · {sections.length}</button>}

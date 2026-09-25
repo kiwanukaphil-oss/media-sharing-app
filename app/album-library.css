@@ -259,3 +259,6 @@
 @media(max-width:600px){.in-album .album-sections{padding-top:6px}.in-album .album-destination{margin-bottom:6px}}
 
 @media(max-width:600px){.in-album .feed-label{padding-top:5px;padding-bottom:5px;min-height:30px}}
+
+/* Keep album shortcuts reachable on shorter screens; the sidebar scrolls instead of collapsing its album list. */
+.album-first .sidebar>*{flex-shrink:0}

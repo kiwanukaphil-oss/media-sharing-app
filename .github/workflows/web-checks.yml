@@ -28,6 +28,7 @@ jobs:
       - run: node tests/backup-heartbeat.mjs
       - run: node tests/storage-pool.mjs
       - run: node tests/backup-download-errors.mjs
+      - run: node tests/library-memory.mjs
       - run: node tests/library-polling.mjs
       - run: node tests/capture-date.mjs
       - run: node tests/preparation-progress.mjs
