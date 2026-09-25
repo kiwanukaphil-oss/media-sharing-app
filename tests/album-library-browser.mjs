@@ -71,7 +71,7 @@ try {
   await expect(page.getByRole('option', { name: 'Name A-Z', exact: true })).toBeVisible();
   await page.locator('.workspace-select-menu').screenshot({ path: `outputs/album-library/${engineName}-dropdown.png` });
   await page.keyboard.press('Escape');
-  const requestCount = mediaRequests.length;
+  let requestCount = mediaRequests.length;
   await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
   await page.screenshot({ path: `outputs/album-library/${engineName}-desktop.png`, fullPage: true });
   await page.getByRole('button', { name: 'Pin Slow Sundays', exact: true }).click();
@@ -85,6 +85,21 @@ try {
   await chooseWorkspaceOption(page, 'Sort albums', 'name');
   await expect(page.locator('.collection-open h2').first()).toHaveText('Along the coast');
   await page.getByRole('button', { name: 'Album list view' }).click();
+  await expect(page.locator('.collection-grid')).toHaveClass(/collection-list/);
+  // Album and file layouts persist independently across unmounts and full reloads.
+  await page.getByRole('button', { name: 'Open album Slow Sundays', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'List view', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'List view', exact: true }).click();
+  await expect(page.locator('.media-grid')).toHaveClass(/media-list/);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'List view', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.media-grid')).toHaveClass(/media-list/);
+  await page.getByRole('button', { name: 'Grid view', exact: true }).click();
+  await page.getByRole('button', { name: /Back to albums$/ }).click();
+  await expect(page.locator('.collection-grid')).toHaveClass(/collection-list/);
+  await page.reload();
+  requestCount = mediaRequests.length;
+  await expect(page.getByRole('button', { name: 'Album list view' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.collection-grid')).toHaveClass(/collection-list/);
   await page.getByRole('button', { name: 'Album grid view' }).click();
   for (const width of [320, 390, 768, 1024, 1440]) {

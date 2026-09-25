@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Remembered grid/list layouts - 25 September 2026
+
+- [x] Restore visible in-album layout controls beside the file count; remember album-home and file choices independently in browser storage. Chromium, Firefox, WebKit, responsive and organisation regressions pass. [Evidence](VIEW-PREFERENCES.md).
+- [ ] Publish and verify the live update.
+
 ## Album and section navigation performance - 25 September 2026
 
 - [x] Implement bounded workspace memory for recent views and shared thumbnails, selective intent preloading and remembered album positions. Cross-browser performance/correctness fixtures and existing browser regressions pass. [Evidence](NAVIGATION-PERFORMANCE.md).

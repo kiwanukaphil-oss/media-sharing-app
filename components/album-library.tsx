@@ -69,6 +69,15 @@ export function AlbumLibrary(props: Props) {
   const [tab, setTab] = useState("active");
   const [sort, setSort] = useState("recent");
   const [view, setView] = useState("grid");
+  useEffect(() => {
+    // Restore after hydration; restricted storage must not prevent browsing.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Read browser preference after hydration.
+    try { setView(localStorage.getItem("relay-album-library-view") === "list" ? "list" : "grid"); } catch { /* Keep the default. */ }
+  }, []);
+  function chooseAlbumView(nextView: "grid" | "list") {
+    setView(nextView);
+    try { localStorage.setItem("relay-album-library-view", nextView); } catch { /* Keep the current session choice. */ }
+  }
   const [creating, setCreating] = useState(false);
   const [editingCover, setEditingCover] = useState<Album | null>(null);
   const active = props.albums.filter(album => !album.archivedAt && !album.deletedAt);
@@ -76,7 +85,7 @@ export function AlbumLibrary(props: Props) {
   filtered.sort((left, right) => sort === "name" ? left.name.localeCompare(right.name) : (right.latestUploadAt ?? right.createdAt) - (left.latestUploadAt ?? left.createdAt) || left.id.localeCompare(right.id));
   return <section className="album-library" aria-label="Album library">
     <div className="collection-heading"><div><p className="collection-eyebrow">YOUR LIFE, WELL COLLECTED</p><h1>A home for <em>every story.</em></h1><p>Choose an album. Pick up where you left off.</p></div>{props.canOrganise && <button className="button primary" onClick={() => setCreating(true)}><Plus size={17} />New album<ArrowUpRight size={16} /></button>}</div>
-    <div className="collection-toolbar"><div className="collection-tabs" aria-label="Album collections">{[["active", "All albums", active.length], ["pinned", "Pinned", active.filter(album => props.appearance[album.id]?.pinned).length], ["archived", "Archived", props.albums.filter(album => album.archivedAt).length]].map(([value, label, count]) => <button key={value} aria-pressed={tab === value} onClick={() => setTab(String(value))}>{label}<span>{count}</span></button>)}</div><div className="collection-controls"><label className="search-field"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search albums" placeholder="Find an album…" value={search} onChange={event => setSearch(event.target.value)} /></label><WorkspaceSelect label="Sort albums" value={sort} onChange={setSort} options={[{ value: "recent", label: "Last activity" }, { value: "name", label: "Name A-Z" }]} /><div className="view-toggle" role="group" aria-label="Album view"><button aria-label="Album grid view" aria-pressed={view === "grid"} onClick={() => setView("grid")}><Grid2X2 size={16} /></button><button aria-label="Album list view" aria-pressed={view === "list"} onClick={() => setView("list")}><List size={17} /></button></div></div></div>
+    <div className="collection-toolbar"><div className="collection-tabs" aria-label="Album collections">{[["active", "All albums", active.length], ["pinned", "Pinned", active.filter(album => props.appearance[album.id]?.pinned).length], ["archived", "Archived", props.albums.filter(album => album.archivedAt).length]].map(([value, label, count]) => <button key={value} aria-pressed={tab === value} onClick={() => setTab(String(value))}>{label}<span>{count}</span></button>)}</div><div className="collection-controls"><label className="search-field"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search albums" placeholder="Find an album…" value={search} onChange={event => setSearch(event.target.value)} /></label><WorkspaceSelect label="Sort albums" value={sort} onChange={setSort} options={[{ value: "recent", label: "Last activity" }, { value: "name", label: "Name A-Z" }]} /><div className="view-toggle" role="group" aria-label="Album view"><button aria-label="Album grid view" aria-pressed={view === "grid"} onClick={() => chooseAlbumView("grid")}><Grid2X2 size={16} /></button><button aria-label="Album list view" aria-pressed={view === "list"} onClick={() => chooseAlbumView("list")}><List size={17} /></button></div></div></div>
     {props.failure ? <div className="error-banner" role="alert"><span>Couldn&apos;t refresh albums. {props.failure}</span><button className="button secondary" onClick={props.retry}>Retry albums</button></div> : <>
     <div className="collection-result"><span role="status">{filtered.length} {filtered.length === 1 ? "album" : "albums"}{search ? " found" : " in your collection"}</span><span>Pins and cover colours are saved on this browser.</span></div>
     {filtered.length ? <div className={`collection-grid${view === "list" ? " collection-list" : ""}`}>{filtered.map(album => {

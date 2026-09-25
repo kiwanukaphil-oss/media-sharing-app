@@ -262,3 +262,11 @@
 
 /* Keep album shortcuts reachable on shorter screens; the sidebar scrolls instead of collapsing its album list. */
 .album-first .sidebar>*{flex-shrink:0}
+
+/* Keep layout selection visible at the photo edge without expanding album management. */
+.file-view-summary{display:flex;align-items:center;gap:12px;letter-spacing:0;font-size:12px;font-weight:400}
+.in-album .feed-label{padding:0;gap:8px;min-height:46px}
+.in-album .file-view-summary .view-toggle{margin:0;padding:0;gap:0;background:#fffefa;border-color:var(--line)}
+.in-album .file-view-summary .view-toggle button{width:44px;min-height:44px;padding:0}
+.in-album .file-view-summary .view-toggle button span{display:none}
+@media(max-width:600px){.in-album .file-view-summary{gap:8px;font-size:11px}.in-album .feed-label>span:first-child{font-size:0;gap:0}.in-album .feed-label>span:first-child .selection-control{font-size:11px}}
