@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Visible album sections - 25 September 2026
+
+- [x] Implement visible section names/counts, responsive horizontal navigation, direct creation and overflow directory; cross-browser, responsive and existing section workflows pass. [Evidence](ALBUM-WORKFLOW.md).
+- [ ] Publish and verify the live navigation refinement.
+
 ## Compact album workflow - 25 September 2026
 
 - [x] Prioritise photos, collapse album administration, make sections album-local in the interface and add individual/preview/bulk placement with Undo. Responsive and cross-browser section acceptance, D1/API isolation and main compatibility checks pass. [Evidence](ALBUM-WORKFLOW.md).

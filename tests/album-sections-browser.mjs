@@ -20,11 +20,10 @@ try {
   await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'Use template', exact: true }).click();
   await page.getByRole('button', { name: 'Create template sections', exact: true }).click();
-  await page.getByLabel('Section options', { exact: true }).click();
   await page.getByRole('button', { name: 'New section', exact: true }).click();
   await page.getByLabel('Section name', { exact: true }).fill('Favourite moments');
   await page.getByRole('button', { name: 'Create section', exact: true }).click();
-  const section = page.getByRole('combobox', { name: 'Album section', exact: true });
+  const section = page.getByRole('group', { name: 'Album section', exact: true });
   await expect(section).toContainText('Favourite moments');
   const sectionId = await section.getAttribute('data-value');
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'moment.raw', mimeType: 'application/octet-stream', buffer: Buffer.from('Section-bound bytes') });
@@ -71,7 +70,21 @@ try {
   await page.screenshot({ path: 'outputs/sections/desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(section).toBeVisible();
-  await section.click(); await page.keyboard.press('Escape'); await expect(section).toBeFocused();
+  await expect(section.getByRole('button', { name: /Originals/ })).toBeVisible();
+  await expect(section.locator('[aria-pressed=true]')).toContainText('The best moments');
+  await expect(section.getByRole('button', { name: /Unsectioned/ })).toHaveCount(0);
+  const directoryTrigger = page.getByRole('button', { name: /View all sections/ });
+  await directoryTrigger.click();
+  const directory = page.getByRole('dialog', { name: 'All album sections' });
+  await expect(directory.getByRole('button', { name: /Final cuts/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(directoryTrigger).toBeFocused();
+  await directoryTrigger.click();
+  await directory.getByRole('button', { name: /Final cuts/ }).click();
+  await expect(section.locator('[aria-pressed=true]')).toContainText('Final cuts');
+  await chooseWorkspaceOption(page, 'Album section', sectionId);
+  await expect(section.locator('[aria-pressed=true]')).toContainText('The best moments');
+  await expect(page.getByRole('heading', { name: 'cover.jpg', exact: true })).toBeVisible();
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)){await page.screenshot({path:'outputs/sections/mobile-overflow.png',fullPage:true});console.log('OVERFLOW',await page.locator('body *').evaluateAll(nodes=>nodes.map(node=>({tag:node.tagName,class:node.className,width:node.getBoundingClientRect().width,right:node.getBoundingClientRect().right})).filter(node=>node.right>innerWidth+1&&node.width>0).slice(-20)));}
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: 'outputs/sections/mobile.png', fullPage: true });
