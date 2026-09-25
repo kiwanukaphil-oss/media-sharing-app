@@ -8,6 +8,7 @@ Search focus now outlines the complete search field in olive, including its icon
 
 - [x] Rendered-colour audit of album creation, home/search, dropdown, mobile gallery and dark viewer: no violet remnants in checked states, apart from the deliberate Plum cover swatch. Local screenshots inspected.
 - [x] Album workflow and computed focus/field/viewer colour checks pass Chromium, Firefox and WebKit. Section CRUD/moves and presentation/retrieval checks pass. Existing view preferences remain covered.
-- [ ] Final build and publication verification.
+- [x] Final three-engine focus assertions, lint, production build and deployment dry run pass. Published source `3037f5a` as Worker `7db6a8ad-4476-49b1-9df8-ef794b540e09` at 100%. Both-origin production probes pass; signed-in live Find an album focus is visibly olive around the complete field.
+- [ ] Hosted follow-up [36107692935](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/36107692935) is running at this record update.
 
 No backend, data or schema changes. Production stays on schema 0020.

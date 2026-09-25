@@ -3,7 +3,7 @@
 ## Interaction theme cleanup - 25 September 2026
 
 - [x] Replace inherited violet and blue interaction colours with the current Relay palette; retain visible keyboard focus and deliberate cover swatches. [Evidence](THEME-CLEANUP.md).
-- [ ] Publish and verify the live theme cleanup.
+- [x] Published `3037f5a` as Worker `7db6a8ad-4476-49b1-9df8-ef794b540e09` at 100%; both-origin probes and signed-in search focus pass. Hosted follow-up is recorded in the evidence.
 
 ## Remembered grid/list layouts - 25 September 2026
 
