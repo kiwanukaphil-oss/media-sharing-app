@@ -15,6 +15,7 @@ Each file displays its section or Unsectioned. Its Move to section action and th
 - [x] Extended section acceptance passes Chromium, Firefox and WebKit: real single/bulk placement, Undo, conflict recovery, preview action, section CRUD/templates/reordering, queued upload destinations, keyboard dismissal and deep links.
 - [x] Mobile screenshot inspected: first photo row starts about 424px down at 390px width, including the local-only environment banner. Acceptance requires it below 450px. No horizontal overflow at 320, 390, 768 or 1440px. Desktop screenshot inspected.
 - [x] Main-only folder import and metadata export browser checks pass after the shared UI changes.
-- [ ] Complete full live-compatible browser regression and production deployment/readback.
+- [x] All live-compatible browser journeys pass locally. The full run passed through publication; its final presentation check still expected the old New album command position. Updated it to assert Settings aligns with Filters, then reran presentation and editor checks successfully. Deployment dry run passes.
+- [ ] Production deployment and signed-in readback.
 
 No database migration, authentication or access-policy change is included. Section metadata is additive and scoped to the already-authorised album feed. Existing clients retain category API compatibility. Previous Worker `f74624dd-74b1-42fe-b1ed-b624ba098e6d` is the schema-compatible rollback target.
