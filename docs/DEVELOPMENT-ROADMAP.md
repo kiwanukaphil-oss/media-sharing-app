@@ -3,7 +3,7 @@
 ## Compact album workflow - 25 September 2026
 
 - [x] Prioritise photos, collapse album administration, make sections album-local in the interface and add individual/preview/bulk placement with Undo. Responsive and cross-browser section acceptance, D1/API isolation and main compatibility checks pass. [Evidence](ALBUM-WORKFLOW.md).
-- [ ] Complete full browser regression and deploy/verify the schema-0020 live increment.
+- [x] All local browser journeys pass; deployed runtime `e2e0320` as Worker `d3881a26-a4f8-475d-9694-fd0ef7009a82` at 100%. Both-origin probes and signed-in album/settings/section-placement readback pass. Schema remains 0020; hosted follow-up is recorded in the evidence.
 
 ## Intentional entry and workspace gate - 24 September 2026
 

@@ -2,7 +2,7 @@
 
 ## Experience
 
-Opening an album prioritises its files. A compact title and Add files action sit above one search/Filters/Settings row and one section-navigation row. Rename, cover colour, pinning, archive and other album administration live in the Settings dialog. Sort and grid/list choices live behind Filters. The Sections menu exposes creation, templates and management without occupying permanent vertical space. Existing permissions and archive restrictions apply.
+Opening an album prioritises its files. A compact title and Add files action sit above one search/Filters/Settings row and one section-navigation row. Rename, description, archive and album removal live in the Settings dialog. Cover colour and pinning remain available on the album library cards. Sort and grid/list choices live behind Filters. The Sections menu exposes creation, templates and management without occupying permanent vertical space. Existing permissions and archive restrictions apply.
 
 Sections belong to the current album. Originals and Final cuts are optional template section names, and users can create, rename and reorder their own sections. Global legacy category shortcuts and badges no longer compete with this model in ordinary navigation; explicit legacy category URLs remain supported. Existing data is not automatically reclassified. Template-based sorting retains an explicit preview and choice.
 
@@ -16,6 +16,7 @@ Each file displays its section or Unsectioned. Its Move to section action and th
 - [x] Mobile screenshot inspected: first photo row starts about 424px down at 390px width, including the local-only environment banner. Acceptance requires it below 450px. No horizontal overflow at 320, 390, 768 or 1440px. Desktop screenshot inspected.
 - [x] Main-only folder import and metadata export browser checks pass after the shared UI changes.
 - [x] All live-compatible browser journeys pass locally. The full run passed through publication; its final presentation check still expected the old New album command position. Updated it to assert Settings aligns with Filters, then reran presentation and editor checks successfully. Deployment dry run passes.
-- [ ] Production deployment and signed-in readback.
+- [x] Deployed runtime source `e2e0320` as Worker `d3881a26-a4f8-475d-9694-fd0ef7009a82` at 100% on 25 September 2026, 03:34 UTC. Both origins pass entry, security headers, storage/database health and anonymous-feed denial. Signed-in existing album confirms compact controls, no global labels, Settings dialog, section menu, file badges and individual move dialog with its real album-local destination. Cancelled without moving user files.
+- [ ] Hosted follow-up [36090901553](https://github.com/kiwanukaphil-oss/media-sharing-app/actions/runs/36090901553) is running; it includes the final presentation-test adjustment. The preceding run was cancelled after that stale assertion was identified locally.
 
 No database migration, authentication or access-policy change is included. Section metadata is additive and scoped to the already-authorised album feed. Existing clients retain category API compatibility. Previous Worker `f74624dd-74b1-42fe-b1ed-b624ba098e6d` is the schema-compatible rollback target.
