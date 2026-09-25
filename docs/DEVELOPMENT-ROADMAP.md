@@ -3,7 +3,7 @@
 ## Visible album sections - 25 September 2026
 
 - [x] Implement visible section names/counts, responsive horizontal navigation, direct creation and overflow directory; cross-browser, responsive and existing section workflows pass. [Evidence](ALBUM-WORKFLOW.md).
-- [ ] Publish and verify the live navigation refinement.
+- [x] Deployed `490437d` as Worker `15003cc6-04a5-4dd2-8689-b2ea0156924c` at 100%; both-origin probes and signed-in section navigation pass. Hosted follow-up is recorded in the evidence.
 
 ## Compact album workflow - 25 September 2026
 
