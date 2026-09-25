@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Interaction theme cleanup - 25 September 2026
+
+- [x] Replace inherited violet and blue interaction colours with the current Relay palette; retain visible keyboard focus and deliberate cover swatches. [Evidence](THEME-CLEANUP.md).
+- [ ] Publish and verify the live theme cleanup.
+
 ## Remembered grid/list layouts - 25 September 2026
 
 - [x] Restore visible in-album layout controls beside the file count; remember album-home and file choices independently in browser storage. Chromium, Firefox, WebKit, responsive and organisation regressions pass. [Evidence](VIEW-PREFERENCES.md).
