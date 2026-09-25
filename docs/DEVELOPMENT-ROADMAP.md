@@ -3,7 +3,7 @@
 ## Remembered grid/list layouts - 25 September 2026
 
 - [x] Restore visible in-album layout controls beside the file count; remember album-home and file choices independently in browser storage. Chromium, Firefox, WebKit, responsive and organisation regressions pass. [Evidence](VIEW-PREFERENCES.md).
-- [ ] Publish and verify the live update.
+- [x] Published `efd353c` as Worker `32fee58c-6c36-4690-97b6-a5125729e628`; both-origin probes and signed-in navigation/reload preferences pass. Hosted follow-up is recorded in the evidence.
 
 ## Album and section navigation performance - 25 September 2026
 
