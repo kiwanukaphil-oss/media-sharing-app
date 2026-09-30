@@ -26,3 +26,17 @@ Auth0's documented `screen_hint=signup` selects the hosted signup screen: https:
 - [ ] A real new-recipient account creation, verification-email receipt and join requires the recipient to complete their own credential and email steps. No real invitation or verification email was sent during this repair.
 
 The production release uses `ui/album-library-live`, preserving schema 0020 and excluding unreleased backend changes on main. Pre-existing local prototype deletions are unrelated and excluded from commits.
+
+
+## Follow-up: signed-in recipient without a workspace
+
+The owner's real acceptance report exposed a missing recovery path: signup could succeed after the invitation tab context was lost, but the workspace chooser listed memberships only. A read-only production aggregate confirmed one enabled account with an unexpired pending invitation and no membership in its destination. No private identity or token was exported and no production membership was edited manually.
+
+- [x] Include eligible pending invitations in the authenticated workspace response using the current verified email and the same live owner/session, expiry, removal and capacity checks as link preview.
+- [x] Display named invitations prominently on workspace arrival and account libraries, suppressing the misleading empty-workspace state. One Join shared workspace action consumes the invitation and opens its destination directly. Tab storage and the original link are unnecessary for this recovery.
+- [x] Share the atomic acceptance implementation between link-token and account-invitation selectors. The ID endpoint requires the invited verified account and same-origin POST. Lost-response retries can reopen an existing accepted membership but cannot revive removed access; link replay behaviour is preserved.
+- [x] Chrome, Firefox and WebKit reproduce cleared tab storage, invitation discovery on workspace/account pages, explicit joining, direct album arrival and the subsequent persisted workspace list. Responsive screenshot inspected. These browser identity responses remain fixtures.
+- [x] Main and live-compatible actual-D1 account/API suites pass, including invitation discovery, foreign-account/CSRF denial, real destination session/feed access after ID acceptance, lost-response retry and denial after membership removal. Build, TypeScript, focused lint and deployment dry run pass. Independent fixture users have separate simulated IPs so they do not share the login rate bucket; production limits are unchanged.
+- [ ] Publish the recovery release and verify live health and the existing recipient's pending invitation availability.
+
+The prior release solved account admission but did not complete this real recipient's membership journey. This follow-up records that gap explicitly.

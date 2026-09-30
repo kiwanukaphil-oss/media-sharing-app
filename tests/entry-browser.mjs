@@ -10,6 +10,7 @@ const account = { sessionId: 'fixture-session', displayName: 'Alex Morgan', veri
 let signedIn = false, failed = false, spacesFailed = false, expired = false;
 let spaces = [{ id: 'personal', name: 'My space', kind: 'personal', role: 'owner' }, { id: 'shared', name: 'Studio archive', kind: 'shared', role: 'editor' }];
 let mediaReads = 0, signInMode;
+let invitations = [], invitationJoins = 0;
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 // No real credentials: the provider handoff is simulated while the built routing and entry UI are exercised.
@@ -17,7 +18,7 @@ await page.route('**/api/**', async route => {
   const url = new URL(route.request().url()), path = url.pathname;
   if (path === '/api/auth/session') return route.fulfill({ status: failed ? 503 : 200, json: failed ? { error: 'Temporary interruption' } : { enabled: true, account: signedIn ? account : null } });
   if (path === '/api/auth/login') { signInMode = url.searchParams.get('session'); signedIn = true; return route.fulfill({ contentType: 'text/html', body: '<script>location.replace("/workspaces")</script>' }); }
-  if (path === '/api/auth/spaces') return route.fulfill({ status: spacesFailed ? 503 : expired ? 401 : 200, json: spacesFailed || expired ? { error: 'Unavailable' } : { spaces, personalSpace: { enabled: false } } });
+  if (path === '/api/auth/spaces') return route.fulfill({ status: spacesFailed ? 503 : expired ? 401 : 200, json: spacesFailed || expired ? { error: 'Unavailable' } : { spaces, invitations, personalSpace: { enabled: false } } });
   if (path === '/api/session') return route.fulfill({ status: signedIn && url.searchParams.has('space') ? 200 : 401, json: { authentication: 'account', deviceId: 'actor', role: 'owner', transport: 'local', space: { id: url.searchParams.get('space'), name: url.searchParams.get('space') === 'personal' ? 'My space' : 'Studio archive', kind: 'shared' } } });
   if (path === '/api/feed') { mediaReads++; return route.fulfill({ json: { items: [], total: 0, counts: { all: 0, trash: 0 }, role: 'owner' } }); }
   if (path === '/api/albums') return route.fulfill({ json: { albums: [], sections: [] } });
@@ -25,6 +26,11 @@ await page.route('**/api/**', async route => {
   if (path === '/api/activity') return route.fulfill({ json: { events: [], next: null } });
   if (path === '/api/auth/sessions') return route.fulfill({ json: { sessions: [] } });
   if (path === '/api/auth/deletion') return route.fulfill({ json: { request: null, ownershipBlockers: [], recentSignIn: true } });
+  if (path === '/api/auth/invitations/11111111-1111-4111-8111-111111111111/accept') {
+    assert.equal(route.request().method(), 'POST'); invitationJoins++; invitations = [];
+    spaces = [{ id: 'shared', name: 'Studio archive', kind: 'shared', role: 'viewer' }];
+    return route.fulfill({ json: { joined: true, spaceId: 'shared' } });
+  }
   if (path === '/api/auth/invitation-preview') return route.fulfill({ json: { spaceName: 'Invited archive', email: account.verifiedEmail, expiresAt: Date.now() + 100000, role: 'viewer' } });
   if (path === '/api/auth/sessions/fixture-session') { signedIn = false; return route.fulfill({ json: { revoked: true } }); }
   throw new Error(`Unexpected entry request: ${path}`);
@@ -81,6 +87,25 @@ try {
   await page.goto(`${origin}/workspaces`);
   await expect(page.getByRole('heading', { name: 'Join Invited archive?' })).toBeVisible();
   assert.equal(new URL(page.url()).pathname, '/join');
+  await page.evaluate(() => sessionStorage.clear());
+  invitations = [{ id: '11111111-1111-4111-8111-111111111111', spaceName: 'Studio archive', email: account.verifiedEmail, role: 'viewer', expiresAt: Date.now() + 100000 }];
+  await page.goto(`${origin}/workspaces`);
+  await expect(page.getByRole('button', { name: 'Join shared workspace Studio archive' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No workspaces yet.' })).toHaveCount(0);
+  assert.equal(invitationJoins, 0, 'Discovery alone cannot grant membership');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: `outputs/entry/${engine}-pending-invitation.png`, fullPage: true });
+  await page.goto(`${origin}/account`);
+  await expect(page.getByRole('button', { name: 'Join shared workspace Studio archive' })).toBeVisible();
+  await page.goto(`${origin}/workspaces`);
+  await page.getByRole('button', { name: 'Join shared workspace Studio archive' }).click();
+  await expect(page).toHaveURL(`${origin}/?space=shared`);
+  await expect(page.getByRole('heading', { name: 'A home for every story.' })).toBeVisible();
+  assert.equal(invitationJoins, 1);
+  await page.goto(`${origin}/workspaces`);
+  await expect(page.getByRole('link', { name: 'Open workspace Studio archive' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Join shared workspace Studio archive' })).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.log(`PASS ${engine}: fresh sign-in, temporary/trusted handoff, explicit workspace gate, album arrival, sign-out, errors/retry, zero/one workspaces, expiry, invitation handoff and responsive layout.`);
 } finally { await browser.close(); }

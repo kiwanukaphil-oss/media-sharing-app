@@ -110,27 +110,56 @@ export async function previewPersonInvitation(database: D1Database, session: Spa
   return invitation;
 }
 
+// Recover owner invitations by the current verified identity, including a new browser or email-verification tab.
+// Return no tokens and grant no access until the recipient chooses a named workspace.
+export async function listPendingPersonInvitations(database: D1Database, session: SpacePersonSession, now = Date.now()) {
+  const invitations = await database.prepare(`SELECT i.id, s.name AS spaceName, i.email, i.role, i.expires_at AS expiresAt
+    FROM person_invitations i JOIN spaces s ON s.id = i.space_id JOIN space_memberships m ON m.id = i.created_by
+    JOIN people issuer ON issuer.id = m.person_id WHERE ${eligibleInvitation}
+    ORDER BY i.created_at DESC, i.id LIMIT 100`)
+    .bind(now, session.sessionId, session.personId, now, session.personId, session.personId).all();
+  return invitations.results;
+}
+
+// The identifier is only a selector: the accepting transaction still requires the invited verified email.
+export async function acceptAccountInvitation(database: D1Database, session: SpacePersonSession, invitationId: string, now = Date.now()) {
+  if (!/^[a-f0-9-]{36}$/.test(invitationId)) throw new AccountError(404, "This invitation is not available to this account.");
+  return acceptSelectedPersonInvitation(database, session, "id", invitationId, now);
+}
+
 // Consume and attach membership in one transaction. An older invitation cannot resurrect removed access.
 // Explicit new invitations can rejoin a removed member, retaining stable upload attribution and audit evidence.
 export async function acceptPersonInvitation(database: D1Database, session: SpacePersonSession, token: string, now = Date.now()) {
   if (!credentialPattern.test(token)) throw new AccountError(404, "This invitation is not available to this account.");
-  const hash = await digest(token);
+  return acceptSelectedPersonInvitation(database, session, "token_hash", await digest(token), now);
+}
+
+// Both link and account-inbox acceptance use the same atomic authority, membership and audit writes.
+async function acceptSelectedPersonInvitation(database: D1Database, session: SpacePersonSession, selector: "id" | "token_hash", value: string, now: number) {
   const operation = crypto.randomUUID();
   const admission = accountClosureCommitAuthority(session);
   const results = await database.batch([
     database.prepare(`UPDATE person_invitations SET accepted_at = ?, accepted_by = ?, accepted_operation = ? WHERE id IN
       (SELECT i.id FROM person_invitations i JOIN space_memberships m ON m.id = i.created_by JOIN people issuer ON issuer.id = m.person_id
-        WHERE i.token_hash = ? AND ${eligibleInvitation}) AND ${admission.sql} RETURNING space_id AS spaceId`)
-      .bind(now, session.personId, operation, hash, now, session.sessionId, session.personId, now, session.personId, session.personId, ...admission.bindings),
+        WHERE i.${selector} = ? AND ${eligibleInvitation}) AND ${admission.sql} RETURNING space_id AS spaceId`)
+      .bind(now, session.personId, operation, value, now, session.sessionId, session.personId, now, session.personId, session.personId, ...admission.bindings),
     database.prepare(`INSERT INTO space_memberships (id, person_id, space_id, role, created_at)
-      SELECT ?, ?, space_id, role, ? FROM person_invitations WHERE token_hash = ? AND accepted_by = ? AND accepted_operation = ?
+      SELECT ?, ?, space_id, role, ? FROM person_invitations WHERE ${selector} = ? AND accepted_by = ? AND accepted_operation = ?
       ON CONFLICT(person_id, space_id) DO UPDATE SET role = excluded.role, revoked_at = NULL, revision = space_memberships.revision + 1`)
-      .bind(crypto.randomUUID(), session.personId, now, hash, session.personId, operation),
+      .bind(crypto.randomUUID(), session.personId, now, value, session.personId, operation),
     database.prepare(`INSERT INTO membership_events (id, space_id, actor_id, membership_id, action, created_at)
       SELECT ?, m.space_id, ?, m.id, 'join', ? FROM space_memberships m JOIN person_invitations i ON i.space_id = m.space_id
-      WHERE i.token_hash = ? AND m.person_id = ? AND i.accepted_by = ? AND i.accepted_operation = ?`)
-      .bind(operation, session.personId, now, hash, session.personId, session.personId, operation),
+      WHERE i.${selector} = ? AND m.person_id = ? AND i.accepted_by = ? AND i.accepted_operation = ?`)
+      .bind(operation, session.personId, now, value, session.personId, session.personId, operation),
   ]);
+  if (!results[0].meta.changes && selector === "id") {
+    // A lost acceptance response can be retried, but never recreate or upgrade a removed membership.
+    const joined = await database.prepare(`SELECT i.space_id AS spaceId FROM person_invitations i
+      JOIN space_memberships m ON m.space_id = i.space_id AND m.person_id = i.accepted_by
+      WHERE i.id = ? AND i.accepted_by = ? AND i.accepted_at IS NOT NULL AND m.revoked_at IS NULL AND ${liveSession}`)
+      .bind(value, session.personId, session.sessionId, session.personId, now).first<{ spaceId: string }>();
+    if (joined) return { joined: true, spaceId: joined.spaceId };
+  }
   if (!results[0].meta.changes) throw new AccountError(409, "This invitation is no longer available. Ask the library owner for a new one.");
   return { joined: true, spaceId: (results[0].results[0] as { spaceId: string }).spaceId };
 }

@@ -22,18 +22,40 @@ export async function verifySpacePeople(database, dispatch) {
     database.prepare('INSERT INTO spaces(id,name,created_at) VALUES(?,?,?)').bind(space, 'People fixture', now),
     database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'owner',?)").bind(ownerMembership, owner.personId, space, now),
   ]);
+  // Independent fixture users have independent login-rate buckets; production limits remain unchanged.
+  const fixtureIps = new Map();
   const request = async (person, path, method = 'GET', body, headers = {}) => {
+    if (!fixtureIps.has(person.personId)) fixtureIps.set(person.personId, `192.0.2.${fixtureIps.size + 1}`);
     const result = await dispatch(`${settings.appOrigin}/api/${path}`, { method, headers: {
-      Cookie: `__Host-relay_account=${person.token}`, Origin: settings.appOrigin, ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+      Cookie: `__Host-relay_account=${person.token}`, "CF-Connecting-IP": fixtureIps.get(person.personId), Origin: settings.appOrigin, ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
       ...(body ? { body: JSON.stringify(body) } : {}) });
     return { status: result.status, data: await result.json() };
   };
+  const inboxSpace = crypto.randomUUID();
+  await database.batch([
+    database.prepare('INSERT INTO spaces(id,name,created_at) VALUES(?,?,?)').bind(inboxSpace, 'Inbox destination', now),
+    database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'owner',?)").bind(crypto.randomUUID(), owner.personId, inboxSpace, now),
+  ]);
+  const inboxInvite = await people.createPersonInvitation(database, owner, inboxSpace, guest.verifiedEmail, now, 'viewer');
+  assert.equal((await request(guest, `auth/invitations/${inboxInvite.id}/accept`, 'POST')).data.spaceId, inboxSpace);
+  const inboxMembership = await database.prepare('SELECT role FROM space_memberships WHERE space_id = ? AND person_id = ?').bind(inboxSpace, guest.personId).first();
+  assert.equal(inboxMembership.role, 'viewer');
+  assert.equal((await request(guest, `session?space=${inboxSpace}`)).data.role, 'viewer');
+  assert.equal((await request(guest, `feed?space=${inboxSpace}`)).status, 200, 'Account invitation acceptance opens the real shared library API');
+  await database.prepare('UPDATE space_memberships SET revoked_at = ? WHERE space_id = ? AND person_id = ?').bind(now + 1, inboxSpace, guest.personId).run();
+  assert.equal((await request(guest, `auth/invitations/${inboxInvite.id}/accept`, 'POST')).status, 409, 'Retry cannot restore removed membership');
   const scoped = path => `${path}?space=${space}`;
   assert.equal((await request(stranger, scoped('people'))).status, 403);
   const invite = await request(owner, scoped('person-invitations'), 'POST', { email: 'PEOPLE-GUEST@example.test' });
   assert.equal(invite.status, 200, JSON.stringify(invite.data));
   assert.equal(invite.data.email, guest.verifiedEmail);
   assert.equal((await request(owner, scoped('person-invitations'), 'POST', { email: guest.verifiedEmail })).status, 409);
+  const pendingInbox = await request(guest, 'auth/spaces');
+  assert.equal(pendingInbox.data.invitations.find(item => item.id === invite.data.id).spaceName, 'People fixture');
+  assert.ok(!JSON.stringify(pendingInbox.data.invitations).includes(invite.data.token));
+  assert.deepEqual((await request(stranger, 'auth/spaces')).data.invitations, []);
+  assert.equal((await request(stranger, `auth/invitations/${invite.data.id}/accept`, 'POST')).status, 409);
+  assert.equal((await request(guest, `auth/invitations/${invite.data.id}/accept`, 'POST', undefined, { Origin: 'https://evil.example' })).status, 403);
   const header = { 'X-Relay-Invitation': invite.data.token };
   assert.equal((await request(stranger, 'auth/invitation-preview', 'POST', undefined, header)).status, 404);
   assert.equal((await request(guest, 'auth/invitation-preview', 'POST', undefined, { ...header, Origin: 'https://evil.example' })).status, 403);
@@ -43,6 +65,8 @@ export async function verifySpacePeople(database, dispatch) {
   assert.equal((await request(guest, scoped('feed'))).status, 403, 'Preview cannot grant access');
   const joined = await Promise.allSettled(Array.from({ length: 3 }, () => people.acceptPersonInvitation(database, guest, invite.data.token, now + 100)));
   assert.equal(joined.filter(result => result.status === 'fulfilled').length, 1);
+  assert.deepEqual((await request(guest, 'auth/spaces')).data.invitations, []);
+  assert.equal((await request(guest, `auth/invitations/${invite.data.id}/accept`, 'POST')).data.spaceId, space, 'Lost-response retry opens only an existing membership');
   assert.equal((await database.prepare("SELECT COUNT(*) AS n FROM membership_events WHERE space_id=? AND action='join'").bind(space).first()).n, 1);
   const roster = await request(guest, scoped('people'));
   assert.equal(roster.status, 200);

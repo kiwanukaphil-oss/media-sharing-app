@@ -1,5 +1,6 @@
 "use client";
 
+import PendingWorkspaceInvitations, { type PendingWorkspaceInvitation } from "./pending-workspace-invitations";
 import { libraryRoleLabel } from "@/lib/contracts";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -11,6 +12,7 @@ type ClaimPreview = { token: string; spaceName: string; deviceName: string; acco
 
 // An explicit preview binds the named library and signed-in account before any ownership is added.
 export default function AccountLibraries() {
+  const [invitations, setInvitations] = useState<PendingWorkspaceInvitation[]>([]);
   const [spaces, setSpaces] = useState<AccountSpace[]>([]);
   const [preview, setPreview] = useState<ClaimPreview | null>(null);
   const [error, setError] = useState("");
@@ -21,8 +23,8 @@ export default function AccountLibraries() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void requestJson<{ spaces: AccountSpace[]; personalSpace?: { enabled: boolean; quotaBytes: number } }>("auth/spaces", { signal: controller.signal })
-      .then(result => { setSpaces(result.spaces); setPersonalSpace(result.personalSpace || null); setLoaded(true); })
+    void requestJson<{ spaces: AccountSpace[]; invitations?: PendingWorkspaceInvitation[]; personalSpace?: { enabled: boolean; quotaBytes: number } }>("auth/spaces", { signal: controller.signal })
+      .then(result => { setSpaces(result.spaces); setInvitations(result.invitations || []); setPersonalSpace(result.personalSpace || null); setLoaded(true); })
       .catch(failure => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Libraries could not be loaded."); });
     return () => controller.abort();
   }, []);
@@ -61,6 +63,7 @@ export default function AccountLibraries() {
   }
 
   return <section className="mt-10" aria-labelledby="account-libraries-heading">
+    <PendingWorkspaceInvitations invitations={invitations} />
     <h2 id="account-libraries-heading" className="text-lg font-semibold">Your libraries</h2>
     <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Connect a library you already own to your verified account. Its files and existing audience stay in place.</p>
     {error && <p role="alert" className="mt-4 text-sm text-red-800">{error}</p>}
@@ -68,7 +71,7 @@ export default function AccountLibraries() {
     {spaces.length > 0 && <ul className="mt-5 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] px-5">
       {spaces.map(space => <li key={space.id} className="flex flex-wrap justify-between gap-4 py-4 text-sm"><Link className="underline underline-offset-4" href={`/?space=${encodeURIComponent(space.id)}`}>{space.name}</Link><div className="flex items-center gap-4">{space.kind !== "personal" && <Link className="text-xs underline" href={`/people?space=${encodeURIComponent(space.id)}`}>People &amp; access</Link>}<span className="text-[var(--muted)]">{space.kind === "personal" ? "Only you" : libraryRoleLabel(space.role)}</span></div></li>)}
     </ul>}
-    {loaded && spaces.length === 0 && <p className="mt-4 text-sm text-[var(--muted)]">No libraries connected yet.</p>}
+    {loaded && spaces.length === 0 && invitations.length === 0 && <p className="mt-4 text-sm text-[var(--muted)]">No libraries connected yet.</p>}
     {personalSpace?.enabled && !spaces.some(space => space.kind === "personal") && <div className="mt-5 rounded-2xl border border-[var(--line)] p-5">
       <h3 className="font-semibold">A space of your own</h3>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Only your account can open My space. It stays separate from shared libraries, with {formatBytes(personalSpace.quotaBytes)} for originals and previews.</p>
