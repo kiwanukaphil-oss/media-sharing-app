@@ -17,4 +17,4 @@ References: [Apple ZIP extraction in Files](https://support.apple.com/en-nz/1025
 
 At the user?s request, removed the two explanatory paragraphs from the bulk dialog and shortened its progress/download-request status. The dialog now contains its title, selection count/size and download action, plus concise status or errors when needed. Download behavior and enforced limits are unchanged. This interface-copy preference is recorded in AGENTS.md.
 
-- [ ] Refined dialog deployed and visually checked.
+- [x] Deployed runtime `b2d326b` as Worker `12eab076-f42c-46f0-88f0-7e043ec580c7`. Focused lint, production build and deploy dry-run passed. Both-origin health and the real canonical-domain dialog check passed; phone-width screenshot confirms title, count/size and download action only in the ready state.
