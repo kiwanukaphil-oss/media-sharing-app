@@ -1,5 +1,11 @@
 # Relay development roadmap
 
+## Bulk save to device - 30 September 2026
+
+- [x] Add visible bulk download, native streamed ZIP with verified originals, read-only selection support and iPhone Files guidance. Local Chrome/WebKit, access-boundary and archive checks pass. [Evidence](BULK-DOWNLOAD.md).
+- [ ] Production deployment and live ZIP verification.
+- [ ] Physical iPhone Files/Photos handoff confirmation.
+
 ## iPhone MOV thumbnails - 30 September 2026
 
 - [x] Fix metadata-first frame preparation and size exclusion; add lazy recovery of existing missing video posters. [Evidence](VIDEO-THUMBNAILS.md).
