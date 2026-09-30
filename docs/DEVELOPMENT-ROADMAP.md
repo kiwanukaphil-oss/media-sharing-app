@@ -3,7 +3,7 @@
 ## Bulk save to device - 30 September 2026
 
 - [x] Add visible bulk download, native streamed ZIP with verified originals, read-only selection support and iPhone Files guidance. Local Chrome/WebKit, access-boundary and archive checks pass. [Evidence](BULK-DOWNLOAD.md).
-- [ ] Production deployment and live ZIP verification.
+- [x] Published `d73fde4` as Worker `66abd8c0-7559-4ef7-ae6a-b469d10c37d9` at 100%; both-origin health, live mobile-width bulk UI/native ZIP download and independent extraction/CRC/SHA-256 checks passed.
 - [ ] Physical iPhone Files/Photos handoff confirmation.
 
 ## iPhone MOV thumbnails - 30 September 2026
