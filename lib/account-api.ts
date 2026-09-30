@@ -4,7 +4,7 @@ import { auth0TransactionCookie, clearAuth0TransactionCookie, consumeAuth0Transa
 import { AccountError, accountCookie, clearAccountCookie, createAccountSession, readAccountSession, readAccountToken, revokeAccountSession } from "./account-sessions";
 import { confirmOwnerClaim, listPersonSpaces, prepareOwnerClaim, readLegacyClaimCredential } from "./space-memberships";
 import { createPersonalSpace, personalStorageBudget, PERSONAL_SPACE_BYTES } from "./personal-spaces";
-import { acceptPersonInvitation, previewPersonInvitation } from "./space-people";
+import { acceptPersonInvitation, acceptAccountInvitation, listPendingPersonInvitations, previewPersonInvitation } from "./space-people";
 import { previewAccountDeletion, requestAccountDeletion, withdrawAccountDeletion } from "./account-deletion";
 import { runClosureTrackedMetadataRequest } from "./closure-tracked-request";
 import type { AccountSession } from "./account-sessions";
@@ -117,7 +117,12 @@ async function authenticatedAccountAction(request: Request, database: D1Database
   if (action === "invitation-accept" && request.method === "POST") {
     return Response.json(await acceptPersonInvitation(database, session, request.headers.get("X-Relay-Invitation") || ""), { headers: privateHeaders });
   }
+  const invitationId = /^invitations\/([a-f0-9-]{36})\/accept$/.exec(action)?.[1];
+  if (invitationId && request.method === "POST") {
+    return Response.json(await acceptAccountInvitation(database, session, invitationId), { headers: privateHeaders });
+  }
   if (action === "spaces" && request.method === "GET") return Response.json({ spaces: await listPersonSpaces(database, session),
+    invitations: await listPendingPersonInvitations(database, session),
     personalSpace: { enabled: personalStorageBudget(process.env) >= PERSONAL_SPACE_BYTES, quotaBytes: PERSONAL_SPACE_BYTES } }, { headers: privateHeaders });
   if (action === "personal-space" && request.method === "POST") {
     return Response.json(await createPersonalSpace(database, session, personalStorageBudget(process.env)), { headers: privateHeaders });

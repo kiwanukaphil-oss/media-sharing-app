@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Invitation recovery after signup - 30 September 2026
+
+- [x] Recover valid pending invitations from the verified account after tab/browser context loss; present direct shared-workspace joining on workspace and account pages. Three-engine browser acceptance passes. [Evidence](INVITATION-WORKFLOW.md).
+- [ ] Finish actual-D1 release acceptance and publish recovery for the currently pending recipient.
+
 ## Shared workspace invitation repair ? 30 September 2026
 
 - [x] Add direct account creation, a focused invitation journey, verification/callback continuity, account recovery and explicit email-draft sharing. Cross-browser fixtures and account/invitation authority checks pass. [Evidence](INVITATION-WORKFLOW.md).

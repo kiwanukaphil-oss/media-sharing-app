@@ -51,7 +51,7 @@ export default function AccountInvitation({ sessionId, email, standalone = false
       window.location.assign(`/?space=${encodeURIComponent(result.spaceId)}`);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "The library could not be joined."); setBusy(false); }
   }
-  if (!token && !error) return standalone ? <section><h1>Open your invitation link</h1><p className="mt-3">Use the complete link shared by the workspace owner. If it has expired, ask them for a new invitation.</p><a className="entry-secondary mt-5" href="/workspaces">Your workspaces</a></section> : null;
+  if (!token && !error) return standalone ? <section><h1>Open your invitation link</h1><p className="mt-3">Already signed in? Find your pending invitation in Your workspaces, even if you opened the original link in another tab or browser.</p><a className="entry-secondary mt-5" href="/workspaces">Your workspaces</a></section> : null;
   return <section className="mb-8 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6">
     <h2 className="text-lg font-semibold">{preview ? `Join ${preview.spaceName}?` : "Your library invitation"}</h2>
     {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
