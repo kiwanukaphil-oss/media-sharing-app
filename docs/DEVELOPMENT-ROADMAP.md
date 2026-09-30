@@ -3,7 +3,7 @@
 ## Bulk save to device - 30 September 2026
 
 - [x] Remove instructional dialog paragraphs and shorten status copy as requested.
-- [ ] Deploy and inspect the concise dialog.
+- [x] Published `b2d326b` as Worker `12eab076-f42c-46f0-88f0-7e043ec580c7`; both-origin health and live phone-width dialog checks passed.
 
 - [x] Add visible bulk download, native streamed ZIP with verified originals, read-only selection support and iPhone Files guidance. Local Chrome/WebKit, access-boundary and archive checks pass. [Evidence](BULK-DOWNLOAD.md).
 - [x] Published `d73fde4` as Worker `66abd8c0-7559-4ef7-ae6a-b469d10c37d9` at 100%; both-origin health, live mobile-width bulk UI/native ZIP download and independent extraction/CRC/SHA-256 checks passed.
