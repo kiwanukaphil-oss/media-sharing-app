@@ -3,7 +3,7 @@
 ## iPhone MOV thumbnails - 30 September 2026
 
 - [x] Fix metadata-first frame preparation and size exclusion; add lazy recovery of existing missing video posters. [Evidence](VIDEO-THUMBNAILS.md).
-- [ ] Final compatible-release checks and deployment.
+- [x] Compatible-release tests/build/dry-run passed. Published `edba549` as Worker `94524007-f143-41b4-ac98-74591882ee65` at 100%; both-origin health and real canonical-domain R2 MOV recovery/persistence/exact-byte download passed.
 - [ ] Physical iPhone HEVC/HDR thumbnail confirmation.
 
 ## Upload feedback and responsive preparation - 30 September 2026
