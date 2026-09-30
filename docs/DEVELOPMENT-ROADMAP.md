@@ -4,7 +4,8 @@
 
 - [x] Add direct account creation, a focused invitation journey, verification/callback continuity, account recovery and explicit email-draft sharing. Cross-browser fixtures and account/invitation authority checks pass. [Evidence](INVITATION-WORKFLOW.md).
 - [x] Publish the schema-compatible invitation admission and onboarding release (`b62a151`, Worker `3784f1d2-8bcd-4501-928c-61188507bef1`); both-origin health and real hosted signup entry pass.
-- [ ] Finish signup-specific provider branding after admin login and real recipient signup/email/join acceptance. Hosted checks also retain separate audit/browser failures; see evidence.
+- [x] Publish and verify signup-specific Relay branding and new-account guidance on the real hosted signup page.
+- [ ] Real recipient signup/email/join acceptance remains outstanding. Hosted checks retain separate audit/browser failures; see evidence.
 
 ## Interaction theme cleanup - 25 September 2026
 
