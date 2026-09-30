@@ -16,7 +16,7 @@ type LoginProvider = {
 const auth0Provider: LoginProvider = {
   async prepare(settings, signup) { return prepareAuth0Login(settings, await discoverAuth0Client(settings), Date.now(), signup); },
   async complete(settings, url, transaction, binding) {
-    return completeAuth0Login(settings, await discoverAuth0Client(settings), url, transaction, binding);
+    return completeAuth0Login(settings, await discoverAuth0Client(settings), url, transaction, binding, Date.now(), true);
   },
 };
 const privateHeaders = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
@@ -39,7 +39,8 @@ async function finishAccountLogin(request: Request, database: D1Database, settin
     headers.set("Location", `${settings.appOrigin}/workspaces`);
     return new Response(null, { status: 303, headers });
   } catch (error) {
-    const reason = error instanceof AccountError && error.message.startsWith("Verify your email") ? "verify-email" : "failed";
+    const reason = error instanceof AccountError && error.message.startsWith("Verify your email") ? "verify-email"
+      : error instanceof AccountError && error.message.includes("no current workspace invitation") ? "invitation-required" : "failed";
     headers.set("Location", `${settings.appOrigin}/login?signin=${reason}`);
     return new Response(null, { status: 303, headers });
   }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 
-const bundle = await build({ entryPoints: ['lib/account-api.ts', 'lib/account-sessions.ts'], bundle: true, write: false,
+const bundle = await build({ entryPoints: ['lib/account-api.ts', 'lib/account-sessions.ts', 'lib/space-people.ts'], bundle: true, write: false,
   outdir: 'unused', platform: 'node', format: 'esm' });
 const modules = await Promise.all(bundle.outputFiles.map(file => import(`data:text/javascript;base64,${Buffer.from(file.text).toString('base64')}`)));
 const api = modules.find(module => module.accountAction);
@@ -73,6 +73,7 @@ export async function verifyAccountSessions(database) {
   await assert.rejects(sessions.createAccountSession(database, settings, { ...identity('unverified'), authenticatedAt: Math.floor(Date.now() / 1000) * 1000, credentialsChangedAt: 0, verifiedEmail: null }, null, now), /Verify/);
   assert.deepEqual(await (await api.accountAction(request('session'), database, null)).json(), { enabled: false, account: null });
   await assert.rejects(api.accountAction(request('login'), database, null), /not available/);
+  await verifyInvitedPilotAccounts(database);
   await verifyCallbackOrchestration(database);
   await verifySessionChoicesAndLogout(database);
   console.log('PASS: account identity isolation, concurrent sign-in, cookie rotation, expiry/revocation, CSRF and callback replay.');
@@ -143,4 +144,51 @@ async function verifyCallbackOrchestration(database) {
   assert.ok(success.headers.get('Set-Cookie').includes('__Host-relay_account='));
   assert.ok(success.headers.get('Set-Cookie').includes('Max-Age=0'));
   assert.deepEqual(await database.prepare('SELECT COUNT(*) AS n FROM spaces').first(), before, 'Login cannot allocate storage or grant space access');
+}
+
+// A brand-new verified invitee can authenticate in pilot mode, but gains no library access until acceptance.
+async function verifyInvitedPilotAccounts(database) {
+  const people = modules.find(module => module.createPersonInvitation);
+  const pilot = { ...settings, allowedSubjects: ['invitation-owner'] };
+  const ownerLogin = await sessions.createAccountSession(database, pilot, identity('invitation-owner'), null);
+  const owner = await sessions.readAccountSession(database, pilot, ownerLogin.token);
+  const spaceId = crypto.randomUUID();
+  const membershipId = crypto.randomUUID();
+  await database.batch([
+    database.prepare('INSERT INTO spaces(id,name,created_at) VALUES(?,?,?)').bind(spaceId, 'Pilot invitation', Date.now()),
+    database.prepare("INSERT INTO space_memberships(id,person_id,space_id,role,created_at) VALUES(?,?,?,'owner',?)").bind(membershipId, owner.personId, spaceId, Date.now()),
+  ]);
+  const recipient = { ...identity('new-invited-person'), verifiedEmail: 'new-invited@example.test' };
+  const invite = await people.createPersonInvitation(database, owner, spaceId, recipient.verifiedEmail, Date.now(), 'viewer');
+  await assert.rejects(sessions.createAccountSession(database, pilot, { ...recipient, verifiedEmail: null }, null), /Verify your email/);
+  await assert.rejects(sessions.createAccountSession(database, pilot, identity('not-invited'), null), /not included/);
+  for (const mutation of [
+    ['UPDATE person_invitations SET revoked_at = 1 WHERE id = ?', 'UPDATE person_invitations SET revoked_at = NULL WHERE id = ?', invite.id],
+    ['UPDATE person_invitations SET expires_at = 1 WHERE id = ?', `UPDATE person_invitations SET expires_at = ${Date.now()+600000} WHERE id = ?`, invite.id],
+    ["UPDATE space_memberships SET role = 'viewer' WHERE id = ?", "UPDATE space_memberships SET role = 'owner' WHERE id = ?", membershipId],
+    ['UPDATE people SET disabled_at = 1 WHERE id = ?', 'UPDATE people SET disabled_at = NULL WHERE id = ?', owner.personId],
+  ]) {
+    await database.prepare(mutation[0]).bind(mutation[2]).run();
+    await assert.rejects(sessions.createAccountSession(database, pilot, recipient, null), /not included/);
+    await database.prepare(mutation[1]).bind(mutation[2]).run();
+  }
+  const racedDatabase = { prepare: database.prepare.bind(database), async batch(statements) {
+    await database.prepare('UPDATE person_invitations SET revoked_at = 1 WHERE id = ?').bind(invite.id).run();
+    return database.batch(statements);
+  } };
+  await assert.rejects(sessions.createAccountSession(racedDatabase, pilot, recipient, null), /unavailable/);
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM people WHERE subject = ?').bind(recipient.subject).first()).n, 0);
+  await database.prepare('UPDATE person_invitations SET revoked_at = NULL WHERE id = ?').bind(invite.id).run();
+  const login = await sessions.createAccountSession(database, pilot, recipient, null);
+  const session = await sessions.readAccountSession(database, pilot, login.token);
+  assert.ok(session);
+  assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM space_memberships WHERE person_id = ?').bind(session.personId).first()).n, 0);
+  assert.equal((await people.previewPersonInvitation(database, session, invite.token)).spaceId, spaceId);
+  await people.acceptPersonInvitation(database, session, invite.token);
+  const renewed = await sessions.createAccountSession(database, pilot, recipient, login.token);
+  assert.ok(await sessions.readAccountSession(database, pilot, renewed.token));
+  await assert.rejects(sessions.createAccountSession(database, pilot, { ...recipient, subject: 'different-identity-same-email' }, null), /not included/);
+  await database.prepare('UPDATE space_memberships SET revoked_at = ? WHERE person_id = ?').bind(Date.now(), session.personId).run();
+  assert.ok(await sessions.createAccountSession(database, pilot, recipient, null), 'Leaving a library preserves account management access');
+  console.log('PASS: pilot invitation admission, verified-email binding, no implicit membership, revoked/expired/owner-loss denial, stable accepted identity and repeat sign-in.');
 }

@@ -34,12 +34,26 @@ export function clearAccountCookie() {
   return `${cookieName}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
 }
 
+// A live owner invitation admits only its verified email. After acceptance, retain that stable
+// identity's account access even if it later leaves the library; membership remains a separate check.
+function invitedAccountAdmission(settings: Auth0Settings, identity: VerifiedAuth0Identity, now: number) {
+  if (permitsAuth0Subject(settings, identity.subject)) return { sql: "1 = 1", bindings: [] as (string | number)[] };
+  return { sql: `(EXISTS (SELECT 1 FROM person_invitations i
+    JOIN space_memberships m ON m.id = i.created_by JOIN people owner ON owner.id = m.person_id
+    WHERE i.email = ? AND i.revoked_at IS NULL AND i.accepted_at IS NULL AND i.expires_at > ?
+      AND i.role IN ('member','editor','contributor','viewer') AND m.space_id = i.space_id
+      AND m.revoked_at IS NULL AND m.role = 'owner' AND owner.disabled_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM personal_spaces ps WHERE ps.space_id = i.space_id))
+    OR EXISTS (SELECT 1 FROM person_invitations accepted JOIN people recipient ON recipient.id = accepted.accepted_by
+      WHERE accepted.accepted_at IS NOT NULL AND recipient.issuer = ? AND recipient.subject = ? AND recipient.disabled_at IS NULL))`,
+    bindings: [identity.verifiedEmail!.trim().toLowerCase(), now, identity.issuer, identity.subject] };
+}
+
 // Atomically resolve the stable provider identity and issue a fresh hashed credential.
 // Email changes update profile data only. Disabled accounts cannot be resurrected by signing in.
 export async function createAccountSession(database: D1Database, settings: Auth0Settings,
   identity: VerifiedAuth0Identity, previousToken: string | null, now = Date.now(), mode: AccountSessionMode = "temporary") {
   const lifetime = accountSessionLifetime(mode);
-  if (!permitsAuth0Subject(settings, identity.subject)) throw new AccountError(403, "This account is not included in the Relay pilot.");
   if (!Number.isSafeInteger(identity.authenticatedAt) || identity.authenticatedAt <= 0 || identity.authenticatedAt > now + 60_000 ||
       !Number.isSafeInteger(identity.credentialsChangedAt) || identity.credentialsChangedAt < 0 ||
       identity.credentialsChangedAt > now || identity.authenticatedAt < identity.credentialsChangedAt) {
@@ -48,6 +62,10 @@ export async function createAccountSession(database: D1Database, settings: Auth0
   if (identity.issuer !== settings.issuer || !identity.subject || identity.subject.length > 255 ||
       !identity.verifiedEmail || identity.verifiedEmail.length > 320) {
     throw new AccountError(403, "Verify your email address before signing in to Relay.");
+  }
+  const admission = invitedAccountAdmission(settings, identity, now);
+  if (!await database.prepare(`SELECT 1 AS admitted WHERE ${admission.sql}`).bind(...admission.bindings).first()) {
+    throw new AccountError(403, "This account is not included in the Relay pilot and has no current workspace invitation.");
   }
   const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
   const sessionId = crypto.randomUUID();
@@ -60,18 +78,18 @@ export async function createAccountSession(database: D1Database, settings: Auth0
   const results = await database.batch([
     database.prepare(`INSERT INTO people (id, issuer, subject, display_name, verified_email, created_at, credentials_changed_at)
       SELECT ?, ?, ?, ?, ?, ?, MAX(?, COALESCE((SELECT changed_at FROM recovery_watermarks WHERE issuer = ? AND subject = ?), 0))
-      WHERE ${notErased} ON CONFLICT(issuer, subject) DO UPDATE SET
+      WHERE ${notErased} AND ${admission.sql} ON CONFLICT(issuer, subject) DO UPDATE SET
       display_name = excluded.display_name, verified_email = excluded.verified_email,
       credentials_changed_at = MAX(people.credentials_changed_at, excluded.credentials_changed_at) WHERE people.disabled_at IS NULL`)
-      .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now, identity.credentialsChangedAt, identity.issuer, identity.subject, identityDigest),
+      .bind(crypto.randomUUID(), identity.issuer, identity.subject, identity.displayName.slice(0, 100), identity.verifiedEmail, now, identity.credentialsChangedAt, identity.issuer, identity.subject, identityDigest, ...admission.bindings),
     database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE revoked_at IS NULL AND person_id IN
       (SELECT id FROM people WHERE issuer = ? AND subject = ?) AND authenticated_at <
       (SELECT credentials_changed_at FROM people WHERE issuer = ? AND subject = ?)` )
       .bind(now, identity.issuer, identity.subject, identity.issuer, identity.subject),
     database.prepare(`INSERT INTO account_sessions (id, person_id, token_hash, configuration_hash, created_at, expires_at, session_mode, provider_session_id, authenticated_at)
       SELECT ?, id, ?, ?, ?, ?, ?, ?, ? FROM people WHERE issuer = ? AND subject = ? AND disabled_at IS NULL
-      AND credentials_changed_at <= ? AND ${notErased}`)
-      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.authenticatedAt, identity.issuer, identity.subject, identity.authenticatedAt, identityDigest),
+      AND credentials_changed_at <= ? AND ${notErased} AND ${admission.sql}`)
+      .bind(sessionId, await digest(token), binding, now, now + lifetime, mode, identity.providerSessionId || null, identity.authenticatedAt, identity.issuer, identity.subject, identity.authenticatedAt, identityDigest, ...admission.bindings),
     database.prepare(`UPDATE account_sessions SET revoked_at = ? WHERE token_hash = ? AND configuration_hash = ?
       AND revoked_at IS NULL AND EXISTS (SELECT 1 FROM account_sessions WHERE id = ?)`)
       .bind(now, previousHash, binding, sessionId),
