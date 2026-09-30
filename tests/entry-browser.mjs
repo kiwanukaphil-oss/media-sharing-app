@@ -80,7 +80,7 @@ try {
   await page.evaluate(() => sessionStorage.setItem('relay-pending-person-invitation', 'a'.repeat(64)));
   await page.goto(`${origin}/workspaces`);
   await expect(page.getByRole('heading', { name: 'Join Invited archive?' })).toBeVisible();
-  assert.equal(new URL(page.url()).pathname, '/account');
+  assert.equal(new URL(page.url()).pathname, '/join');
   assert.deepEqual(errors, []);
   console.log(`PASS ${engine}: fresh sign-in, temporary/trusted handoff, explicit workspace gate, album arrival, sign-out, errors/retry, zero/one workspaces, expiry, invitation handoff and responsive layout.`);
 } finally { await browser.close(); }

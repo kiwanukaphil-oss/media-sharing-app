@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Shared workspace invitation repair ? 30 September 2026
+
+- [x] Add direct account creation, a focused invitation journey, verification/callback continuity, account recovery and explicit email-draft sharing. Cross-browser fixtures and account/invitation authority checks pass. [Evidence](INVITATION-WORKFLOW.md).
+- [ ] Publish the schema-compatible release and verify live signup entry. Real recipient signup/email/join acceptance remains distinct from fixtures.
+
 ## Interaction theme cleanup - 25 September 2026
 
 - [x] Replace inherited violet and blue interaction colours with the current Relay palette; retain visible keyboard focus and deliberate cover swatches. [Evidence](THEME-CLEANUP.md).

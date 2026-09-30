@@ -40,9 +40,15 @@ export default function RelayEntry({ mode = "home", legacy }: { mode?: "home" | 
         if (controller.signal.aborted) return;
         const signin = new URLSearchParams(location.search).get("signin");
         setSigninFailure(signin ? signin === "verify-email" ? "Verify your email address, then sign in again." : "Sign-in was interrupted or expired. Please try again." : "");
+        // Recover invitations after both successful and failed provider callbacks without exposing the token.
+        try {
+          if (new URLSearchParams(location.search).get("invitations") !== "skip" && /^[a-f0-9]{64}$/.test(sessionStorage.getItem("relay-pending-person-invitation") || "")) {
+            location.replace(`/join${signin ? `?signin=${encodeURIComponent(signin)}` : ""}`); return;
+          }
+        } catch { /* A fresh invitation link remains usable when optional storage is blocked. */ }
         if (result.account) {
           // Pending invitation secrets stay in this tab; retain their existing explicit review/acceptance flow.
-          try { if (["relay-pending-person-invitation", "relay-pending-collection", "relay-pending-delivery"].some(key => /^[a-f0-9]{64}$/.test(sessionStorage.getItem(key) || ""))) { location.replace("/account"); return; } } catch { /* Entry still works when optional tab storage is unavailable. */ }
+          try { if (["relay-pending-collection", "relay-pending-delivery"].some(key => /^[a-f0-9]{64}$/.test(sessionStorage.getItem(key) || ""))) { location.replace("/account"); return; } } catch { /* Entry still works when optional tab storage is unavailable. */ }
           setIdentity(result); return;
         }
         if (!result.enabled && mode === "home") { setShowLegacy(true); return; }

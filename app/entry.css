@@ -43,3 +43,10 @@
 @media(prefers-reduced-motion:reduce){.workspace-choice{transition:none}}
 
 .account-entry{width:100%}.account-entry>section{max-width:900px;width:90%;margin:20px auto}
+
+/* A focused, readable invitation card keeps onboarding actions together on every screen. */
+.entry-page .invitation-arrival { width: min(100% - 40px, 600px); margin: 48px auto; flex: 1; }
+.invitation-arrival > section { background: #fff; border-color: #dedfd7; padding: 28px; }
+.invitation-arrival .entry-primary, .invitation-arrival .entry-secondary { margin-right: 8px; margin-bottom: 12px; }
+.invitation-arrival h2 { font-size: 24px; line-height: 1.3; }
+@media (max-width: 480px) { .entry-page .invitation-arrival { margin: 24px auto; } .invitation-arrival > section { padding: 20px; } }

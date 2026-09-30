@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { chromium, expect } from '@playwright/test';
+import { chromium, firefox, webkit, expect } from '@playwright/test';
 
 const origin = process.env.RELAY_TEST_ORIGIN || 'http://127.0.0.1:8795';
 assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname));
-const browser = await chromium.launch(process.env.CI ? {} : { channel: 'chrome' });
+const engine = process.env.RELAY_INVITATION_BROWSER || 'chromium';
+const browser = await ({ chromium, firefox, webkit }[engine]).launch(engine === 'chromium' && !process.env.CI ? { channel: 'chrome' } : {});
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const space = crypto.randomUUID();
 const owner = crypto.randomUUID();
@@ -16,6 +17,8 @@ let disconnected = 0;
 let acceptances = 0;
 let signedIn = false;
 let revision = 0;
+let previewFailure = false;
+let interruptedSignup = false;
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 
@@ -51,10 +54,12 @@ try {
     if (url.pathname === '/api/auth/sessions') return route.fulfill({ json: { sessions: [] } });
     if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: [] } });
     if (url.pathname === '/api/auth/login') {
-      assert.equal(url.searchParams.get('session'), 'temporary'); signedIn = true;
-      return route.fulfill({ status: 303, headers: { Location: `${origin}/account` } });
+      assert.equal(url.searchParams.get('session'), 'temporary');
+      if (url.searchParams.get('screen') === 'signup') interruptedSignup = true; else signedIn = true;
+      return route.fulfill({ contentType: 'text/html', body: `<script>location.replace('${origin}/${signedIn ? 'workspaces' : 'login?signin=verify-email'}')</script>` });
     }
     if (url.pathname === '/api/auth/invitation-preview') {
+      if (previewFailure) return route.fulfill({ status: 404, json: { error: 'This invitation expired, was used or is for a different verified account.' } });
       assert.equal(route.request().headers()['x-relay-invitation'], token);
       return route.fulfill({ json: { spaceName: 'Family archive', email: 'alex@example.test', role:'contributor', expiresAt: Date.now() + 604800000 } });
     }
@@ -91,6 +96,9 @@ try {
   await page.getByLabel('Email address', { exact: true }).fill('alex@example.test');
   await page.getByRole('button', { name: 'Create invitation link' }).click();
   await expect(page.getByLabel('Invitation link', { exact: true })).toHaveValue(`${origin}/join#invite=${token}`);
+  const draft = new URL(await page.getByRole('link', { name: 'Open email draft' }).getAttribute('href'));
+  assert.equal(decodeURIComponent(draft.pathname), 'alex@example.test');
+  assert.ok(draft.searchParams.get('body').includes(`${origin}/join#invite=${token}`));
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await mkdir('.sites-runtime/space-people', { recursive: true });
   await page.screenshot({ path: '.sites-runtime/space-people/mobile.png', fullPage: true });
@@ -101,9 +109,14 @@ try {
   await expect(page.getByText('Only current library members have access through Relay.', { exact: true })).toBeVisible();
   assert.equal(disconnected, 1);
   await page.goto(`${origin}/join#invite=${token}`);
-  await expect(page.getByText(/Sign in below with the email address/)).toBeVisible();
+  await expect(page.getByText(/New to Relay/)).toBeVisible();
   assert.equal(new URL(page.url()).hash, '');
+  await page.screenshot({ path: `.sites-runtime/space-people/signup-${engine}.png`, fullPage: true });
   assert.equal(acceptances, 0);
+  await page.getByRole('link', { name: 'Create account', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Check your inbox');
+  assert.equal(interruptedSignup, true);
+  assert.equal(await page.evaluate(() => sessionStorage.getItem('relay-pending-person-invitation')), token);
   await page.getByRole('link', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Join Family archive?' })).toBeVisible();
   assert.equal(acceptances, 0, 'Returning from sign-in cannot silently accept an invitation');
@@ -113,6 +126,13 @@ try {
   await expect(page.getByRole('heading', { name: 'Join Family archive?' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: '.sites-runtime/space-people/join-mobile.png', fullPage: true });
+  previewFailure = true;
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('different verified account');
+  await expect(page.getByRole('link', { name: 'Use a different account' })).toBeVisible();
+  previewFailure = false;
+  await page.getByRole('button', { name: 'Retry invitation' }).click();
+  await expect(page.getByRole('heading', { name: 'Join Family archive?' })).toBeVisible();
   await page.getByRole('button', { name: 'Join library', exact: true }).click();
   await expect(page).toHaveURL(`${origin}/?space=${space}`);
   assert.equal(acceptances, 1);
