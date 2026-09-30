@@ -8,7 +8,7 @@ The ZIP writer streams one R2 original at a time with backpressure, SHA-256/size
 
 Chrome and WebKit phone-size tests pass native attachment download and independent Python ZIP/CRC/exact-byte extraction, duplicate names, unauthenticated/foreign-library/archived selection rejection, and read-only member toolbar. Existing package tests cover corruption, truncation, denied originals, final revocation and cancellation without commit, and bounded chunks at 80 MiB and the full 2 GiB limit (1 MiB maximum write, approximately 17 seconds in the local synthetic test; this is not a hosted 2 GiB benchmark). Existing WebKit album/navigation regression passes. TypeScript, focused lint, main/compatible production builds and deployment dry-run pass. No schema migration or unrelated backend activation.
 
-- [ ] Live release and native download/readback.
+- [x] Runtime `d73fde4` deployed at 100% as Worker `66abd8c0-7559-4ef7-ae6a-b469d10c37d9` on 30 September 2026 at 05:54 UTC. Both-origin health passed. Canonical-domain Chrome downloaded a native ZIP from two existing originals in the isolated Relay verification library; independent Python extraction, CRC, size and SHA-256 matched every selected original. Phone-width dialog screenshot inspected. No live records changed during the check. Main runtime source: `9dc0fc2`.
 - [ ] Physical iPhone Files/Photos handoff confirmation.
 
 References: [Apple ZIP extraction in Files](https://support.apple.com/en-nz/102532), [Cloudflare streaming responses](https://developers.cloudflare.com/workers/runtime-apis/streams/). Reviewed installed Workers types 5.20260917.1 and current stream/best-practice documentation; no binding changes.
