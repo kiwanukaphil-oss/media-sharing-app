@@ -1,5 +1,11 @@
 # Relay development roadmap
 
+## iPhone MOV thumbnails - 30 September 2026
+
+- [x] Fix metadata-first frame preparation and size exclusion; add lazy recovery of existing missing video posters. [Evidence](VIDEO-THUMBNAILS.md).
+- [ ] Final compatible-release checks and deployment.
+- [ ] Physical iPhone HEVC/HDR thumbnail confirmation.
+
 ## Upload feedback and responsive preparation - 30 September 2026
 
 - [x] Immediate batch visibility, picker feedback, responsive integrity worker, bounded storage startup and explicit phone upload guidance. [Evidence](UPLOAD-FEEDBACK.md).
