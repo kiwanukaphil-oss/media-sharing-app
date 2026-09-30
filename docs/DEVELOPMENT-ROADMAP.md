@@ -1,5 +1,11 @@
 # Relay development roadmap
 
+## Upload feedback and responsive preparation - 30 September 2026
+
+- [x] Immediate batch visibility, picker feedback, responsive integrity worker, bounded storage startup and explicit phone upload guidance. [Evidence](UPLOAD-FEEDBACK.md).
+- [ ] Final release checks and production deployment.
+- [ ] Confirm the reported selection delay on the physical iPhone.
+
 ## Invitation recovery after signup - 30 September 2026
 
 - [x] Recover valid pending invitations from the verified account after tab/browser context loss; present direct shared-workspace joining on workspace and account pages. Three-engine browser acceptance passes. [Evidence](INVITATION-WORKFLOW.md).

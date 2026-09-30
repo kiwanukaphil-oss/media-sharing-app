@@ -1,5 +1,4 @@
-import { sha256 } from "@noble/hashes/sha2.js";
-import { bytesToHex } from "@noble/hashes/utils.js";
+import { hashOriginalChunks } from "./hash-original";
 import { createLibraryApi } from "./api-client";
 import { readCaptureDate } from "./capture-date";
 import { publishPreview } from "./previews";
@@ -7,18 +6,21 @@ import type { Category, UploadSession } from "./contracts";
 
 export type Transfer = {
   id: string; deviceId: string; accountSpaceId?: string; spaceName?: string; name: string; size: number; mime: string; category: Category;
-  albumId?: string; albumName?: string; sectionId?: string; sectionName?: string; capturedAt?: string; uploadBatch?: string;
+  accessScopeId?: string | null; audienceName?: string; albumId?: string; albumName?: string; sectionId?: string; sectionName?: string; capturedAt?: string; uploadBatch?: string;
   hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
   state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
   progress: number; preparationProgress?: number; message?: string;
 };
 
+// Bound storage startup so a blocked browser database becomes an actionable error.
 function openTransferDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const opening = indexedDB.open("relay-transfers", 1);
     opening.onupgradeneeded = () => opening.result.createObjectStore("transfers", { keyPath: "id" });
-    opening.onsuccess = () => resolve(opening.result);
-    opening.onerror = () => reject(new Error("Allow browser storage to keep transfer progress."));
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; reject(new Error("Browser storage is taking too long. Close other Relay tabs and retry.")); }, 10000);
+    opening.onsuccess = () => { clearTimeout(timeout); if (timedOut) opening.result.close(); else resolve(opening.result); };
+    opening.onerror = () => { clearTimeout(timeout); reject(new Error("Allow browser storage to keep transfer progress.")); };
   });
 }
 // Persist only transfer manifests; source files stay on disk and can be reselected after reload.
@@ -75,21 +77,29 @@ export async function forgetDeviceTransfers(deviceId: string) {
   } finally { db.close(); }
 }
 
-// Hash bounded chunks rather than materializing a multi-gigabyte original in memory.
-export async function hashOriginal(file: File, signal: AbortSignal, onProgress?: (progress: number) => void) {
-  const hash = sha256.create();
-  const chunkSize = 1024 * 1024;
-  let reported = -1;
-  onProgress?.(0);
-  for (let offset = 0; offset < file.size; offset += chunkSize) {
-    signal.throwIfAborted();
-    hash.update(new Uint8Array(await file.slice(offset, offset + chunkSize).arrayBuffer()));
-    const progress = Math.round(Math.min(file.size, offset + chunkSize) / file.size * 100);
-    if (progress !== reported) { onProgress?.(progress); reported = progress; }
-    if (offset % (8 * chunkSize) === 0) await new Promise(resolve => setTimeout(resolve, 0));
-  }
+// Move integrity checks off the UI thread; terminate promptly when a transfer is paused.
+export async function hashOriginal(file: File, signal: AbortSignal, onProgress?: (progress: number) => void): Promise<string> {
   signal.throwIfAborted();
-  return bytesToHex(hash.digest());
+  if (typeof Worker === "undefined") return hashOriginalChunks(file, signal, onProgress);
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      const worker = new Worker(new URL("./hash-original.worker.ts", import.meta.url), { type: "module" });
+      const cleanup = () => { worker.terminate(); signal.removeEventListener("abort", abort); };
+      const abort = () => { cleanup(); reject(new DOMException("Transfer paused", "AbortError")); };
+      worker.onmessage = ({ data }: MessageEvent<{ progress?: number; hash?: string; error?: string }>) => {
+        if (data.progress !== undefined) onProgress?.(data.progress);
+        if (data.hash) { cleanup(); resolve(data.hash); }
+        if (data.error) { cleanup(); reject(new Error(data.error)); }
+      };
+      worker.onerror = event => { event.preventDefault(); cleanup(); reject(new Error("File preparation unavailable.")); };
+      signal.addEventListener("abort", abort, { once: true });
+      worker.postMessage(file);
+    });
+  } catch (error) {
+    if (signal.aborted) throw error;
+    // Restricted browsers can still prepare originals with bounded, yielding chunks.
+    return hashOriginalChunks(file, signal, onProgress);
+  }
 }
 // XMLHttpRequest exposes real bytes sent; aborting leaves completed multipart parts reusable.
 function sendPart(url: string, blob: Blob, signal: AbortSignal, onProgress: (sent: number) => void): Promise<string> {
