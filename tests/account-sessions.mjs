@@ -84,10 +84,10 @@ async function verifySessionChoicesAndLogout(database) {
   for (const mode of ['temporary', 'trusted']) {
     const transaction = { state: randomValue(), nonce: randomValue(), verifier: randomValue(), browserBinding: randomValue(), expiresAt: Date.now() + 600000 };
     const provider = {
-      async prepare() { return { url: 'https://test.auth0.com/authorize', transaction }; },
+      async prepare(_settings, signup) { assert.equal(signup, mode === 'trusted'); return { url: 'https://test.auth0.com/authorize', transaction }; },
       async complete() { return { ...identity('choice-' + mode), providerSessionId: 'verified-provider-session' }; },
     };
-    const login = await api.accountAction(request(`login?session=${mode}`), database, settings, provider);
+    const login = await api.accountAction(request(`login?session=${mode}${mode === "trusted" ? "&screen=signup" : ""}`), database, settings, provider);
     const callback = await api.accountAction(request(`callback?state=${transaction.state}&code=test&session=${mode === 'trusted' ? 'temporary' : 'trusted'}`,
       login.headers.get('Set-Cookie').split(';')[0]), database, settings, provider);
     const token = /__Host-relay_account=([a-f0-9]{64})/.exec(callback.headers.get('Set-Cookie'))[1];
@@ -107,6 +107,9 @@ async function verifySessionChoicesAndLogout(database) {
     assert.equal(destination.searchParams.has('federated'), false);
     assert.ok(signOut.headers.get('Set-Cookie').includes('Max-Age=0'));
     assert.equal(await sessions.readAccountSession(database, settings, token), null);
+  }
+  for (const query of ['screen=unknown', 'screen=signup&screen=login', 'screen=']) {
+    await assert.rejects(api.accountAction(request('login?' + query), database, settings), /Choose sign in/);
   }
   for (const query of ['session=forever', 'session=temporary&session=trusted', 'session=']) {
     await assert.rejects(api.accountAction(request('login?' + query), database, settings), /Choose a temporary/);

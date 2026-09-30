@@ -10,11 +10,11 @@ import { runClosureTrackedMetadataRequest } from "./closure-tracked-request";
 import type { AccountSession } from "./account-sessions";
 
 type LoginProvider = {
-  prepare(settings: Auth0Settings): Promise<{ url: string; transaction: Auth0LoginTransaction }>;
+  prepare(settings: Auth0Settings, signup?: boolean): Promise<{ url: string; transaction: Auth0LoginTransaction }>;
   complete(settings: Auth0Settings, url: URL, transaction: Auth0LoginTransaction, binding: string): Promise<VerifiedAuth0Identity>;
 };
 const auth0Provider: LoginProvider = {
-  async prepare(settings) { return prepareAuth0Login(settings, await discoverAuth0Client(settings)); },
+  async prepare(settings, signup) { return prepareAuth0Login(settings, await discoverAuth0Client(settings), Date.now(), signup); },
   async complete(settings, url, transaction, binding) {
     return completeAuth0Login(settings, await discoverAuth0Client(settings), url, transaction, binding);
   },
@@ -77,7 +77,11 @@ export async function accountAction(request: Request, database: D1Database, sett
     if (choices.length > 1 || (choices.length === 1 && !["temporary", "trusted"].includes(choices[0]))) {
       throw new AccountError(400, "Choose a temporary or trusted browser session.");
     }
-    const login = await provider.prepare(settings);
+    const screens = url.searchParams.getAll("screen");
+    if (screens.length > 1 || (screens.length === 1 && !["login", "signup"].includes(screens[0]))) {
+      throw new AccountError(400, "Choose sign in or create account.");
+    }
+    const login = await provider.prepare(settings, screens[0] === "signup");
     login.transaction.sessionMode = choices[0] === "trusted" ? "trusted" : "temporary";
     await storeAuth0Transaction(database, settings, login.transaction);
     return new Response(null, { status: 303, headers: { ...privateHeaders, Location: login.url, "Set-Cookie": auth0TransactionCookie(login.transaction.browserBinding) } });

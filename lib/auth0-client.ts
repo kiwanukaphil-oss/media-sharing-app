@@ -29,7 +29,7 @@ export async function discoverAuth0Client(settings: Auth0Settings, transport?: o
 }
 
 // The route must persist this transaction server-side and bind its random browser value to an HttpOnly cookie.
-export async function prepareAuth0Login(settings: Auth0Settings, configuration: oidc.Configuration, now = Date.now()) {
+export async function prepareAuth0Login(settings: Auth0Settings, configuration: oidc.Configuration, now = Date.now(), signup = false) {
   const transaction: Auth0LoginTransaction = {
     state: oidc.randomState(), nonce: oidc.randomNonce(), verifier: oidc.randomPKCECodeVerifier(),
     browserBinding: oidc.randomState(), expiresAt: now + AUTH0_TRANSACTION_LIFETIME_MS,
@@ -38,6 +38,7 @@ export async function prepareAuth0Login(settings: Auth0Settings, configuration: 
     redirect_uri: settings.callbackUrl, scope: "openid profile email", response_type: "code", response_mode: "query", prompt: "login", max_age: "0",
     state: transaction.state, nonce: transaction.nonce, code_challenge_method: "S256",
     code_challenge: await oidc.calculatePKCECodeChallenge(transaction.verifier),
+    ...(signup ? { screen_hint: "signup" } : {}),
   });
   return { url: url.href, transaction };
 }

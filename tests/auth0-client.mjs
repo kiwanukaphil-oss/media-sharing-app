@@ -71,6 +71,9 @@ async function providerTransport(input, options) {
 const client = await discoverAuth0Client(settings, providerTransport);
 const first = await prepareAuth0Login(settings, client);
 const second = await prepareAuth0Login(settings, client);
+const signup = await prepareAuth0Login(settings, client, Date.now(), true);
+assert.equal(new URL(signup.url).searchParams.get("screen_hint"), "signup");
+assert.equal(new URL(first.url).searchParams.has("screen_hint"), false);
 assert.notEqual(first.transaction.state, second.transaction.state);
 assert.notEqual(first.transaction.nonce, second.transaction.nonce);
 assert.notEqual(first.transaction.verifier, second.transaction.verifier);
