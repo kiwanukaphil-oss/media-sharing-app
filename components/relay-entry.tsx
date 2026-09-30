@@ -39,7 +39,7 @@ export default function RelayEntry({ mode = "home", legacy }: { mode?: "home" | 
         const result = await requestJson<Identity>("auth/session", { signal: controller.signal, cache: "no-store" });
         if (controller.signal.aborted) return;
         const signin = new URLSearchParams(location.search).get("signin");
-        setSigninFailure(signin ? signin === "verify-email" ? "Verify your email address, then sign in again." : "Sign-in was interrupted or expired. Please try again." : "");
+        setSigninFailure(signin ? signin === "verify-email" ? "Verify your email address, then sign in again." : signin === "invitation-required" ? "Use the email address on a current workspace invitation, or ask the owner for a new link." : "Sign-in was interrupted or expired. Please try again." : "");
         // Recover invitations after both successful and failed provider callbacks without exposing the token.
         try {
           if (new URLSearchParams(location.search).get("invitations") !== "skip" && /^[a-f0-9]{64}$/.test(sessionStorage.getItem("relay-pending-person-invitation") || "")) {

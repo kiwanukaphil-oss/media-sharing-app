@@ -21,7 +21,7 @@ export default function JoinWorkspacePage() {
     return () => controller.abort();
   }, [revision]);
   return <EntryFrame><main className="invitation-arrival">
-    {signin && <div className="entry-error" role="alert">{signin === "verify-email" ? "Check your inbox for the verification email (including spam). Follow its verification link, then return here and choose Sign in. Your invitation is saved in this tab." : "Sign-in was interrupted. Your invitation is saved; choose Sign in to try again."}</div>}
+    {signin && <div className="entry-error" role="alert">{signin === "verify-email" ? "Check your inbox for the verification email (including spam). Follow its verification link, then return here and choose Sign in. Your invitation is saved in this tab." : signin === "invitation-required" ? "Use the exact email address invited by the owner. If the invitation expired or was revoked, ask the owner for a fresh link." : "Sign-in was interrupted. Your invitation is saved; choose Sign in to try again."}</div>}
     {failure ? <div role="alert">{failure}<button className="entry-secondary" onClick={() => setRevision(value => value + 1)}>Try again</button></div> : identity ? identity.enabled ? <AccountInvitation standalone sessionId={identity.account?.sessionId} email={identity.account?.verifiedEmail} /> : <p role="alert">Account access is temporarily unavailable. Keep your invitation link and try again later.</p> : <p role="status">Opening your invitation...</p>}
   </main></EntryFrame>;
 }

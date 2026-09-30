@@ -97,6 +97,7 @@ assert.ok(!JSON.stringify(verified).includes('token'));
 assert.equal((await completeAuth0Login(pilot, client, callback(), activeTransaction, activeTransaction.browserBinding)).subject, 'auth0|fixture-person');
 claimOverrides = { sub: 'auth0|unlisted-person' };
 await assert.rejects(completeAuth0Login(pilot, client, callback(), activeTransaction, activeTransaction.browserBinding), /not included/);
+assert.equal((await completeAuth0Login(pilot, client, callback(), activeTransaction, activeTransaction.browserBinding, Date.now(), true)).subject, 'auth0|unlisted-person', 'Deferred admission returns only a verified identity; D1 still decides whether to issue a session');
 claimOverrides = {};
 for (const claims of [{ iss: 'https://other.auth0.com/' }, { aud: 'other-client' }, { exp: 1 }, { nonce: 'wrong-nonce' }, { sub: '' }, { auth_time: 1 }, { auth_time: undefined }]) {
   claimOverrides = claims;

@@ -45,7 +45,7 @@ export async function prepareAuth0Login(settings: Auth0Settings, configuration: 
 
 // Call only with an atomically consumed server-side transaction; tokens never grant Relay workspace membership.
 export async function completeAuth0Login(settings: Auth0Settings, configuration: oidc.Configuration, callbackUrl: URL,
-  transaction: Auth0LoginTransaction, browserBinding: string, now = Date.now()): Promise<VerifiedAuth0Identity> {
+  transaction: Auth0LoginTransaction, browserBinding: string, now = Date.now(), deferPilotAdmission = false): Promise<VerifiedAuth0Identity> {
   const destination = new URL(settings.callbackUrl);
   if (callbackUrl.origin !== destination.origin || callbackUrl.pathname !== destination.pathname || callbackUrl.hash || callbackUrl.username || callbackUrl.password) {
     throw new Error("The sign-in callback address is invalid.");
@@ -59,7 +59,8 @@ export async function completeAuth0Login(settings: Auth0Settings, configuration:
   });
   const claims = tokens.claims();
   if (!claims || typeof claims.sub !== "string" || !claims.sub || claims.iss !== settings.issuer) throw new Error("A verified account identity was not returned.");
-  if (!permitsAuth0Subject(settings, claims.sub)) throw new Error("This account is not included in the Relay pilot.");
+  // The account route may defer audience admission to D1, where live owner invitations are checked atomically.
+  if (!deferPilotAdmission && !permitsAuth0Subject(settings, claims.sub)) throw new Error("This account is not included in the Relay pilot.");
   const changedAt = claims[PASSWORD_CHANGE_CLAIM];
   if (typeof claims.auth_time !== "number" || !Number.isSafeInteger(claims.auth_time) || claims.auth_time <= 0 ||
       typeof changedAt !== "number" || !Number.isSafeInteger(changedAt) || changedAt < 0 || changedAt > now ||
