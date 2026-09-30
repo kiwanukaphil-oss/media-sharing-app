@@ -1,3 +1,4 @@
+import { bulkDownload } from "@/lib/bulk-download";
 import {deliveryRecipientRequest} from "@/lib/delivery-recipient-api";
 import {deliveryOwnerAction} from "@/lib/delivery-owner-api";
 import {deliveriesEnabled} from "@/lib/delivery-runtime";
@@ -37,7 +38,7 @@ async function serveRequest(request: Request) {
   const started = Date.now();
   try {
     const segments = new URL(request.url).pathname.slice(5).split("/");
-    if (segments.length > 4 || new URL(request.url).search.length > 2048) throw new ApiError(400, "Invalid request address.");
+    if (segments.length > 4 || new URL(request.url).search.length > (segments[0] === "bulk-download" ? 8192 : 2048)) throw new ApiError(400, "Invalid request address.");
     await limitPublicRequest(request, segments[0]);
     // Dormant until the reviewed schema and dedicated writer secret are activated together. Browser
     // sessions and monitoring credentials cannot authorize this server-to-server capability.
@@ -213,6 +214,7 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
     if (resource === "person-invitations" && id && !action && method === "DELETE") return Response.json(await revokePersonInvitation(database(), accountAccess, device.space_id, id));
     throw new ApiError(404, "This people action is unavailable.");
   }
+  if (resource === "bulk-download" && !id && method === "GET") return bulkDownload(request, device, storage, async () => await requireAccountSpaceAccess(request, database(), readAuth0Settings(process.env)) || await requireDevice(request));
   const webResponse = await webAction(request, device, resource, id, action, storage);
   if (webResponse) return webResponse;
   if (resource === "session" && !id && method === "GET") return Response.json({ space: { id: device.space_id, name: device.space_name, kind: device.space_kind || "shared" }, deviceId: device.id, role: device.role, deliveries: Boolean(accountAccess && deliveriesEnabled()), uploadRequests: Boolean(accountAccess && device.space_kind === "shared" && intakeEnabled()), restrictedScopes: Boolean(accountAccess && device.space_kind === "shared" && restrictedScopesEnabled()), transport: storageMode(request), ...(accountAccess ? { authentication: "account", personId: accountAccess.personId } : {}) });

@@ -1,5 +1,7 @@
 "use client";
 
+import { BulkDownload } from "./bulk-download";
+
 import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { FolderInput, Settings, FolderMinus, FolderPlus, Pencil, SlidersHorizontal, Trash2, Undo2, X } from "lucide-react";
 import {DuplicateReview} from "./duplicate-review";
@@ -147,7 +149,7 @@ export function LibraryTools(props: Props) {
       <button className="text-button" onClick={() => onQuery({ ...query, dateMode: "uploaded", from: "", to: "", batch: "", type: "", uploader: "", favorites: "" })}>Clear all filters</button>
     </div>}
     {(canOrganise || props.canSelectFiles) && <div className={`selection-toolbar${selected.length ? " has-selection" : ""}`} aria-label="Bulk file actions">
-      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong>{activeAlbum && <button className="button section-move-action" disabled={busy || !editableSelection || Boolean(activeAlbum.archivedAt) || selected.some(file => file.archivedAt)} onClick={() => props.onMoveSection(selected)}><FolderInput size={18} />Move to section</button>}{props.canEditFiles && !editableSelection && <span role="status">Contributors can edit only their own files. Adjust your selection.</span>}
+      {!!selected.length && <><strong aria-live="polite">{selected.length} selected</strong><BulkDownload files={selected} />{activeAlbum && <button className="button section-move-action" disabled={busy || !editableSelection || Boolean(activeAlbum.archivedAt) || selected.some(file => file.archivedAt)} onClick={() => props.onMoveSection(selected)}><FolderInput size={18} />Move to section</button>}{props.canEditFiles && !editableSelection && <span role="status">Contributors can edit only their own files. Adjust your selection.</span>}
         {props.canEditFiles && <><button className="icon-button" title="Add to album" aria-label="Add to album" disabled={busy || !editableSelection || selected.some(file => file.archivedAt)} onClick={() => { setTargetAlbum(""); setAlbumPickerOpen(true); }}><FolderPlus size={19} /></button>
         {activeAlbum && <button className="icon-button" title="Remove from album" aria-label="Remove from album" disabled={busy || !editableSelection} onClick={() => void performMutation(() => organiseSelection("remove"))}><FolderMinus size={19} /></button>}
         {!selected.some(file => file.archivedAt) && <button className="icon-button" title="Rename selected" aria-label="Rename selected" disabled={busy || !editableSelection} onClick={() => { setFailure(""); onRename(selected); }}><Pencil size={18} /></button>}

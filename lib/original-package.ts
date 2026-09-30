@@ -28,7 +28,7 @@ export function validatePackageManifest(manifest:PackageManifest,limit=packageBy
 // A stored ZIP needs only a small central directory in memory. Each original is independently
 // SHA-256 checked; CRC32 makes the resulting archive interoperable with ordinary ZIP readers.
 // No central directory or sink commit is written after cancellation, access loss or partial bytes.
-export async function writeOriginalPackage(manifest:PackageManifest,sink:PackageSink,options:{signal:AbortSignal;read:(file:PackageFile)=>Promise<Response>;revalidate:()=>Promise<void>;onProgress?:(bytes:number,total:number)=>void}){
+export async function writeOriginalPackage(manifest:PackageManifest,sink:PackageSink,options:{flatNames?:boolean;signal:AbortSignal;read:(file:PackageFile)=>Promise<Response>;revalidate:()=>Promise<void>;onProgress?:(bytes:number,total:number)=>void}){
   const central:Uint8Array[]=[];let offset=0,processed=0;
   const write=async(bytes:Uint8Array)=>{options.signal.throwIfAborted();await sink.write(bytes);offset+=bytes.length;};
   // Bit 3 permits streaming CRC/size in a data descriptor; bit 11 identifies UTF-8 paths.
@@ -48,10 +48,11 @@ export async function writeOriginalPackage(manifest:PackageManifest,sink:Package
   let total=0;
   try{
     total=validatePackageManifest(manifest);
-    const metadata=encoder.encode(JSON.stringify({...manifest,includesOriginalBytes:true,checksumProvenance:"Every original in a completed package was independently SHA-256 verified during creation."},null,2));
+    const packagedFiles=manifest.files.map((file,index)=>options.flatNames?{...file,suggestedPath:`${String(index+1).padStart(3,"0")}-${file.suggestedPath.split("/").at(-1)}`} : file);
+    const metadata=encoder.encode(JSON.stringify({...manifest,files:packagedFiles,includesOriginalBytes:true,checksumProvenance:"Every original in a completed package was independently SHA-256 verified during creation."},null,2));
     if(metadata.length>4*1024**2)throw new Error("The package manifest is too large.");
     await entry('manifest.json',metadata.length,new Blob([metadata]).stream());
-    for(const file of manifest.files){options.signal.throwIfAborted();const response=await options.read(file);if(!response.ok||!response.body)throw new Error("An original is unavailable. Retry after checking your access.");await entry(file.suggestedPath,file.size,response.body,file.sha256);}
+    for(const file of packagedFiles){options.signal.throwIfAborted();const response=await options.read(file);if(!response.ok||!response.body)throw new Error("An original is unavailable. Retry after checking your access.");await entry(file.suggestedPath,file.size,response.body,file.sha256);}
     await options.revalidate();options.signal.throwIfAborted();
     const directoryStart=offset;for(const bytes of central)await write(bytes);
     const end=record(22);end.view.setUint32(0,0x06054b50,true);end.view.setUint16(8,central.length,true);end.view.setUint16(10,central.length,true);end.view.setUint32(12,offset-directoryStart,true);end.view.setUint32(16,directoryStart,true);await write(end.bytes);
