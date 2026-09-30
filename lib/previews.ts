@@ -1,7 +1,7 @@
 import { createLibraryApi } from "./api-client";
 
 // Wait for a decodable frame without leaving listeners behind on errors, cancellation or timeout.
-function waitForVideoFrame(video: HTMLVideoElement, event: "loadeddata" | "seeked", signal: AbortSignal) {
+function waitForVideoFrame(video: HTMLVideoElement, event: "loadedmetadata" | "seeked", signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
     const finish = (failure?: unknown) => {
       video.removeEventListener(event, ready); video.removeEventListener("error", failed);
@@ -18,19 +18,20 @@ function waitForVideoFrame(video: HTMLVideoElement, event: "loadeddata" | "seeke
 }
 
 // Decode a short local frame only; never upload video bytes through the thumbnail endpoint.
-async function createVideoPoster(file: File, signal: AbortSignal) {
+export async function createVideoPoster(source: File | string, signal: AbortSignal) {
   const video = document.createElement("video");
-  const url = URL.createObjectURL(file);
+  const url = typeof source === "string" ? source : URL.createObjectURL(source);
   try {
-    video.muted = true; video.playsInline = true; video.preload = "auto";
-    const loaded = waitForVideoFrame(video, "loadeddata", signal);
+    if (typeof source === "string") video.crossOrigin = "anonymous";
+    video.muted = true; video.playsInline = true; video.preload = "metadata";
+    const loaded = waitForVideoFrame(video, "loadedmetadata", signal);
     video.src = url;
     await loaded;
-    if (Number.isFinite(video.duration) && video.duration > .1) {
-      const seeked = waitForVideoFrame(video, "seeked", signal);
-      video.currentTime = Math.min(1, video.duration / 4);
-      await seeked;
-    }
+    // iPhone may stop at metadata until a seek explicitly requests a decoded frame.
+    const seeked = waitForVideoFrame(video, "seeked", signal);
+    video.currentTime = Number.isFinite(video.duration) && video.duration > 0 ? Math.min(.1, video.duration / 2) : .1;
+    await seeked;
+    if (!video.videoWidth || !video.videoHeight || video.readyState < 2) return null;
     signal.throwIfAborted();
     const canvas = document.createElement("canvas");
     const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
@@ -40,13 +41,12 @@ async function createVideoPoster(file: File, signal: AbortSignal) {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     return await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", .76));
   } finally {
-    video.pause(); video.removeAttribute("src"); video.load(); URL.revokeObjectURL(url);
+    video.pause(); video.removeAttribute("src"); video.load(); if (typeof source !== "string") URL.revokeObjectURL(url);
   }
 }
 
 // Keep posters optional and bounded so unsupported media never holds up the original-file queue.
 async function publishVideoPoster(file: File, id: string, signal: AbortSignal, accountSpaceId?: string) {
-  if (file.size > 256 * 1024 * 1024) return;
   const deadline = new AbortController();
   const timeout = setTimeout(() => deadline.abort(), 6000);
   try {
@@ -61,7 +61,7 @@ async function publishVideoPoster(file: File, id: string, signal: AbortSignal, a
 
 // Generate only a disposable display copy. The upload and save paths always use original bytes.
 export async function publishPreview(file: File, id: string, signal: AbortSignal, accountSpaceId?: string) {
-  if (/^video\/(mp4|webm|quicktime)$/.test(file.type)) return publishVideoPoster(file, id, signal, accountSpaceId);
+  if (/^video\/(mp4|webm|quicktime)$/i.test(file.type) || /\.(mov|mp4|m4v|webm)$/i.test(file.name)) return publishVideoPoster(file, id, signal, accountSpaceId);
   if (!/^image\/(jpeg|png|webp|avif)$/.test(file.type) || file.size > 24 * 1024 * 1024 || typeof createImageBitmap !== "function") return;
   let bitmap: ImageBitmap | undefined;
   try {
