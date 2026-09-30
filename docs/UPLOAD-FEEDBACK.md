@@ -11,5 +11,5 @@ The upload note explicitly explains phone foreground/screen-unlocked requirement
 Validation: main Chrome and WebKit mobile-sized real-worker/delayed-preparation tests, byte-identical downloads, hash/cancellation unit checks, actual multipart API regression, and WebKit album navigation/destination regression passed before the native small-file optimization. Final release validation and deployment are recorded below.
 
 - [x] Final release TypeScript, focused ESLint, production build and Wrangler dry-run passed. Chrome/WebKit exercised native hashing (3 MiB) and chunked hashing (33 MiB), verified immediate queue visibility during delayed worker startup, and downloaded every original byte-identically. Actual multipart/resume/isolation API checks and hash/cancellation checks passed.
-- [ ] Production deployment and readback.
+- [x] Runtime `6448757` deployed at 100% as Worker `6d04846e-abe9-4a36-b904-1ff5ae0b1150` on 30 September 2026 at 05:28 UTC. Both production origins passed entry/header/database/storage/private-feed checks. The served integrity-worker asset matches the validated build byte-for-byte. Schema remains 0020. Main source: `c183dd8`.
 - [ ] Physical iPhone confirmation of the original reported delay.

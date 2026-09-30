@@ -3,7 +3,7 @@
 ## Upload feedback and responsive preparation - 30 September 2026
 
 - [x] Immediate batch visibility, picker feedback, responsive integrity worker, bounded storage startup and explicit phone upload guidance. [Evidence](UPLOAD-FEEDBACK.md).
-- [ ] Final release checks and production deployment.
+- [x] Chrome/WebKit native/chunked integrity and real transfer checks, build and dry-run passed. Published `6448757` as Worker `6d04846e-abe9-4a36-b904-1ff5ae0b1150` at 100%; both-origin health and worker-asset readback passed.
 - [ ] Confirm the reported selection delay on the physical iPhone.
 
 ## Invitation recovery after signup - 30 September 2026
