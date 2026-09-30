@@ -20,12 +20,10 @@ export function BulkDownload({ files }: { files: MediaItem[] }) {
     void requestJson(`${path}&check=1`, { signal: abort.signal }).then(() => { if (!abort.signal.aborted) { setReady(true); setStatus(""); } }).catch(failure => { if (!abort.signal.aborted) { setStatus(""); setError(failure instanceof Error ? failure.message : "Could not prepare this download."); } });
     return () => abort.abort();
   }, [selection, path, requestJson]);
-  return <><button className="button secondary compact" disabled={!files.length || files.some(file => file.archivedAt)} onClick={() => { setSelection([...files]); setReady(false); setError(""); setStatus("Checking selected files..."); }}><Download size={18} />Save selected to device</button>
+  return <><button className="button secondary compact" disabled={!files.length || files.some(file => file.archivedAt)} onClick={() => { setSelection([...files]); setReady(false); setError(""); setStatus("Preparing..."); }}><Download size={18} />Save selected to device</button>
     {selection.length > 0 && <dialog ref={dialog} className="modal library-dialog" aria-labelledby={title} onClose={() => setSelection([])}>
       <div className="modal-heading"><h2 id={title}>Save selected to device</h2><button className="icon-button" aria-label="Close bulk download" onClick={() => dialog.current?.close()}><X size={20} /></button></div>
       <p>{selection.length} files · {formatBytes(selection.reduce((sum, file) => sum + file.size, 0))}</p>
-      <p>Download the original files together in one ZIP. On iPhone, open the download in Files and tap the ZIP to unpack it. Photos and videos can then be saved to Photos using Share.</p>
-      <p className="small-muted">Up to 100 files and 2 GiB per ZIP. Originals keep their quality and embedded metadata. Progress and cancellation appear in your browser’s downloads.</p>
       {status && <p role="status">{status}</p>}{error && <p role="alert" className="error-banner">{error}</p>}
       {ready && <a className="button primary" href={apiUrl(path)} download="relay-originals.zip" onClick={() => setStatus("Download requested. Check your browser’s downloads for progress.")}>Download ZIP</a>}
       {error && <details><summary>Save files individually</summary><ul>{selection.map(file => <li key={file.id}><a href={apiUrl(`media/${file.id}/download`)} download={file.name}>{file.name}</a></li>)}</ul></details>}

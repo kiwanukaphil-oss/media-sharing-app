@@ -19,7 +19,7 @@ try {
   await page.getByLabel('Select loaded files (2)').click();
   await page.getByRole('button', { name: 'Save selected to device', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('2 files');
-  await expect(page.getByRole('dialog')).toContainText('On iPhone');
+  await expect(page.getByRole('dialog')).not.toContainText('On iPhone');
   const download = page.waitForEvent('download');
   await page.getByRole('link', { name: 'Download ZIP', exact: true }).click();
   const result = await download;

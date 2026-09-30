@@ -30,3 +30,7 @@ Ask the user only when progress requires their input, access, a material decisio
 - Flag candidates for removal with a comment rather than deleting immediately.
 - Prefer tools that preserve existing features and produce verifiable results. If a preferred tool is unavailable, use a safe capable fallback, briefly report it and validate the result.
 - Run checks appropriate to the change; do not repeat unrelated tests without a reason.
+
+## Interface copy preference ? 30 September 2026
+
+Use concise labels, selection summaries and clear actions. Avoid instructional narration and handholding paragraphs in ordinary workflows; let the interface communicate the task. Keep necessary progress and actionable error messages brief.

@@ -12,3 +12,9 @@ Chrome and WebKit phone-size tests pass native attachment download and independe
 - [ ] Physical iPhone Files/Photos handoff confirmation.
 
 References: [Apple ZIP extraction in Files](https://support.apple.com/en-nz/102532), [Cloudflare streaming responses](https://developers.cloudflare.com/workers/runtime-apis/streams/). Reviewed installed Workers types 5.20260917.1 and current stream/best-practice documentation; no binding changes.
+
+## Interface copy refinement ? 30 September 2026
+
+At the user?s request, removed the two explanatory paragraphs from the bulk dialog and shortened its progress/download-request status. The dialog now contains its title, selection count/size and download action, plus concise status or errors when needed. Download behavior and enforced limits are unchanged. This interface-copy preference is recorded in AGENTS.md.
+
+- [ ] Refined dialog deployed and visually checked.
