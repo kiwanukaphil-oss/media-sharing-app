@@ -3,7 +3,7 @@
 ## Invitation recovery after signup - 30 September 2026
 
 - [x] Recover valid pending invitations from the verified account after tab/browser context loss; present direct shared-workspace joining on workspace and account pages. Three-engine browser acceptance passes. [Evidence](INVITATION-WORKFLOW.md).
-- [ ] Finish actual-D1 release acceptance and publish recovery for the currently pending recipient.
+- [x] Actual-D1/API checks pass on main and the schema-compatible release. Deployed `31a3eb1` as Worker `2b77151d-87b6-4615-b2bd-aa684f5a4fd8` at 100%; both-origin health and read-only pending-recipient eligibility checks pass. The existing recipient can now join from `/workspaces`.
 
 ## Shared workspace invitation repair ? 30 September 2026
 
