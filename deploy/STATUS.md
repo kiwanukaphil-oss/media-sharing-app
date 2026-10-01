@@ -1,3 +1,7 @@
+## 1 October 2026 - application-owned uploads
+
+Source `8ef8d88` on `ui/album-library-live` serves 100% as Worker `05e8f162-b56d-4c1b-b1a7-82611e02051f`, deployed 06:35 UTC using the direct Cloudflare config and `--keep-vars`. Schema stays 0020. Both-origin health/private-access checks and isolated live upload, quiet reload recovery, Account navigation and byte-identical download pass. [Implementation and verification](../docs/UPLOAD-WORKFLOW-IMPLEMENTATION.md). Rollback is `89be1406-81b8-4301-9b36-e6311bc491dc`. Physical-device acceptance and the pre-existing dependency-audit failure remain explicitly open.
+
 # Direct Cloudflare deployment
 
 ## Cobalt UI schema-compatible correction - 24 September 2026

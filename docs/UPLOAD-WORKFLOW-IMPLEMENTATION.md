@@ -33,8 +33,20 @@ Focused existing album navigation, sections, entry, upload feedback and bulk ZIP
 ## Release status
 
 - [x] Implement and verify the application-owned workflow locally.
-- [ ] Deploy the schema-0020 compatible release with existing bindings, variables and secrets preserved.
-- [ ] Verify both live origins and an exact-byte upload/recovery journey in the isolated Relay verification library.
+- [x] Deploy the schema-0020 compatible release with existing bindings, variables and secrets preserved.
+- [x] Verify both live origins and an exact-byte upload/recovery journey in the isolated Relay verification library.
 - [ ] Physical iPhone/iPad acceptance.
 
 No schema migration or original deletion is part of this release. Development main includes unreleased backend features and must not be deployed. Compatible release uses `.sites-runtime/album-library-live`. Pre-release rollback is Worker `89be1406-81b8-4301-9b36-e6311bc491dc`.
+
+## Deployment receipt - 1 October 2026
+
+Compatible source `8ef8d88` deployed at 06:35 UTC as Worker `05e8f162-b56d-4c1b-b1a7-82611e02051f`, with deployment readback confirming 100% traffic. Both `relayalbums.com` and the workers.dev origin pass health, operations health, security-header, anonymous-feed-denial and Uploads-route checks.
+
+The first CLI attempt used the generic local-test binding and Cloudflare rejected it before any deployment. The successful release used `node scripts/prepare-cloudflare.mjs`, then `wrangler deploy --config dist/server/wrangler.direct.json --keep-vars`. Correct production D1/R2 bindings and existing remote variables/secrets were preserved. No migration or deletion occurred.
+
+Live signed-in acceptance at 2026-10-01T06:35:45.250Z used only the isolated **Relay verification** library: 1,048,607 generated original bytes, SHA-256 `b22064498bfde20480108a1014892210fd7467d408ecc12c0bb80c51b8473853`. It verified compact initial state, explicit hideable details, saved-source pause/reload, quiet restoration, same-document Account navigation, resume without file selection, ready/no-store receipt and exact-byte R2 download. Desktop detail and 390px Uploads screenshots were inspected; no horizontal overflow. The generated verification original was retained.
+
+Existing web-browser checks pass Chrome, Edge, Firefox and WebKit, including upload/download, search, Trash/restore, final cut, quota, pairing and offline status. Workspace navigation checks pass all three engines after waiting for actual requests to settle before hard reloads; SPA load-state promises could otherwise refer to an earlier document and produce WebKit teardown-resource errors in the mocked fixture. Final compiled release checks for destinations, sign-out, revoked-content clearing and the complete upload recovery/cancellation journey pass.
+
+Hosted main run `36825384434` has a failed dependency-audit gate: the unchanged dependency set reports five advisories (three moderate, one high, one critical). This is not a clean hosted verification result. Dependency upgrades require a separate validated maintenance increment; no dependency or lockfile was changed by this upload release. Physical iPhone/iPad acceptance remains open.

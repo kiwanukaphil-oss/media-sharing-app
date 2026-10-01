@@ -3,7 +3,8 @@
 ## Media upload workflow implementation - 1 October 2026
 
 - [x] Implement and locally verify the application-wide manager and capability-based recovery. [Evidence](UPLOAD-WORKFLOW-IMPLEMENTATION.md).
-- [ ] Deploy and verify the compatible release; physical-device acceptance remains separate.
+- [x] Deploy source `8ef8d88` as Worker `05e8f162-b56d-4c1b-b1a7-82611e02051f` at 100%; live recovery and exact-byte checks pass.
+- [ ] Physical iPhone/iPad acceptance and separately verified dependency-advisory maintenance remain open.
 
 
 ## Bulk save to device - 30 September 2026
