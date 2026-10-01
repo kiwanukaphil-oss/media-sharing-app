@@ -10,6 +10,13 @@ for (const engine of [chromium, firefox, webkit]) {
   const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
   let failure = false, signedIn = true;
   const errors = [];
+  // SPA load-state promises may describe the previous document; settle actual requests before a hard reload.
+  const inFlight = new Set();
+  let latestNetworkActivity = Date.now();
+  page.on('request', request => { inFlight.add(request); latestNetworkActivity = Date.now(); });
+  const settled = request => { inFlight.delete(request); latestNetworkActivity = Date.now(); };
+  page.on('requestfinished', settled); page.on('requestfailed', settled);
+  const settleRequests = () => expect.poll(() => !inFlight.size && Date.now() - latestNetworkActivity > 550).toBe(true);
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/api/**', async route => {
     const url = new URL(route.request().url());
@@ -31,20 +38,23 @@ for (const engine of [chromium, firefox, webkit]) {
     await page.getByRole('option', { name: 'My space', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'A home for every story.', exact: true })).toBeVisible();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
-    await page.waitForLoadState('networkidle');
+    await settleRequests();
     await page.getByRole('link', { name: 'Relay home', exact: true }).click();
+    await settleRequests();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toHaveText(/My space/);
-    await page.waitForLoadState('networkidle');
+    await settleRequests();
     await page.getByRole('link', { name: 'Account', exact: true }).click();
+    await settleRequests();
     await page.getByRole('link', { name: 'Relay home', exact: true }).click();
+    await settleRequests();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
     await page.getByRole('combobox', { name: 'Switch library' }).click();
     await page.getByRole('option', { name: 'Shared archive', exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get('space')).toBe(shared);
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
-    await page.waitForLoadState('networkidle');
+    await settleRequests();
     await page.reload();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
@@ -55,7 +65,7 @@ for (const engine of [chromium, firefox, webkit]) {
     await expect(page.getByRole('heading', { name: 'A home for every story.', exact: true })).toBeVisible();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
     await page.setViewportSize({ width: 1360, height: 900 });
-    await page.waitForLoadState('networkidle');
+    await settleRequests();
     failure = true;
     await page.goto(origin);
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
@@ -65,7 +75,7 @@ for (const engine of [chromium, firefox, webkit]) {
     await page.getByRole('button', { name: 'Retry libraries' }).click();
     await expect(page.getByRole('combobox', { name: 'Switch library' })).toBeVisible();
     signedIn = false;
-    await page.waitForLoadState('networkidle');
+    await settleRequests();
     await page.reload();
     await expect(page.getByRole('searchbox', { name: 'Search albums' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'A home for every story.', exact: true })).toBeVisible();

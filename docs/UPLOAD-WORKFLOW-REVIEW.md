@@ -1,6 +1,6 @@
 # Media upload workflow review
 
-1 October 2026. Assessment and proposed design; no production behaviour changed.
+1 October 2026. Original assessment and proposed design. See [implementation and deployment evidence](UPLOAD-WORKFLOW-IMPLEMENTATION.md) for current status.
 
 ## Recommendation
 
