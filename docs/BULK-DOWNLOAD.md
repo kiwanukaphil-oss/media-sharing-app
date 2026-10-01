@@ -25,4 +25,4 @@ Replaced the bulk download text button with the matching 19 px toolbar icon, pre
 
 Chrome/WebKit acceptance passed at 320, 430 and 1280 px, including close contrast, icon-only label, no horizontal overflow, focus return, native ZIP download and original-byte checks. Mobile screenshots inspected; TypeScript, focused lint, build and dry-run passed.
 
-- [ ] Deploy and visually verify refinement.
+- [x] Published `2c5c2f3` as Worker `89be1406-81b8-4301-9b36-e6311bc491dc`. Both-origin health and canonical-domain icon-only action, dark close icon, visible Cancel and concise modal checks passed; live phone-width screenshot inspected.
