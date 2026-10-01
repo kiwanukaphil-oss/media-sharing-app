@@ -20,6 +20,24 @@ try {
   await page.getByRole('button', { name: 'Save selected to device', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('2 files');
   await expect(page.getByRole('dialog')).not.toContainText('On iPhone');
+  const trigger = page.getByRole('button', { name: 'Save selected to device', exact: true });
+  await expect(trigger).toHaveText('');
+  await expect(page.getByRole('button', { name: 'Close bulk download' })).toHaveCSS('color', 'rgb(41, 49, 45)');
+  await mkdir('.sites-runtime', { recursive: true });
+  for (const width of [430, 320, 1280]) {
+    await page.setViewportSize({ width, height: 932 });
+    await expect(page.getByRole('link', { name: 'Download ZIP', exact: true })).toBeVisible();
+    assert.ok(await page.getByRole('dialog').evaluate(element => element.scrollWidth <= element.clientWidth));
+    await page.screenshot({ path: `.sites-runtime/bulk-design-${width}-${process.env.RELAY_BULK_BROWSER || 'chromium'}.png` });
+  }
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+
   const download = page.waitForEvent('download');
   await page.getByRole('link', { name: 'Download ZIP', exact: true }).click();
   const result = await download;
