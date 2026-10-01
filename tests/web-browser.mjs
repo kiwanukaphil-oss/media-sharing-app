@@ -74,7 +74,7 @@ async function verifyBrowser(engine, options, label) {
     await expect(page.getByRole('dialog')).toContainText('100.0 GB');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Dismiss completed transfers' }).click();
+    await page.getByRole('button', { name: 'Clear completed uploads' }).click();
     await page.screenshot({ path: `.sites-runtime/browser-results/${label}-desktop.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByLabel('Search filenames')).toBeVisible();

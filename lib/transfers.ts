@@ -1,5 +1,5 @@
 import { hashOriginalChunks } from "./hash-original";
-import { createLibraryApi } from "./api-client";
+import { createLibraryApi, RequestError } from "./api-client";
 import { readCaptureDate } from "./capture-date";
 import { publishPreview } from "./previews";
 import type { Category, UploadSession } from "./contracts";
@@ -8,9 +8,27 @@ export type Transfer = {
   id: string; deviceId: string; accountSpaceId?: string; spaceName?: string; name: string; size: number; mime: string; category: Category;
   accessScopeId?: string | null; audienceName?: string; albumId?: string; albumName?: string; sectionId?: string; sectionName?: string; capturedAt?: string; uploadBatch?: string;
   hash?: string; partSize?: number; uploadId?: string; parts: { partNumber: number; etag: string }[];
-  state: "queued" | "preparing" | "sending" | "paused" | "needs-file" | "error" | "complete";
+  state: "queued" | "preparing" | "sending" | "finalizing" | "paused" | "offline" | "elsewhere" | "needs-access" | "needs-file" | "error" | "complete";
+  recovery?: "session" | "copy" | "handle"; storageWarning?: boolean; userPaused?: boolean; createdAt?: number;
+  intentVersion?: number;
+  lastModified?: number; errorStatus?: number; retryAfterMs?: number; sentBytes?: number;
+  bytesPerSecond?: number;
   progress: number; preparationProgress?: number; message?: string;
 };
+
+// Tiny synchronous intent records close the reload gap before IndexedDB commits a pause/resume.
+export function rememberUploadIntent(transfer: Transfer) {
+  try { localStorage.setItem(`relay-upload-intent:${transfer.id}`, JSON.stringify({ deviceId: transfer.deviceId, userPaused: transfer.userPaused, intentVersion: transfer.intentVersion })); }
+  catch { /* Storage-denied sessions retain in-memory intent only. */ }
+}
+
+function restoreUploadIntent(transfer: Transfer): Transfer {
+  try {
+    const intent = JSON.parse(localStorage.getItem(`relay-upload-intent:${transfer.id}`) || "null") as Pick<Transfer, "deviceId" | "userPaused" | "intentVersion"> | null;
+    if (intent?.deviceId === transfer.deviceId && (intent.intentVersion ?? 0) >= (transfer.intentVersion ?? 0)) return { ...transfer, ...intent };
+  } catch { /* IndexedDB remains the fallback when optional intent storage is unavailable. */ }
+  return transfer;
+}
 
 // Bound storage startup so a blocked browser database becomes an actionable error.
 function openTransferDatabase(): Promise<IDBDatabase> {
@@ -23,13 +41,20 @@ function openTransferDatabase(): Promise<IDBDatabase> {
     opening.onerror = () => { clearTimeout(timeout); reject(new Error("Allow browser storage to keep transfer progress.")); };
   });
 }
-// Persist only transfer manifests; source files stay on disk and can be reselected after reload.
+// Persist manifests separately from the bounded optional source-recovery database.
 export async function persistTransfer(transfer: Transfer) {
   const db = await openTransferDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction("transfers", "readwrite");
-      transaction.objectStore("transfers").put(transfer);
+      const store = transaction.objectStore("transfers");
+      const previous = store.get(transfer.id);
+      previous.onsuccess = () => {
+        const saved = previous.result as Transfer | undefined;
+        // Late progress writes cannot undo a newer explicit pause or resume, even across reloads.
+        const newerIntent = saved && (saved.intentVersion ?? 0) > (transfer.intentVersion ?? 0);
+        store.put(newerIntent && transfer.state !== "complete" ? { ...transfer, intentVersion: saved.intentVersion, userPaused: saved.userPaused, ...(saved.userPaused ? { state: "paused" } : {}) } : transfer);
+      };
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
       transaction.onabort = () => reject(transaction.error);
@@ -41,13 +66,23 @@ export async function restoreTransfers(deviceId: string, accountSpaces?: { id: s
   try {
     return await new Promise((resolve, reject) => {
       const reading = db.transaction("transfers").objectStore("transfers").getAll();
-      reading.onsuccess = () => resolve((reading.result as Transfer[]).filter(item => (accountSpaces ? accountSpaces.some(space => space.id === item.accountSpaceId && space.actorId === item.deviceId) : item.deviceId === deviceId) && item.state !== "complete").map(item => ({ ...item, state: "needs-file", message: "Choose the same file to resume" })));
+      reading.onsuccess = () => resolve((reading.result as Transfer[]).filter(item => (accountSpaces ? accountSpaces.some(space => space.id === item.accountSpaceId && space.actorId === item.deviceId) : item.accountSpaceId === undefined && item.deviceId === deviceId) && item.state !== "complete").map(restoreUploadIntent));
       reading.onerror = () => reject(reading.error);
+    });
+  } finally { db.close(); }
+}
+export async function readTransfer(id: string): Promise<Transfer | undefined> {
+  const db = await openTransferDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction("transfers").objectStore("transfers").get(id);
+      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
     });
   } finally { db.close(); }
 }
 // Remove a manifest only after explicit cancellation or dismissing a completed transfer.
 export async function forgetTransfer(id: string) {
+  try { localStorage.removeItem(`relay-upload-intent:${id}`); } catch { /* Optional intent storage. */ }
   const db = await openTransferDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -59,6 +94,12 @@ export async function forgetTransfer(id: string) {
 }
 // Remove this device's private queue metadata after sign-out without touching other device manifests.
 export async function forgetDeviceTransfers(deviceId: string) {
+  try {
+    for (const key of Object.keys(localStorage).filter(key => key.startsWith("relay-upload-intent:"))) {
+      const intent = JSON.parse(localStorage.getItem(key) || "null");
+      if (intent?.deviceId === deviceId) localStorage.removeItem(key);
+    }
+  } catch { /* Revocation still clears the supported IndexedDB store. */ }
   const db = await openTransferDatabase();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -105,44 +146,49 @@ export async function hashOriginal(file: File, signal: AbortSignal, onProgress?:
 export function sendPart(url: string, blob: Blob, signal: AbortSignal, onProgress: (sent: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    let stalled = false;
+    let activityTimer: ReturnType<typeof setTimeout>;
+    const trackActivity = () => { clearTimeout(activityTimer); activityTimer = setTimeout(() => { stalled = true; xhr.abort(); }, 45000); };
     const abort = () => xhr.abort();
     const finish = (error?: Error, etag?: string) => {
+      clearTimeout(activityTimer);
       signal.removeEventListener("abort", abort);
       if (error) reject(error); else resolve(etag!);
     };
     xhr.open("PUT", url);
     xhr.timeout = 10 * 60 * 1000;
-    xhr.upload.onprogress = event => onProgress(event.loaded);
+    xhr.upload.onprogress = event => { trackActivity(); onProgress(event.loaded); };
     xhr.onload = () => {
       const etag = xhr.getResponseHeader("ETag")?.replace(/^"|"$/g, "");
       if (xhr.status >= 200 && xhr.status < 300 && etag) finish(undefined, etag);
-      else finish(new Error("That part didn't arrive. Retry to continue where you left off."));
+      else finish(new RequestError("That part didn't arrive. Retry to continue where you left off.", xhr.status));
     };
     xhr.onerror = () => finish(new Error("Connection interrupted. Retry when you're back online."));
     xhr.ontimeout = () => finish(new Error("The connection timed out. Retry to resume."));
-    xhr.onabort = () => finish(new DOMException("Transfer paused", "AbortError"));
+    xhr.onabort = () => finish(stalled ? new Error("Upload stalled. Retrying the connection.") : new DOMException("Transfer paused", "AbortError"));
     signal.addEventListener("abort", abort, { once: true });
     if (signal.aborted) { finish(new DOMException("Transfer paused", "AbortError")); return; }
-    xhr.send(blob);
+    trackActivity(); xhr.send(blob);
   });
 }
 // Confirm file identity before resuming, save each ETag, and publish only after completion.
-export async function uploadOriginal(file: File, initial: Transfer, signal: AbortSignal, onChange: (transfer: Transfer) => void) {
+export async function uploadOriginal(file: File, initial: Transfer, signal: AbortSignal, onChange: (transfer: Transfer) => void, beforePersist: (transfer: Transfer) => Transfer = transfer => transfer) {
   const { requestJson } = createLibraryApi(initial.accountSpaceId);
   let current: Transfer = { ...initial, parts: [...initial.parts], state: "preparing", message: undefined };
   const update = (patch: Partial<Transfer>) => { current = { ...current, ...patch }; onChange(current); };
+  const save = async () => { try { await persistTransfer(beforePersist(current)); } catch { update({ storageWarning: true }); } };
   update({ state: "preparing", preparationProgress: 0 });
   try {
     const hash = await hashOriginal(file, signal, preparationProgress => update({ preparationProgress }));
     if (current.hash && current.hash !== hash) {
       update({ state: "needs-file", message: "This is a different file. Choose the original file to resume." });
-      await persistTransfer(current); return current;
+      await save(); return current;
     }
     update({ hash, capturedAt: current.capturedAt || await readCaptureDate(file) });
-    await persistTransfer(current);
+    await save();
     const session = await requestJson<UploadSession>("uploads", { method: "POST", signal, body: JSON.stringify({ id: current.id, name: current.name, mime: current.mime, size: current.size, category: current.category, sha256: hash, accessScopeId: current.accessScopeId ?? null, albumId: current.albumId, sectionId: current.sectionId, capturedAt: current.capturedAt, uploadBatch: current.uploadBatch }) });
     update({ partSize: session.partSize, state: "sending", uploadId: session.uploadId, ...(current.uploadId && session.uploadId && current.uploadId !== session.uploadId ? { parts: [], progress: 0 } : {}) });
-    await persistTransfer(current);
+    await save();
     const total = Math.ceil(file.size / session.partSize);
     if (session.status !== "ready") {
       for (let number = 1; number <= total; number++) {
@@ -154,24 +200,32 @@ export async function uploadOriginal(file: File, initial: Transfer, signal: Abor
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const { url } = await requestJson<{ url: string }>(`uploads/${current.id}/part`, { method: "POST", signal, body: JSON.stringify({ number }) });
-            etag = await sendPart(url, blob, signal, sent => update({ progress: Math.min(99, Math.round((completedBytes + sent) / file.size * 100)) }));
+            etag = await sendPart(url, blob, signal, sent => update({ sentBytes: completedBytes + sent, progress: Math.min(99, Math.round((completedBytes + sent) / file.size * 100)) }));
             break;
           } catch (error) {
-            if (signal.aborted || attempt === 2) throw error;
-            await new Promise(resolve => setTimeout(resolve, 750 * (attempt + 1)));
+            if (signal.aborted || attempt === 2 || (error instanceof RequestError && error.status < 500 && ![408, 429].includes(error.status))) throw error;
+            const delay = error instanceof RequestError && error.retryAfterMs ? error.retryAfterMs : 750 * 2 ** attempt + Math.random() * 400;
+            if (delay > 30000) throw error;
+            await new Promise<void>((resolve, reject) => {
+              const abort = () => { clearTimeout(timer); reject(new DOMException("Paused", "AbortError")); };
+              const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, delay);
+              signal.addEventListener("abort", abort, { once: true });
+            });
           }
         }
         current.parts.push({ partNumber: number, etag });
-        await persistTransfer(current);
+        await save();
       }
       signal.throwIfAborted();
+      update({ state: "finalizing", sentBytes: file.size });
       await requestJson(`uploads/${current.id}/complete`, { method: "POST", signal, body: JSON.stringify({ parts: current.parts }) });
     }
-    update({ state: "complete", progress: 100 });
-    await publishPreview(file, current.id, signal, initial.accountSpaceId);
+    update({ state: "complete", progress: 100, sentBytes: file.size, message: undefined });
+    await save();
+    await publishPreview(file, current.id, signal, initial.accountSpaceId).catch(() => {});
   } catch (error) {
-    update({ state: signal.aborted ? "paused" : "error", message: signal.aborted ? "Ready when you are" : error instanceof Error ? error.message : "Couldn't send this file. Please retry." });
+    if (current.state !== "complete") update({ state: signal.aborted ? "paused" : "error", errorStatus: error instanceof RequestError ? error.status : undefined, retryAfterMs: error instanceof RequestError ? error.retryAfterMs : undefined, message: signal.aborted ? undefined : error instanceof Error ? error.message : "Couldn't send this file. Please retry." });
   }
-  await persistTransfer(current);
+  await save();
   return current;
 }

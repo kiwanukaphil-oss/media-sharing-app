@@ -6,6 +6,8 @@ import "./cobalt-theme.css";
 import "./album-library.css";
 import "./entry.css";
 import "./theme-controls.css";
+import "./uploads.css";
+import { UploadApplication } from "@/components/upload-application";
 
 export const metadata: Metadata = {
   title: "Relay",
@@ -26,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><UploadApplication>{children}</UploadApplication></body>
     </html>
   );
 }

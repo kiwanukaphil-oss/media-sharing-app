@@ -1,6 +1,7 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 /* eslint-disable @next/next/no-html-link-for-pages -- Entry links deliberately replace the full library/account state. */
-/* eslint-disable @next/next/no-location-assign-relative-destination -- Entry transitions replace account/library state with a fresh navigation. */
+// Provider sign-out leaves the document; ordinary entry transitions preserve active uploads.
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ArrowLeftRight, ArrowUpRight, ArrowRight, Check, Folder, LockKeyhole, Users, Search, LogOut, LoaderCircle } from "lucide-react";
@@ -44,12 +45,12 @@ export default function RelayEntry({ mode = "home", legacy }: { mode?: "home" | 
         // Recover invitations after both successful and failed provider callbacks without exposing the token.
         try {
           if (new URLSearchParams(location.search).get("invitations") !== "skip" && /^[a-f0-9]{64}$/.test(sessionStorage.getItem("relay-pending-person-invitation") || "")) {
-            location.replace(`/join${signin ? `?signin=${encodeURIComponent(signin)}` : ""}`); return;
+            navigateInRelay(`/join${signin ? `?signin=${encodeURIComponent(signin)}` : ""}`, true); return;
           }
         } catch { /* A fresh invitation link remains usable when optional storage is blocked. */ }
         if (result.account) {
           // Pending invitation secrets stay in this tab; retain their existing explicit review/acceptance flow.
-          try { if (["relay-pending-collection", "relay-pending-delivery"].some(key => /^[a-f0-9]{64}$/.test(sessionStorage.getItem(key) || ""))) { location.replace("/account"); return; } } catch { /* Entry still works when optional tab storage is unavailable. */ }
+          try { if (["relay-pending-collection", "relay-pending-delivery"].some(key => /^[a-f0-9]{64}$/.test(sessionStorage.getItem(key) || ""))) { navigateInRelay("/account", true); return; } } catch { /* Entry still works when optional tab storage is unavailable. */ }
           setIdentity(result); return;
         }
         if (!result.enabled && mode === "home") { setShowLegacy(true); return; }
@@ -91,7 +92,7 @@ function WorkspaceChooser({ account, onExpired }: { account: Account; onExpired:
   }, [revision, onExpired]);
   async function createPersonalWorkspace() {
     setBusy(true); setFailure("");
-    try { const result = await requestJson<{ space: Space }>("auth/personal-space", { method: "POST" }); location.assign(`/?space=${encodeURIComponent(result.space.id)}`); }
+    try { const result = await requestJson<{ space: Space }>("auth/personal-space", { method: "POST" }); navigateInRelay(`/?space=${encodeURIComponent(result.space.id)}`); }
     catch (error) { setFailure(error instanceof Error ? error.message : "Your workspace could not be created."); setBusy(false); }
   }
   async function signOutCurrentBrowser() {

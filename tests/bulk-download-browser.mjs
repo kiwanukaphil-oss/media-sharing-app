@@ -14,7 +14,7 @@ try {
   await page.getByRole('button', { name: 'Create shared space', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeEnabled();
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles([1, 2].map(index => ({ name: 'Same name.txt', mimeType: 'text/plain', buffer: Buffer.from(`Original ${index}`) })));
-  await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.upload-indicator')).toHaveText(/^\d+ uploaded$/, { timeout: 30000 });
   await expect(page.getByLabel('Select loaded files (2)')).toBeVisible();
   await page.getByLabel('Select loaded files (2)').click();
   await page.getByRole('button', { name: 'Save selected to device', exact: true }).click();

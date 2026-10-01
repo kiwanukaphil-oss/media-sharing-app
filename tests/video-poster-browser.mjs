@@ -33,7 +33,7 @@ try {
   await page.getByRole('button', { name: 'Create shared space', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeEnabled();
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'New iPhone.MOV', mimeType: 'video/quicktime', buffer: bytes });
-  await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.upload-indicator')).toHaveText(/^\d+ uploaded$/, { timeout: 30000 });
   const firstCard = page.locator('article').filter({ hasText: 'New iPhone.MOV' });
   if (decodesMov) await expect(firstCard.locator('img')).toBeVisible({ timeout: 15000 });
   else await expect(firstCard).toContainText('Thumbnail unavailable', { timeout: 25000 });

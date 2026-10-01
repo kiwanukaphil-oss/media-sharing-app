@@ -1,4 +1,5 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 /* eslint-disable @next/next/no-html-link-for-pages -- Hosted authentication must perform a full document navigation. */
 
 import { useEffect, useState } from "react";
@@ -47,8 +48,8 @@ export default function AccountInvitation({ sessionId, email, standalone = false
     try {
       const result = await requestJson<{ spaceId: string }>("auth/invitation-accept", { method: "POST", headers: { "X-Relay-Invitation": token } });
       try { sessionStorage.removeItem(storageKey); } catch { /* Successful joining must still open the workspace. */ }
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Open the explicitly accepted library with fresh state.
-      window.location.assign(`/?space=${encodeURIComponent(result.spaceId)}`);
+      // Preserve application-owned uploads while the destination page refreshes its authority.
+      navigateInRelay(`/?space=${encodeURIComponent(result.spaceId)}`);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "The library could not be joined."); setBusy(false); }
   }
   if (!token && !error) return standalone ? <section><h1>Open your invitation link</h1><p className="mt-3">Already signed in? Find your pending invitation in Your workspaces, even if you opened the original link in another tab or browser.</p><a className="entry-secondary mt-5" href="/workspaces">Your workspaces</a></section> : null;

@@ -1,4 +1,5 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 import {useEffect,useState} from "react";
 import {requestJson} from "@/lib/api-client";
 import {formatBytes} from "@/lib/contracts";
@@ -28,8 +29,8 @@ export default function DeliveryInvitation({sessionId}:{sessionId?:string}){
     try{
       const result=await requestJson<{id:string}>("delivery/accept",{method:"POST",body:JSON.stringify({token})});
       sessionStorage.removeItem(storageKey);
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Open only the explicitly accepted delivery with fresh state.
-      location.assign(`/delivery?id=${encodeURIComponent(result.id)}`);
+      // Preserve application-owned uploads while the destination page refreshes its authority.
+      navigateInRelay(`/delivery?id=${encodeURIComponent(result.id)}`);
     }catch(failure){setError(failure instanceof Error?failure.message:"This delivery could not be opened.");setBusy(false);}
   }
   if(!token&&!error)return null;

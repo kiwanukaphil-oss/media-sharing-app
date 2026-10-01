@@ -1,4 +1,5 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 
 import {useEffect,useState} from "react";
 import {requestJson} from "@/lib/api-client";
@@ -32,8 +33,8 @@ export default function CollectionInvitation({sessionId}:{sessionId?:string}) {
     try{
       const result=await requestJson<Preview>("intake/accept",{method:"POST",body:JSON.stringify({token})});
       sessionStorage.removeItem(storageKey);
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Open the accepted request with fresh account-scoped state.
-      location.assign(`/collect?request=${encodeURIComponent(result.id)}`);
+      // Preserve application-owned uploads while the destination page refreshes its authority.
+      navigateInRelay(`/collect?request=${encodeURIComponent(result.id)}`);
     }catch(failure){setError(failure instanceof Error?failure.message:"The request could not be accepted.");setBusy(false);}
   }
   if(!token&&!error)return null;

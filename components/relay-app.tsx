@@ -8,13 +8,13 @@ import { WorkspaceUnavailable } from "./relay-entry";
 import { StorageSummary, StorageNavigationSummary } from "./storage-summary";
 
 /* eslint-disable @next/next/no-img-element -- Authenticated thumbnails and local QR data URLs must bypass public image optimizers. */
-// Full account navigation retains the browser beforeunload guard for active transfers.
+// Upload ownership lives in the root application; library navigation never discards originals.
 import AccountWorkspaceNavigation from "@/components/account-workspace-navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- ImagePlus and Send are retained removal candidates from the earlier UI.
 import { ArrowDown, ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Check, CheckCheck, ChevronRight, CircleHelp, Clapperboard, Copy, FileImage, FileVideo, FolderInput, Folder, FolderDown, Grid2X2, ImagePlus, Laptop, Link2, List, LoaderCircle, Menu, MonitorSmartphone, MoreHorizontal, Pause, Pencil, Play, Plus, Radio, RefreshCw, Search, Send, ShieldCheck, Smartphone, Star, Trash2, Undo2, Upload, Users, X } from "lucide-react";
 import QRCode from "qrcode";
-import { PresentationShield, HideLibraryButton } from "./presentation-shield";
+import { HideLibraryButton } from "./presentation-shield";
 import { LibraryScope, useLibraryApi } from "./library-scope";
 import PublicationDialog from "./publication-dialog";
 import ScopeCopyDialog from "./scope-copy-dialog";
@@ -31,9 +31,12 @@ import { LibraryTools, emptyLibraryQuery, type LibraryQuery } from "./library-to
 import { MediaViewer } from "./media-viewer";
 import { SelectionControl } from "./selection-control";
 import { useActionConfirmation } from "./action-confirmation";
-import { RequestError, createLibraryApi, requestJson as requestAccountJson } from "@/lib/api-client";
+import { RequestError, requestJson as requestAccountJson } from "@/lib/api-client";
 import { libraryRoleLabel, formatBytes, MAX_FILE_SIZE, type Category, type Device, type MediaItem, type Session, type FeedPage, type StorageUsage, type Album, type AlbumSection } from "@/lib/contracts";
-import { persistTransfer, restoreTransfers, forgetTransfer, forgetDeviceTransfers, uploadOriginal, type Transfer } from "@/lib/transfers";
+import { type Transfer } from "@/lib/transfers";
+import { uploadManager } from "@/lib/upload-manager";
+import { rememberOriginalHandle, type OriginalHandle } from "@/lib/upload-sources";
+import { useUploads } from "./upload-application";
 import { saveVerifiedOriginal, supportsVerifiedSave } from "@/lib/downloads";
 import { startLibraryPolling } from "@/lib/library-polling";
 
@@ -43,7 +46,8 @@ const libraryViewStorageKey = "relay-library-view";
 
 type Filter = "all" | Category | "trash";
 type Modal = "devices" | "help" | "storage" | "upload-requests" | "deliveries" | "delivery-create" | MediaItem | null;
-const statusLabels = { queued: "Waiting to send", preparing: "Preparing original", sending: "Sending", paused: "Paused", "needs-file": "Ready to resume", error: "Transfer interrupted", complete: "Available to everyone" };
+// Retirement candidate: legacy tray labels are superseded by UploadList.
+// const statusLabels = { queued: "Waiting to send", preparing: "Preparing original", sending: "Sending", paused: "Paused", "needs-file": "Ready to resume", error: "Transfer interrupted", complete: "Available to everyone" };
 type RelayModelContext = { registerTool: (tool: { name: string; description: string; inputSchema: object; annotations: { readOnlyHint: boolean; untrustedContentHint: boolean }; execute: (input: unknown) => Promise<unknown> }, options: { signal: AbortSignal }) => void | Promise<void> };
 
 // Native dialog supplies focus containment, Escape handling, and a modal accessibility tree.
@@ -76,7 +80,7 @@ function MediaPreview({ item, large = false, canRepair = false }: { item: MediaI
 
 // The working surface shares one durable feed; browser storage tracks only this device's queue.
 export default function RelayApp({ accountSpaceId }: { accountSpaceId?: string }) {
-  return <LibraryScope.Provider value={accountSpaceId}><PresentationShield><LibraryMemoryProvider key={accountSpaceId ?? "legacy"}><RelayWorkspace /></LibraryMemoryProvider></PresentationShield></LibraryScope.Provider>;
+  return <LibraryScope.Provider value={accountSpaceId}><LibraryMemoryProvider key={accountSpaceId ?? "legacy"}><RelayWorkspace /></LibraryMemoryProvider></LibraryScope.Provider>;
 }
 
 // Isolate library state across account spaces and legacy device access.
@@ -128,7 +132,7 @@ function RelayWorkspace() {
   const [filter, setFilter] = useState<Filter>("all");
   const [modal, setModal] = useState<Modal>(null);
   const [devices, setDevices] = useState<Device[]>([]);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const transfers = useUploads();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -146,14 +150,7 @@ function RelayWorkspace() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [waitingForFiles, setWaitingForFiles] = useState(false);
   const queuedImportTransfers = useRef(new Set<string>());
-  const resumeInput = useRef<HTMLInputElement>(null);
-  const resumeTarget = useRef<Transfer | null>(null);
-  const files = useRef(new Map<string, File>());
-  const controllers = useRef(new Map<string, AbortController>());
-  const serialQueue = useRef<Promise<unknown>>(Promise.resolve());
-  const transferTasks = useRef(new Map<string, Promise<unknown>>());
-  const runningTransfers = useRef(new Set<string>());
-  const cancelledTransfers = useRef(new Set<string>());
+  // File objects and scheduling now belong to the application upload manager.
   const dragDepth = useRef(0);
   const feedQuery = useRef("category=all&q=");
   const pageDepth = useRef(1);
@@ -203,10 +200,10 @@ function RelayWorkspace() {
       if (signal?.aborted || revision !== feedRevision.current || (failure instanceof Error && failure.name === "AbortError")) return;
       if (accountSpaceId !== undefined && failure instanceof RequestError && [401, 403].includes(failure.status)) {
         libraryAccessLost.current = true;
-        controllers.current.forEach(controller => controller.abort());
+        uploadManager.stopLibrary(accountSpaceId);
         verifiedDownload.current?.abort();
         setSession(null); setSessionFailure(true); setItems([]); setAlbums([]); setSections([]);
-        setStorage(null); setTransfers([]); setSelectedIds(new Set()); setModal(null); setPublicationItem(null); setScopeCopyItem(null);
+        setStorage(null); setSelectedIds(new Set()); setModal(null); setPublicationItem(null); setScopeCopyItem(null);
         setRenameItems([]); setDateItem(null); setFeedbackMessage(""); setUndoLibraryAction(null); setDownload(null);
         setCounts({ all: 0, original: 0, final: 0, trash: 0 });
       }
@@ -254,10 +251,12 @@ function RelayWorkspace() {
       const identity = `${current.space.id}:${current.deviceId}:${current.authentication || "legacy"}`;
       memory.setIdentity(identity);
       libraryAccessLost.current = false;
+      // Authorize the current actor before exposing the picker; the account directory may load later.
+      void uploadManager.registerSession(current, accountSpaceId);
       setSession(current);
       const accountSpaces = accountSpaceId === undefined ? undefined : (await requestAccountJson<{ spaces: AccountLibrary[] }>("auth/spaces")).spaces;
       setAccountLibraries(accountSpaces || []);
-      setTransfers(await restoreTransfers(current.deviceId, accountSpaces));
+      void uploadManager.registerSession(current, accountSpaceId, accountSpaces);
       await Promise.all([refreshFeed(), refreshDevices(), refreshStorage(), refreshAlbums()]);
     } catch (failure) { setSessionFailure(true); setError(failure instanceof Error ? failure.message : "Couldn't open this space."); }
     finally { setLoading(false); }
@@ -290,8 +289,7 @@ function RelayWorkspace() {
     restoreLibraryLocation();
     window.addEventListener("popstate", restoreLibraryLocation);
     void loadSession();
-    const active = controllers.current;
-    return () => { active.forEach(controller => controller.abort()); window.removeEventListener("popstate", restoreLibraryLocation); };
+    return () => { window.removeEventListener("popstate", restoreLibraryLocation); };
   }, [loadSession, resetAudienceState]);
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -349,7 +347,7 @@ function RelayWorkspace() {
     return () => lifecycle.abort();
   }, [session, requestJson]);
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => { if (controllers.current.size || savingVerified) { event.preventDefault(); event.returnValue = ""; } };
+    const warn = (event: BeforeUnloadEvent) => { if (savingVerified) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [savingVerified]);
@@ -427,49 +425,33 @@ function RelayWorkspace() {
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't connect this device."); }
     finally { setConnecting(false); }
   }
-  function updateTransfer(next: Transfer) {
-    if (libraryAccessLost.current) return;
-    setTransfers(current => current.some(item => item.id === next.id) ? current.map(item => item.id === next.id ? next : item) : [...current, next]);
-  }
-  // Serialize files to bound memory; each file resumes from its persisted completed parts.
+  // Queue destinations are immutable; page refresh failures cannot demote completed originals.
   function scheduleTransfer(file: File, transfer: Transfer) {
-    if (session?.role === "viewer" && transfer.accountSpaceId === accountSpaceId) { setError("Viewer access does not allow uploads."); return; }
-    if (controllers.current.has(transfer.id)) return;
-    files.current.set(transfer.id, file);
-    const controller = new AbortController();
-    controllers.current.set(transfer.id, controller);
-    updateTransfer({ ...transfer, state: "queued", message: undefined });
-    // Save every queued manifest immediately, without hiding later files behind storage latency.
-    const saved = persistTransfer(transfer).then(() => ({ error: undefined }), error => ({ error }));
-    serialQueue.current = serialQueue.current.catch(() => {}).then(async () => {
-      try {
-        if (cancelledTransfers.current.has(transfer.id)) return;
-        runningTransfers.current.add(transfer.id);
-        const persistence = await saved;
-        if (persistence.error) throw persistence.error;
-        const completed = await uploadOriginal(file, transfer, controller.signal, updateTransfer);
-        if (completed.state === "needs-file") files.current.delete(transfer.id);
-        if (completed.state === "complete") { memory.invalidate("lists"); files.current.delete(transfer.id); await Promise.all([refreshFeed(), refreshStorage(), refreshAlbums()]); }
-      } catch (failure) { updateTransfer({ ...transfer, state: "error", message: failure instanceof Error ? failure.message : "Couldn't save transfer progress. Allow browser storage and retry." }); }
-      finally { controllers.current.delete(transfer.id); runningTransfers.current.delete(transfer.id); transferTasks.current.delete(transfer.id); }
-    });
-    transferTasks.current.set(transfer.id, serialQueue.current);
+    if (session?.role === "viewer") { setError("Viewer access does not allow uploads."); return; }
+    uploadManager.enqueue(file, transfer);
   }
+  useEffect(() => {
+    const completed = (event: Event) => {
+      if ((event as CustomEvent).detail.accountSpaceId !== accountSpaceId) return;
+      memory.invalidate("lists");
+      void Promise.all([refreshFeed(), refreshStorage(), refreshAlbums()]).catch(() => {});
+    };
+    window.addEventListener("relay-upload-complete", completed);
+    return () => window.removeEventListener("relay-upload-complete", completed);
+  }, [accountSpaceId, memory, refreshFeed, refreshStorage, refreshAlbums]);
   // Folder previews carry an explicit immutable destination for each file. Persist before dispatch,
   // skip entries already queued by this preview, and retain partial progress if browser storage fails.
   async function queueFolderImport(entries: MappedImportFile[]) {
     if (!session || !["owner", "editor"].includes(session.role)) throw new Error("Organiser access changed. Refresh before importing.");
     const uploadBatch = crypto.randomUUID();
-    let queued = 0;
     for (const entry of entries) {
-      if (queuedImportTransfers.current.has(entry.transferId)) { queued++; continue; }
+      if (queuedImportTransfers.current.has(entry.transferId)) { continue; }
       const transfer: Transfer = { id: entry.transferId, deviceId: session.deviceId, accountSpaceId, spaceName: session.space.name,
         name: entry.file.name, size: entry.file.size, mime: entry.file.type || "application/octet-stream", category: "original",
         accessScopeId: entry.accessScopeId, audienceName: entry.audienceName, albumId: entry.albumId, albumName: entry.albumName, sectionId: entry.sectionId, sectionName: entry.sectionName,
         uploadBatch, parts: [], state: "queued", progress: 0 };
-      try { await persistTransfer(transfer); }
-      catch { throw new Error(`${queued} of ${entries.length} files queued. Allow browser storage, then retry the remaining files from this preview.`); }
-      queuedImportTransfers.current.add(entry.transferId); queued++; scheduleTransfer(entry.file, transfer);
+      // The manager reports recovery-storage failures without discarding usable in-session sources.
+      queuedImportTransfers.current.add(entry.transferId); scheduleTransfer(entry.file, transfer);
     }
     await refreshAlbums();
   }
@@ -479,9 +461,18 @@ function RelayWorkspace() {
     input?.addEventListener("cancel", cancelled);
     return () => input?.removeEventListener("cancel", cancelled);
   }, []);
-  function chooseOriginalFiles() {
+  // Persistent desktop handles avoid reselection after reload; native input remains the universal fallback.
+  async function chooseOriginalFiles() {
     setWaitingForFiles(true);
-    fileInput.current?.click();
+    const picker = (window as Window & { showOpenFilePicker?: (options: { multiple: boolean }) => Promise<OriginalHandle[]> }).showOpenFilePicker;
+    if (!picker) { fileInput.current?.click(); return; }
+    try {
+      const handles = await picker({ multiple: true });
+      const originals = await Promise.all(handles.map(async handle => { const file = await handle.getFile(); rememberOriginalHandle(file, handle); return file; }));
+      await selectOriginals(originals);
+    } catch (failure) {
+      if (!(failure instanceof DOMException && failure.name === "AbortError")) fileInput.current?.click();
+    } finally { setWaitingForFiles(false); }
   }
   // Show the entire selection immediately; the queue saves each manifest before sending bytes.
   async function selectOriginals(selected: FileList | File[]) {
@@ -493,17 +484,13 @@ function RelayWorkspace() {
     setWaitingForFiles(false);
     const uploadBatch = crypto.randomUUID();
     const category = filter === "final" ? "final" : "original";
+    const rejected: string[] = [];
     for (const file of Array.from(selected)) {
-      if (!file.size || file.size > MAX_FILE_SIZE) { setError(`${file.name}: choose a file between 1 byte and 100 GB.`); continue; }
+      if (!file.size || file.size > MAX_FILE_SIZE) { rejected.push(file.name); continue; }
       const transfer: Transfer = { id: crypto.randomUUID(), deviceId: session.deviceId, accountSpaceId, spaceName: session.space.name, name: file.name, size: file.size, mime: file.type || "application/octet-stream", category, accessScopeId: libraryQuery.scope || null, audienceName: libraryQuery.scope ? "Restricted audience" : "General library", albumId: destination?.id, albumName: destination?.name, sectionId: libraryQuery.section && libraryQuery.section !== "unsectioned" ? libraryQuery.section : undefined, sectionName: sections.find(section => section.id === libraryQuery.section)?.name, uploadBatch, parts: [], state: "queued", progress: 0 };
       scheduleTransfer(file, transfer);
     }
-  }
-  function resumeTransfer(transfer: Transfer) {
-    if (session?.role === "viewer" && transfer.accountSpaceId === accountSpaceId) { setError("Viewer access allows browsing and saving. Ask an owner before resuming uploads."); return; }
-    const file = files.current.get(transfer.id);
-    if (file) scheduleTransfer(file, transfer);
-    else { resumeTarget.current = transfer; resumeInput.current?.click(); }
+    if (rejected.length) setError(`${rejected.length} ${rejected.length === 1 ? "file was" : "files were"} skipped (empty or over 100 GB): ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}`);
   }
   // The invitation is encoded locally so device credentials never reach a third-party QR service.
   async function createInvitation() {
@@ -542,10 +529,9 @@ function RelayWorkspace() {
     setDeviceAccessBusy(true); setError("");
     try {
       await requestJson("session", { method: "DELETE" });
-      controllers.current.forEach(controller => controller.abort());
+      uploadManager.stopLibrary(accountSpaceId);
       download?.controller.abort();
-      await Promise.allSettled([...transferTasks.current.values()]);
-      try { await forgetDeviceTransfers(session.deviceId); }
+      try { await uploadManager.signOut(); }
       catch { /* Access is already revoked; browser storage may be unavailable. */ }
       window.location.replace("/");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't disconnect. Please retry."); }
@@ -607,27 +593,14 @@ function RelayWorkspace() {
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't update this file."); }
     finally { setMediaActionBusy(false); }
   }
-  // Wait for active work to stop before releasing its reservation and local manifest.
+  // Storage's cancellation entry uses the same application-owned lifecycle as the upload centre.
   async function cancelUpload(id: string, name: string) {
-    if (!await confirm({ title: "Cancel this upload?", description: `Progress for “${name}” will be discarded. The original on its device is unaffected.`, action: "Cancel upload", destructive: true })) return;
+    if (!await confirm({ title: "Cancel this upload?", description: `Unfinished progress for ?${name}? will be discarded. Uploaded originals stay safe.`, action: "Cancel upload", destructive: true })) return;
     try {
-      controllers.current.get(id)?.abort();
-      cancelledTransfers.current.add(id);
-      if (runningTransfers.current.has(id)) await transferTasks.current.get(id)?.catch(() => {});
-      const manifest = transfers.find(transfer => transfer.id === id);
-      const uploadApi = manifest ? createLibraryApi(manifest.accountSpaceId).requestJson : requestJson;
-      try { await uploadApi(`uploads/${id}`, { method: "DELETE" }); } catch (failure) { if (!(failure instanceof RequestError && failure.status === 404)) throw failure; }
-      await forgetTransfer(id); files.current.delete(id); setTransfers(current => current.filter(item => item.id !== id));
-      await refreshStorage(); setNotice("Unfinished upload cancelled.");
-    } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't cancel this upload."); }
-  }
-  async function restartTransfer(transfer: Transfer) {
-    if (!await confirm({ title: "Restart this upload?", description: `“${transfer.name}” will start again from the beginning. Use this if its saved upload parts have expired.`, action: "Restart upload" })) return;
-    try {
-      const result = await createLibraryApi(transfer.accountSpaceId).requestJson<{ uploadId: string }>(`uploads/${transfer.id}/restart`, { method: "POST" });
-      const restarted = { ...transfer, uploadId: result.uploadId, parts: [], progress: 0, state: "needs-file" as const, message: "Choose the original file to restart" };
-      await persistTransfer(restarted); updateTransfer(restarted); resumeTransfer(restarted);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : "Couldn't restart this transfer."); }
+      if (transfers.some(job => job.id === id)) await uploadManager.cancel(id);
+      else await requestJson(`uploads/${id}`, { method: "DELETE" });
+      await refreshStorage();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not cancel upload."); }
   }
   // Navigation preserves deep links; selection never leaks into a different album or date range.
   // Audience changes invalidate in-flight reads and close content dialogs immediately. Transfers
@@ -728,7 +701,6 @@ function RelayWorkspace() {
     }));
     return () => { memory.setWarmView(undefined); };
   }, [memory, session, requestJson, apiUrl]);
-  const activeTransfers = transfers.filter(item => item.state !== "complete");
   const originalCount = counts.original;
   const finalCount = counts.final;
   const pageTitle = session && librarySurface === "albums" ? "Albums" : !session && accountSpaceId !== undefined ? "Library" : filter === "trash" ? "Trash" : currentAlbum ? currentAlbum.name : libraryQuery.album === "unorganised" ? "Unorganised" : filter === "all" ? (session?.space.kind === "personal" ? "My space" : libraryQuery.scope === "accessible" ? "Everything I can access" : libraryQuery.scope ? "Restricted library" : "Shared library") : filter === "original" ? "Originals" : "Final cuts";
@@ -743,7 +715,7 @@ function RelayWorkspace() {
 
   if (sessionFailure && !session && accountSpaceId !== undefined) return <WorkspaceUnavailable retry={() => void loadSession()} />;
 
-  return <div className={`app-shell album-first ${librarySurface === "albums" ? "albums-arrival" : "album-files"}${currentAlbum ? " in-album" : ""} ${transfers.length || download ? "has-transfers" : ""}`} onDragEnter={event => { if (canUpload && librarySurface === "files" && event.dataTransfer.types.includes("Files")) { event.preventDefault(); dragDepth.current++; setDragging(true); } }} onDragOver={event => event.preventDefault()} onDragLeave={event => { event.preventDefault(); dragDepth.current--; if (dragDepth.current <= 0) setDragging(false); }} onDrop={event => { event.preventDefault(); dragDepth.current = 0; setDragging(false); if (canUpload) void selectOriginals(event.dataTransfer.files); }}>
+  return <div className={`app-shell album-first ${librarySurface === "albums" ? "albums-arrival" : "album-files"}${currentAlbum ? " in-album" : ""} ${download ? "has-transfers" : ""}`} onDragEnter={event => { if (canUpload && librarySurface === "files" && event.dataTransfer.types.includes("Files")) { event.preventDefault(); dragDepth.current++; setDragging(true); } }} onDragOver={event => event.preventDefault()} onDragLeave={event => { event.preventDefault(); dragDepth.current--; if (dragDepth.current <= 0) setDragging(false); }} onDrop={event => { event.preventDefault(); dragDepth.current = 0; setDragging(false); if (canUpload) void selectOriginals(event.dataTransfer.files); }}>
     <a className="skip-link" href="#main-content">Skip to content</a>
     <aside ref={sidebarRef} className={`sidebar${navigationOpen ? " is-open" : ""}`} role={navigationOpen ? "dialog" : undefined} aria-modal={navigationOpen || undefined} aria-label="Workspace navigation" onClick={event => { if ((event.target as HTMLElement).closest("button") && !(event.target as HTMLElement).closest(".library-switcher")) setNavigationOpen(false); }}>
       <button className="icon-button navigation-close" aria-label="Close navigation" onClick={() => setNavigationOpen(false)}><X size={20} /></button>
@@ -768,7 +740,7 @@ function RelayWorkspace() {
         {!albums.some(album => !album.archivedAt) && <p className="album-nav-empty">No albums</p>}
         <button className={`nav-item${libraryQuery.album === "unorganised" ? " active" : ""}`} aria-current={libraryQuery.album === "unorganised" ? "page" : undefined} onClick={() => { setFilter("all"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, album: "unorganised" }); }}><Grid2X2 size={17} /><span className="album-name">Unorganised</span></button>
       </nav></>}
-      <button aria-pressed={filter === "trash" && !libraryQuery.album} className={`nav-item ${filter === "trash" && !libraryQuery.album ? "active" : ""}`} onClick={() => { setFilter("trash"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope }); }}><FolderDown size={18} />Trash<span>{counts.trash}</span></button><button className="nav-item storage-nav" disabled={!session} onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}><ShieldCheck size={18} /><span className="storage-nav-label">Storage<StorageNavigationSummary storage={storage} /></span></button><div className="nav-divider" />
+      <button aria-pressed={filter === "trash" && !libraryQuery.album} className={`nav-item ${filter === "trash" && !libraryQuery.album ? "active" : ""}`} onClick={() => { setFilter("trash"); setSearch(""); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope }); }}><FolderDown size={18} />Trash<span>{counts.trash}</span></button><button className="nav-item storage-nav" disabled={!session} onClick={() => { setModal("storage"); void refreshStorage().catch(failure => setError(failure.message)); }}><ShieldCheck size={18} /><span className="storage-nav-label">Storage<StorageNavigationSummary storage={storage} /></span></button><a className="nav-item" href="/uploads"><Upload size={18} />Uploads</a><div className="nav-divider" />
       {session?.deliveries && isOwner && <button className="nav-item" onClick={() => setModal("deliveries")}><Link2 size={18}/>Deliveries</button>}
       {session?.uploadRequests && isOwner && <button className="nav-item" onClick={() => setModal("upload-requests")}><Upload size={18}/>Upload requests</button>}
       {accountSpaceId !== undefined ? <>{session && session.space.kind !== "personal" && <a className="nav-item" href={`/people?space=${encodeURIComponent(accountSpaceId)}`}><Users size={18} />People &amp; access</a>}</> : <button className="nav-item" disabled={!session} onClick={() => { setModal("devices"); void refreshDevices().catch(() => setError("Couldn't refresh connected devices.")); }}><MonitorSmartphone size={18} />Connected devices<span>{devices.length || "—"}</span></button>}
@@ -783,7 +755,7 @@ function RelayWorkspace() {
         {session && librarySurface === "files" && <button className="back-to-albums text-button" onClick={openAlbumLibrary}>← Back to albums</button>}
         {librarySurface === "files" || !session ? <div className="page-heading"><div className="album-title-group">{currentAlbum && <AlbumCover album={currentAlbum} colour={appearance[currentAlbum.id]?.colour} compact />}<h1>{pageTitle}<span className="title-dot">.</span></h1></div>{filter !== "trash" && canUpload && <div className="page-upload-actions">{isOrganiser && !currentAlbum && <FolderImport accessScopeId={libraryQuery.scope || null} audienceName={libraryQuery.scope ? "Restricted audience" : "General library"} disabled={!session || session.transport === "unconfigured"} spaceName={session?.space.name || "This library"} queue={queueFolderImport} />}<button className="button primary" disabled={!session || session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={chooseOriginalFiles}><Plus size={18} />Add files</button></div>}{filter === "trash" && <button className="button secondary" onClick={() => setFilter("all")}>Back to files</button>}</div> : null}
         {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError("")}><X size={17} /></button></div>}
-        {!online && session && <div className="error-banner" role="status">Connection interrupted. Your queue is retained; resume sending when you are back online.</div>}
+        {!online && session && <div className="error-banner" role="status">Offline. Uploads will continue when the connection returns.</div>}
         {session?.transport === "local" && <div className="local-note"><span className="status-dot" />Local workspace · files stay on this computer until hosting is connected.</div>}
         {session?.transport === "unconfigured" && <div className="error-banner">File transfers need their storage connection. Existing originals have not been changed.</div>}
         {loading ? <div className="loading-panel"><LoaderCircle className="spin" size={25} /><p>Opening your space…</p></div> : sessionFailure && !session ? <section className="loading-panel"><p>Couldn&apos;t open your space.</p>{accountSpaceId !== undefined && <a className="button secondary" href="/account">Sign in or choose a library</a>}<button className="button secondary" onClick={() => void loadSession()}>Try again</button></section> : invitationRequired ?
@@ -812,9 +784,10 @@ function RelayWorkspace() {
     {currentAlbum && sectionMoveItems.length > 0 && <SectionPlacement key={currentAlbum.id} album={currentAlbum} sections={sections.filter(section => section.albumId === currentAlbum.id)} files={sectionMoveItems} close={() => setSectionMoveItems([])} refresh={refreshLibrary} clearSelection={() => setSelectedIds(new Set())} feedback={{ setMessage: setFeedbackMessage, setUndo: setUndoLibraryAction }} />}
     {waitingForFiles && <div className="toast" role="status">Waiting for selected files from your phone or computer. Cloud photos and videos may need to download first.<button className="text-button" onClick={() => setWaitingForFiles(false)}>Dismiss</button></div>}
     <input ref={fileInput} tabIndex={-1} className="visually-hidden" type="file" multiple aria-label="Choose original files" onChange={event => { setWaitingForFiles(false); if (event.target.files) void selectOriginals(event.target.files); event.target.value = ""; }} />
-    <input ref={resumeInput} tabIndex={-1} className="visually-hidden" type="file" aria-label="Choose file to resume" onChange={event => { const file = event.target.files?.[0]; const target = resumeTarget.current; if (file && target) { if (file.size !== target.size) setError("Choose the same original file to resume."); else scheduleTransfer(file, target); } event.target.value = ""; }} />
+
     {dragging && librarySurface === "files" && canUpload && filter !== "trash" && <div className="drop-overlay"><Upload size={52} /><h2>Drop files to add</h2></div>}
-    {(transfers.length > 0 || download) && <section id="file-transfers" tabIndex={-1} className="transfer-tray" aria-label="File transfers"><div className="tray-heading"><strong>{activeTransfers.length ? <><Radio size={16} />{activeTransfers.length} {activeTransfers.length === 1 ? "transfer" : "transfers"}</> : <><CheckCheck size={17} />{download ? "Saving original" : "All files delivered"}</>}</strong><button className="icon-button" aria-label="Dismiss completed transfers" onClick={() => { for (const transfer of transfers.filter(item => item.state === "complete")) void forgetTransfer(transfer.id); setTransfers(current => current.filter(item => item.state !== "complete")); }}><X size={16} /></button></div><div className="transfer-list">{download && <div className="transfer-row"><ArrowDownToLine size={21} /><div className="transfer-information"><strong>{download.name}</strong><div><span>Saving and verifying</span><span>{download.progress}%</span></div><progress max={100} value={download.progress} aria-label="Download progress" /></div><button className="icon-button" aria-label="Cancel download" onClick={() => download.controller.abort()}><X size={17} /></button></div>}{transfers.map(transfer => <div className="transfer-row" key={transfer.id}><div className="transfer-file-icon"><FileImage size={21} /></div><div className="transfer-information"><strong>{transfer.name}</strong><p>To: {transfer.spaceName || "Library"}{transfer.audienceName ? ` / ${transfer.audienceName}` : ""}{transfer.albumName ? ` / ${transfer.albumName}` : ""}{transfer.sectionName ? ` / ${transfer.sectionName}` : ""}{transfer.accountSpaceId && transfer.accountSpaceId !== accountSpaceId && <> &middot; <a className="text-button" href={`/?space=${encodeURIComponent(transfer.accountSpaceId)}`}>Open destination</a></>}</p><div><span>{transfer.state === "complete" ? "Available in destination library" : statusLabels[transfer.state]}</span><span>{transfer.state === "preparing" ? `${transfer.preparationProgress ?? 0}%` : transfer.state === "sending" ? `${transfer.progress}%` : formatBytes(transfer.size)}</span></div><progress max={100} value={transfer.state === "preparing" ? transfer.preparationProgress ?? 0 : transfer.progress} aria-label={`${transfer.name} ${transfer.state === "preparing" ? "preparation " : ""}progress`} />{transfer.state === "preparing" && <p>Checking this file before sending. Large videos take longer.</p>}{transfer.message && <p>{transfer.message}</p>}</div>{transfer.state === "complete" ? <Check size={19} className="success-icon" /> : ["sending", "preparing", "queued"].includes(transfer.state) ? <button className="icon-button" aria-label={`Pause ${transfer.name}`} onClick={() => controllers.current.get(transfer.id)?.abort()}><Pause size={17} /></button> : <div className="transfer-actions"><button className="icon-button" aria-label={`Resume ${transfer.name}`} onClick={() => resumeTransfer(transfer)}><Play size={17} /></button>{transfer.state === "error" && <button className="icon-button" aria-label={`Restart ${transfer.name}`} onClick={event => { event.currentTarget.focus(); void restartTransfer(transfer); }}><RefreshCw size={16} /></button>}<button className="icon-button" aria-label={`Cancel ${transfer.name}`} onClick={event => { event.currentTarget.focus(); void cancelUpload(transfer.id, transfer.name); }}><X size={15} /></button></div>}</div>)}</div>{activeTransfers.length > 0 && <p className="tray-note">On a phone, keep Relay visible and your screen unlocked until sending finishes. Switching apps or closing this tab can interrupt uploads.</p>}</section>}
+    {/* Legacy combined tray is retired; verified downloads retain their independent cancellation control. */}
+    {download && <section className="transfer-tray" aria-label="Download"><div className="transfer-row"><ArrowDownToLine size={21} /><div className="transfer-information"><strong>{download.name}</strong><p>Saving and verifying ? {download.progress}%</p><progress max={100} value={download.progress} aria-label="Download progress" /></div><button className="icon-button" aria-label="Cancel download" onClick={() => download.controller.abort()}><X size={17} /></button></div></section>}
     {confirmation}
     {notice && <div className="toast" role="status"><Check size={17} />{notice}</div>}
 
@@ -849,7 +822,7 @@ function RelayWorkspace() {
       </div>
     </ModalFrame>}
     {modal === "storage" && <ModalFrame title="Storage" onClose={() => setModal(null)}>{error && <p role="alert" className="error-banner">{error}</p>}{storage ? <StorageSummary storage={storage} spaceName={session?.space.name || "Current library"} onOpenTrash={() => { setModal(null); setFilter("trash"); changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope }); }} onCancelUpload={(id, name) => void cancelUpload(id, name)} /> : <p role="status">Loading storage...</p>}</ModalFrame>}
-    {modal === "help" && <ModalFrame title="Help" onClose={() => setModal(null)}><div className="help-step"><span>01</span><div><h3>Add files</h3><p>Add files or drag them into the library. Files are uploaded without re-encoding.</p></div></div><div className="help-step"><span>02</span><div><h3>Download files</h3><p>Save to device downloads the original file.</p></div></div><div className="help-step"><span>03</span><div><h3>Organise an album</h3><p>Create sections, then use Move to section on a file or selected files.</p></div></div><p className="modal-intro">Albums group files without creating copies. Owners manage access and permanent deletion.</p><div className="help-note"><ShieldCheck size={20} /><p>Uploads run in this page. On a phone, keep Relay visible and the screen unlocked; background sending is not guaranteed. If interrupted, choose the same files to resume.</p></div></ModalFrame>}
+    {modal === "help" && <ModalFrame title="Help" onClose={() => setModal(null)}><div className="help-step"><span>01</span><div><h3>Add files</h3><p>Add files or drag them into the library. Files are uploaded without re-encoding.</p></div></div><div className="help-step"><span>02</span><div><h3>Download files</h3><p>Save to device downloads the original file.</p></div></div><div className="help-step"><span>03</span><div><h3>Organise an album</h3><p>Create sections, then use Move to section on a file or selected files.</p></div></div><p className="modal-intro">Albums group files without creating copies. Owners manage access and permanent deletion.</p><div className="help-note"><ShieldCheck size={20} /><p>Uploads run in this page. On a phone, keep Relay visible and the screen unlocked; background sending is not guaranteed. Open Uploads to review saved progress.</p></div></ModalFrame>}
     {modal && typeof modal === "object" && <MediaViewer sectionName={currentAlbum ? modal.sectionName || "Unsectioned" : undefined} onMoveSection={currentAlbum && canEditFile(modal) && !currentAlbum.archivedAt && !modal.archivedAt ? () => { setSectionMoveItems([modal]); setModal(null); } : undefined} item={modal} items={visibleItems} saving={savingVerified} onNavigate={setModal} onClose={() => setModal(null)} onSave={() => void saveOriginal(modal)} onCopyAudience={session?.restrictedScopes && session.role === "owner" && !modal.archivedAt ? () => { setScopeCopyItem(modal); setModal(null); } : undefined} onPublish={session?.space.kind === "personal" && !modal.archivedAt ? () => { setPublicationItem(modal); setModal(null); } : undefined} preview={<MediaPreview key={modal.id} item={modal} large />} thumbnail={item => <MediaPreview item={item} canRepair={canEditFile(item)} />}>
       <div className="detail-metadata"><span>{currentAlbum ? modal.sectionName || "Unsectioned" : modal.category === "final" ? "Final cut" : "Original"}</span><span>{formatBytes(modal.size)}</span><span>{modal.mime}</span></div><p className="small-muted">Shared by {modal.deviceName}</p><dl className="file-details"><dt>Uploaded name</dt><dd>{modal.originalName || modal.name}</dd><dt>Uploaded</dt><dd>{new Date(modal.createdAt).toISOString().replace("T", " ").slice(0, 19)} UTC</dd><dt>Date taken</dt><dd>{modal.capturedAt?.replace("T", " ") || "Unknown - browsing uses upload date"}</dd></dl><div className="detail-actions">{canEditFile(modal) && !modal.archivedAt && <><button className="button secondary compact" onClick={() => { setRenameItems([modal]); setModal(null); }}>Rename file</button><button className="text-button" onClick={() => { setDateItem(modal); setModal(null); }}>Correct capture date</button></>}{modal.uploadBatch && <button className="text-button" onClick={() => { changeLibraryQuery({ ...emptyLibraryQuery, scope: libraryQuery.scope, batch: modal.uploadBatch! }); setFilter("all"); setSearch(""); setModal(null); }}>View upload batch</button>}</div><details className="integrity-details"><summary>Original file fingerprint</summary><code>{modal.sha256}</code><p>SHA-256 of the file selected for upload. Browser-managed downloads do not verify this automatically.</p></details>
       {/* The earlier inline preview dialog is superseded by MediaViewer; its styles are removal candidates after release approval. */}

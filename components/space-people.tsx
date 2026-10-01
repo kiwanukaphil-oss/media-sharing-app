@@ -1,4 +1,5 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Copy, UserPlus, Users } from "lucide-react";
@@ -44,8 +45,8 @@ export default function SpacePeople({ spaceId }: { spaceId: string }) {
     try {
       await api.requestJson(`people/${member.id}`, { method: "PUT", body: JSON.stringify({ action, revision: member.revision }) });
       if (action === "leave" || (action === "remove" && member.id === people?.currentMembershipId)) {
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Clear the departed space's state.
-        window.location.assign("/account"); return;
+      // Preserve application-owned uploads while the destination page refreshes its authority.
+        navigateInRelay("/account"); return;
       }
       setNotice("Access updated. Shared files are preserved."); await refreshPeople();
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Access could not be changed."); await refreshPeople(); }

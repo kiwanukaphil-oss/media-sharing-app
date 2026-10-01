@@ -65,7 +65,7 @@ try {
   await page.getByRole('button', { name: 'Use selected file as cover', exact: true }).click();
   await expect(page.locator('.section-cover')).toBeVisible();
   await page.getByRole('button', { name: 'Clear selection', exact: true }).click();
-  await page.getByRole('button', { name: 'Dismiss completed transfers', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear completed uploads', exact: true }).click();
   await mkdir('outputs/sections' , { recursive: true });
   await page.screenshot({ path: 'outputs/sections/desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
