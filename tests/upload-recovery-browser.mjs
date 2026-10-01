@@ -70,7 +70,7 @@ try {
     indexedDB.open = (name, version) => { if (name.startsWith('relay-')) throw new DOMException('Storage denied', 'SecurityError'); return original(name, version); };
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeVisible();
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'without-storage.raw', mimeType: 'application/octet-stream', buffer: Buffer.from('original survives unavailable recovery storage') });
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });

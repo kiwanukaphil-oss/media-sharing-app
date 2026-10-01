@@ -5,7 +5,9 @@
 - [x] Audit current selection, transfer ownership, navigation, resume, dismissal, cancellation and completion. Document the replacement workflow, browser limits and real-life recovery contract in [the assessment](UPLOAD-WORKFLOW-REVIEW.md).
 - [x] Build and verify a separate [interactive workflow study](../prototypes/relay-upload-workflow/README.md): Chromium/Firefox/WebKit, six widths, quiet restoration, hide/reopen, preserved destinations, pause/resume, recovery and cancellation semantics. Desktop/phone visual inspection passed.
 - [x] Implement the application-wide manager, quiet compact UI and capability-based recovery. [Implementation and acceptance](UPLOAD-WORKFLOW-IMPLEMENTATION.md).
-- [ ] Verify real transfers, schema-compatible deployment and physical-device acceptance. Existing phase completion counts remain unchanged.
+- [x] Verify real transfers and deploy compatible source `8ef8d88` as Worker `05e8f162-b56d-4c1b-b1a7-82611e02051f` at 100%; both-origin probes and live exact-byte/reload/navigation acceptance pass.
+- [ ] Physical iPhone/iPad acceptance. Existing phase completion counts remain unchanged.
+- [ ] Resolve existing dependency-audit advisories in a separately verified maintenance increment; hosted run `36825384434` is not fully green.
 
 ## Bulk save to device - 30 September 2026
 

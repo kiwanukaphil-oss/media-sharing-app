@@ -38,7 +38,7 @@ await page.route('**/api/**', async route => {
 });
 try {
   await page.goto(`${origin}/?space=${spaces[0].id}&view=files`);
-  await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeVisible();
   const original = Buffer.alloc(1024 * 1024, 82);
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'destination.raw', mimeType: 'application/octet-stream', buffer: original });
   await expect.poll(() => bodies.length).toBe(1);

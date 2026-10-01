@@ -31,7 +31,7 @@ try {
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   await page.route('**/uploads/*/bytes/*', async route => { await gate; await route.continue().catch(() => {}); });
-  await page.getByRole('button', { name: 'Add files', exact: true }).click();
+  await page.getByRole('button', { name: 'Add files', exact: true }).first().click();
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('File access remembered', { exact: true })).toBeVisible();
   await expect(page.getByText('Uploading', { exact: true })).toBeVisible();

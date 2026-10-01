@@ -21,7 +21,7 @@ try {
   await page.goto(`${origin}/?view=files`);
   await page.getByLabel('Space name').fill(`Upload workflow ${engineName}`);
   await page.getByRole('button', { name: 'Create shared space', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeVisible();
   await page.evaluate(() => { window.uploadContinuityMarker = 'same-document'; });
   let releaseHash;
   const holdHash = new Promise(resolve => { releaseHash = resolve; });
@@ -60,7 +60,7 @@ try {
   await expect(page.locator('.upload-indicator')).toHaveCount(0);
   console.log('Navigation and exact-byte delivery passed. Checking reload recovery.');
   await page.goBack();
-  await expect(page.getByRole('button', { name: 'Add files', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeVisible();
   // Pause after original retention, then reload; resuming must not open a file picker.
   let releaseBytes;
   const holdBytes = new Promise(resolve => { releaseBytes = resolve; });
