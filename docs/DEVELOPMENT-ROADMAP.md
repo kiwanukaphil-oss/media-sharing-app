@@ -1,5 +1,11 @@
 # Relay development roadmap
 
+## Media upload workflow implementation - 1 October 2026
+
+- [x] Implement and locally verify the application-wide manager and capability-based recovery. [Evidence](UPLOAD-WORKFLOW-IMPLEMENTATION.md).
+- [ ] Deploy and verify the compatible release; physical-device acceptance remains separate.
+
+
 ## Bulk save to device - 30 September 2026
 
 - [x] 1 October: refine archive modal to the album design system, fix invisible close control and make toolbar action icon-only. Chrome/WebKit responsive, focus and download checks pass.

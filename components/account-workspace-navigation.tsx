@@ -1,6 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-location-assign-relative-destination -- A full navigation clears library state and retains explicit upload destinations. */
+// Internal workspace navigation preserves the application upload manager.
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MonitorSmartphone } from "lucide-react";
 import { requestJson, RequestError } from "@/lib/api-client";
@@ -10,6 +11,7 @@ type Library = { id: string; name: string; kind?: "personal" | "shared" };
 
 // Account navigation is independent of the open library, including paired-device and failed-library routes.
 export default function AccountWorkspaceNavigation({ spaceId }: { spaceId?: string }) {
+  const router = useRouter();
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [error, setError] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -29,8 +31,8 @@ export default function AccountWorkspaceNavigation({ spaceId }: { spaceId?: stri
     {libraries.length > 0 && <div className="library-switcher">
       <WorkspaceSelect label="Switch library" value={selected}
         options={[...(!selected ? [{ value: "", label: "Choose a library" }] : []), ...libraries.map(library => ({ value: library.id, label: library.name, group: library.kind === "personal" ? "Personal" : "Shared" }))]}
-        onChange={next => { if (next && next !== spaceId) window.location.assign(`/?space=${encodeURIComponent(next)}`); }} />
-      <p>Uploads keep their destination. Resume after switching.</p>
+        onChange={next => { if (next && next !== spaceId) router.push(`/?space=${encodeURIComponent(next)}`); }} />
+      {/* The queue keeps its original destination while browsing. */}
     </div>}
     {error && <p role="status" className="album-nav-empty">Libraries could not be loaded. <button className="text-button" onClick={() => setRevision(value => value + 1)}>Retry libraries</button></p>}
     <a className="nav-item" href="/workspaces"><MonitorSmartphone size={18} />Choose workspace</a>

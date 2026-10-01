@@ -1,4 +1,5 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 
 import { useState } from "react";
 import { requestJson } from "@/lib/api-client";
@@ -17,8 +18,8 @@ export default function PendingWorkspaceInvitations({ invitations }: { invitatio
     try {
       const joined = await requestJson<{ spaceId: string }>(`auth/invitations/${invitation.id}/accept`, { method: "POST" });
       try { sessionStorage.removeItem("relay-pending-person-invitation"); } catch { /* Opening a joined workspace does not require browser storage. */ }
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Membership changed; load the accepted workspace with fresh authority.
-      window.location.assign(`/?space=${encodeURIComponent(joined.spaceId)}`);
+      // Keep application uploads alive while the new page checks authority.
+      navigateInRelay(`/?space=${encodeURIComponent(joined.spaceId)}`);
     } catch (error) {
       setFailure(error instanceof Error ? error.message : "The workspace could not be joined. Please retry."); setJoiningId("");
     }

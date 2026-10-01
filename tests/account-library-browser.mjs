@@ -24,6 +24,8 @@ await page.route('**/api/**', async route => {
   const url = new URL(route.request().url());
   requests.push(url);
   if (url.pathname === '/api/auth/spaces') return route.fulfill({ json: { spaces: [{ id: space, name: 'Family archive', role: 'owner', kind: 'shared', actorId: actor }, { id: otherSpace, name: 'My space', role: 'owner', kind: 'personal', actorId: 'other-actor' }] } });
+  if (url.pathname === '/api/session') return route.fulfill({ json: { authentication: 'account', personId: 'fixture', deviceId: url.searchParams.get('space') === space ? actor : 'other-actor', role: 'owner', transport: 'local', space: { id: url.searchParams.get('space'), name: url.searchParams.get('space') === space ? 'Family archive' : 'My space', kind: url.searchParams.get('space') === space ? 'shared' : 'personal' } } });
+  if (/\/uploads\/[^/]+$/.test(url.pathname) && route.request().method() === 'GET') return route.fulfill({ json: { status: 'ready' } });
   assert.equal(url.searchParams.get('space'), url.pathname.startsWith('/api/uploads') ? space : activeSpace, url.pathname + ' must retain its library');
   if (url.pathname.startsWith('/api/uploads/') && route.request().method() === 'DELETE') {
     cancelledDestination = url.searchParams.get('space');
@@ -94,6 +96,8 @@ try {
       opening.onerror = () => reject(opening.error);
     });
   }, { space, actor });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Open navigation', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
   await page.getByRole('combobox', { name: 'Switch library' }).click();
   activeSpace = otherSpace;
@@ -102,14 +106,18 @@ try {
   await expect(page.getByRole('searchbox', { name: 'Search albums' })).toHaveValue('');
   await expect(page.getByTitle('My space', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'A home for every story.', exact: true })).toBeVisible();
+  await expect(page.getByText('Queued family.txt', { exact: true })).toHaveCount(0);
+  await page.locator('.upload-indicator').click();
+  await expect(page).toHaveURL(/\/uploads/);
   await expect(page.getByText('Queued family.txt', { exact: true })).toBeVisible();
   await expect(page.getByText('Other person private.txt', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Open destination' })).toHaveAttribute('href', `/?space=${space}`);
+  await expect(page.locator('.upload-row').filter({ hasText: 'Queued family.txt' })).toContainText('Family archive');
   await page.screenshot({ path: '.sites-runtime/account-library/personal-mobile.png', fullPage: true });
   await page.getByRole('button', { name: 'Cancel Queued family.txt', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel upload', exact: true }).click();
-  await expect.poll(() => cancelledDestination).toBe(space);
+  assert.equal(cancelledDestination, null, 'An unadmitted local job needs no server cancellation');
   await expect(page.getByText('Queued family.txt', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /Back$/ }).click();
   await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
   await page.locator('.library-utilities > summary').click();
   await page.locator('.sidebar').getByRole('button', { name: /^All files/ }).click();

@@ -73,7 +73,7 @@ try {
   await expect(page.locator('article')).toHaveCount(1);
   await page.getByRole('button', { name: 'Clear search', exact: true }).click();
   await expect(page.locator('article')).toHaveCount(3);
-  await page.getByRole('button', { name: 'Dismiss completed transfers' }).click();
+  await page.getByRole('button', { name: 'Clear completed uploads' }).click();
   await expect(page.locator('.toast')).toHaveCount(0, { timeout: 6000 });
   await page.locator('.topbar').hover();
   await mkdir('outputs/phase-3', { recursive: true });

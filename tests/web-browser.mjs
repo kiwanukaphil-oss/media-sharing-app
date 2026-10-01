@@ -74,7 +74,7 @@ async function verifyBrowser(engine, options, label) {
     await expect(page.getByRole('dialog')).toContainText('100.0 GB');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Dismiss completed transfers' }).click();
+    await page.getByRole('button', { name: 'Clear completed uploads' }).click();
     await page.screenshot({ path: `.sites-runtime/browser-results/${label}-desktop.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByLabel('Search filenames')).toBeVisible();
@@ -89,9 +89,9 @@ async function verifyBrowser(engine, options, label) {
     await expect(page.locator('article')).toHaveCount(2);
     intentionalOffline = true;
     await context.setOffline(true);
-    await expect(page.getByText(/Connection interrupted. Your queue/)).toBeVisible();
+    await expect(page.getByText(/Offline. Uploads will continue/)).toBeVisible();
     await context.setOffline(false);
-    await expect(page.getByText(/Connection interrupted. Your queue/)).toHaveCount(0);
+    await expect(page.getByText(/Offline. Uploads will continue/)).toHaveCount(0);
     intentionalOffline = false;
     assert.deepEqual(errors, []);
     console.log(`PASS ${label}: upload, exact-byte download, search, trash/restore, final cut, quota, dialog, responsive layout, persistent pairing, offline feedback.`);

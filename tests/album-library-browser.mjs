@@ -44,8 +44,8 @@ try {
   // Changing navigation while upload runs must leave the captured album/section destination intact.
   await page.getByRole('button', { name: '← Back to albums', exact: true }).click();
   await expect(page.locator('.media-card, main img, main video')).toHaveCount(0);
-  await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
-  await page.getByRole('button', { name: 'Dismiss completed transfers', exact: true }).click();
+  await expect(page.locator('.upload-indicator')).toHaveText(/^\d+ uploaded$/, { timeout: 30000 });
+  await page.getByRole('button', { name: 'Clear completed uploads', exact: true }).click();
   for (const [name, description] of [['Spaces & stories', 'Rooms and places worth remembering.'], ['Along the coast', 'A collection for the next escape.'], ['The little details', 'Shapes and small discoveries.'], ['Everyday, lately', 'Ordinary days.'], ['The next chapter', 'Something new starts here.']]) {
     const response = await page.request.post(`${origin}/api/albums`, { headers: { origin }, data: { name, description } });
     assert.equal(response.status(), 200);

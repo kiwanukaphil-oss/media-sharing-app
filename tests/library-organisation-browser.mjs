@@ -48,11 +48,11 @@ async function verifyOrganisation(engine, options, label) {
     ]);
     // Changing the view while transfers run must not change their persisted destination.
     await chooseWorkspaceOption(page, 'Browse library', 'unorganised');
-    await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('.upload-indicator')).toHaveText(/^\d+ uploaded$/, { timeout: 30000 });
     await expect(page.locator('article')).toHaveCount(0);
     await chooseWorkspaceOption(page, 'Browse library', albumId);
     await expect(page.locator('article')).toHaveCount(2);
-    await page.getByRole('button', { name: 'Dismiss completed transfers' }).click();
+    await page.getByRole('button', { name: 'Clear completed uploads' }).click();
     await page.locator('article').filter({ hasText: 'camera-one.raw' }).getByRole('button', { name: 'Rename', exact: true }).click();
     await page.getByLabel('File name', { exact: true }).fill('Product hero');
     await expect(page.getByRole('dialog')).toContainText('Product hero.raw');

@@ -5,6 +5,8 @@ const origin = process.env.RELAY_TEST_ORIGIN || 'http://127.0.0.1:8787';
 assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname));
 const browser = await (process.env.RELAY_UPLOAD_BROWSER === 'webkit' ? webkit : chromium).launch();
 const page = await browser.newPage({ viewport: { width: 430, height: 932 } });
+// Exercise the universal native-input fallback; remembered desktop handles have separate acceptance.
+await page.addInitScript(() => { window.showOpenFilePicker = undefined; });
 const uploads = [];
 const errors = [];
 let workers = 0;
@@ -25,10 +27,12 @@ try {
   await expect(page.getByRole('status')).toContainText('Waiting for selected files');
   const originals = [3, 33, 3].map(size => Buffer.alloc(size * 1024 * 1024 + 17, 83));
   await (await picker).setFiles([1, 2, 3].map(number => ({ name: `Original ${number}.dng`, mimeType: 'application/octet-stream', buffer: originals[number - 1] })));
+  await expect(page.locator('.upload-drawer')).toHaveCount(0);
+  await page.locator('.upload-indicator').click();
   await expect(page.locator('.transfer-row')).toHaveCount(3);
   await expect(page.getByText('Preparing original', { exact: true })).toBeVisible();
-  await expect(page.getByText('Waiting to send', { exact: true })).toHaveCount(2);
-  await expect(page.locator('.tray-note')).toContainText('screen unlocked');
+  await expect(page.getByText('Queued', { exact: true })).toHaveCount(2);
+  await expect(page.locator('.upload-footnote')).toContainText('locking your phone');
   assert.equal(uploads.length, 0);
   releasePreparation();
   await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 60000 });

@@ -232,6 +232,10 @@ async function routeLibraryRequest(request: Request, [resource, id, action, part
   }
   if (resource === "uploads" && id) {
     const item = await requireMedia(device, id, true);
+    // Reconcile only the current actor's upload; no object key, capability or foreign receipt is exposed.
+    if (!action && method === "GET") return Response.json({ status: item.archived_at ? "unavailable" : item.status,
+      uploadId: item.upload_id, partSize: item.part_size, size: item.size, sha256: item.sha256 }, { headers: { "Cache-Control": "no-store" } });
+
     if (action === "part" && method === "POST") {
       if (item.status !== "uploading") throw new ApiError(409, "This transfer is no longer accepting parts.");
       const { number } = await readJson(request, z.object({ number: z.number().int().min(1).max(Math.ceil(item.size / item.part_size)) }));

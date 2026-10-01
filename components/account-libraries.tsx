@@ -1,4 +1,5 @@
 "use client";
+import { navigateInRelay } from "@/lib/app-navigation";
 
 import PendingWorkspaceInvitations, { type PendingWorkspaceInvitation } from "./pending-workspace-invitations";
 import { libraryRoleLabel } from "@/lib/contracts";
@@ -34,8 +35,8 @@ export default function AccountLibraries() {
     setBusy(true); setError("");
     try {
       const result = await requestJson<{ space: AccountSpace }>("auth/personal-space", { method: "POST" });
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Start a newly allocated library with fresh page state.
-      window.location.assign(`/?space=${encodeURIComponent(result.space.id)}`);
+      // Keep application uploads alive while the new page checks authority.
+      navigateInRelay(`/?space=${encodeURIComponent(result.space.id)}`);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "My space could not be created. Please retry.");
       setBusy(false);

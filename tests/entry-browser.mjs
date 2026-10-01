@@ -100,7 +100,7 @@ try {
   await expect(page.getByRole('button', { name: 'Join shared workspace Studio archive' })).toBeVisible();
   await page.goto(`${origin}/workspaces`);
   await page.getByRole('button', { name: 'Join shared workspace Studio archive' }).click();
-  await expect(page).toHaveURL(`${origin}/?space=shared`);
+  await expect(page).toHaveURL(url => url.pathname === '/' && url.searchParams.get('space') === 'shared');
   await expect(page.getByRole('heading', { name: 'A home for every story.' })).toBeVisible();
   assert.equal(invitationJoins, 1);
   await page.goto(`${origin}/workspaces`);

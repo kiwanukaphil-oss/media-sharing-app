@@ -28,6 +28,11 @@ async function verifyTransferPipeline() {
   const begin = await api("uploads", owner, "POST", file);
   assert.equal(begin.status, 200, await begin.clone().text());
   const upload = await begin.json();
+  const pendingReceipt = await api(`uploads/${id}`, owner);
+  assert.equal(pendingReceipt.status, 200);
+  assert.equal(pendingReceipt.headers.get("cache-control"), "no-store");
+  assert.equal((await pendingReceipt.json()).status, "uploading");
+  assert.equal((await api(`uploads/${id}`, stranger)).status, 404, "Recovery receipts must not expose another actor's upload");
   assert.equal((await api("feed", owner).then(response => response.json())).items.length, 0, "Unfinished originals must not be listed");
   assert.equal((await api(`uploads/${id}/part`, stranger, "POST", { number: 1 })).status, 404);
   assert.equal((await api(`uploads/${id}/part`, owner, "POST", { number: 3 })).status, 400);
@@ -48,6 +53,8 @@ async function verifyTransferPipeline() {
   const finished = await api(`uploads/${id}/complete`, owner, "POST", { parts });
   assert.equal(finished.status, 200, await finished.clone().text());
   assert.equal((await api(`uploads/${id}/complete`, owner, "POST", { parts })).status, 200, "Completion must be idempotent");
+  assert.equal((await api(`uploads/${id}`, owner).then(response => response.json())).status, "ready", "Lost completion responses can be reconciled without a source file");
+  assert.equal((await api(`uploads/${id}`, owner, "DELETE")).status, 409, "Cancelling an upload cannot delete a delivered original");
   const download = await api(`media/${id}/download`, owner);
   assert.equal(download.status, 200);
   assert.match(download.headers.get("content-disposition"), /attachment/);
