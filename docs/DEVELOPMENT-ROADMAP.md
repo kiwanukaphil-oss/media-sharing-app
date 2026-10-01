@@ -1,5 +1,12 @@
 # Relay development roadmap
 
+## Media upload workflow assessment - 1 October 2026
+
+- [x] Audit current selection, transfer ownership, navigation, resume, dismissal, cancellation and completion. Document the replacement workflow, browser limits and real-life recovery contract in [the assessment](UPLOAD-WORKFLOW-REVIEW.md).
+- [x] Build and verify a separate [interactive workflow study](../prototypes/relay-upload-workflow/README.md): Chromium/Firefox/WebKit, six widths, quiet restoration, hide/reopen, preserved destinations, pause/resume, recovery and cancellation semantics. Desktop/phone visual inspection passed.
+- [ ] Implement the proposed application-wide manager and capability-based recovery; the study uses simulated files and changes no production behaviour.
+- [ ] Verify real transfers, schema-compatible deployment and physical-device acceptance. Existing phase completion counts remain unchanged.
+
 ## Bulk save to device - 30 September 2026
 
 - [x] 1 October: refine archive modal to the album design system, fix invisible close control and make toolbar action icon-only. Chrome/WebKit responsive, focus and download checks pass.

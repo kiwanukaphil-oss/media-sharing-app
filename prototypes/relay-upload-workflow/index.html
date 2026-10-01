@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Relay — Upload workflow study</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="study"><strong>Workflow study</strong><span>Simulated files · no media is read or uploaded</span><label>Scenario <select id="scenario"><option value="fresh">New upload</option><option value="offline">Connection lost</option><option value="returned">Return to Relay</option><option value="access">File permission needed</option><option value="missing">Originals unavailable</option><option value="mixed">Partial success</option><option value="complete">Completed</option></select></label><button id="advance">Advance demo</button></div>
+  <div class="shell">
+    <aside class="navigation"><a class="wordmark" href="./index.html" aria-label="Relay prototype home">relay<span>•</span></a><label class="workspace-label">Workspace<select id="workspace"><option>Personal</option><option>Studio</option></select></label><nav aria-label="Main"><button data-page="Albums" class="selected">▦ <span>Albums</span></button><button data-page="Uploads">↑ <span>Uploads</span><span id="nav-count" class="count">0</span></button><button data-page="Account">◉ <span>Account</span></button></nav><div class="nav-bottom">Relay / Cobalt</div></aside>
+    <div class="workspace"><header class="topbar"><span id="breadcrumb">Personal / Albums</span><button id="upload-status" class="status" aria-expanded="false" aria-controls="upload-panel">↑ Uploads <span id="status-label">0</span></button></header>
+      <main id="content"></main>
+      <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+      <section id="upload-panel" class="upload-panel" aria-label="Upload details" hidden><div class="panel-heading"><div><span class="eyebrow">TRANSFER ACTIVITY</span><h2>Uploads</h2></div><button id="hide-panel" class="icon-button" aria-label="Hide upload details">×</button></div><div id="panel-content"></div><button class="all-uploads" data-page="Uploads">View all uploads →</button></section>
+    </div>
+  </div>
+  <script src="prototype.js"></script>
+</body>
+</html>
