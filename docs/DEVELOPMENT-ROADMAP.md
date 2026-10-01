@@ -3,7 +3,7 @@
 ## Bulk save to device - 30 September 2026
 
 - [x] 1 October: refine archive modal to the album design system, fix invisible close control and make toolbar action icon-only. Chrome/WebKit responsive, focus and download checks pass.
-- [ ] Publish and inspect the refined download interface.
+- [x] Published `2c5c2f3` as Worker `89be1406-81b8-4301-9b36-e6311bc491dc`; both-origin health and live mobile modal/icon/close-control readback passed.
 
 - [x] Remove instructional dialog paragraphs and shorten status copy as requested.
 - [x] Published `b2d326b` as Worker `12eab076-f42c-46f0-88f0-7e043ec580c7`; both-origin health and live phone-width dialog checks passed.
