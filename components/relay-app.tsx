@@ -36,7 +36,7 @@ import { libraryRoleLabel, formatBytes, MAX_FILE_SIZE, type Category, type Devic
 import { type Transfer } from "@/lib/transfers";
 import { uploadManager } from "@/lib/upload-manager";
 import { rememberOriginalHandle, type OriginalHandle } from "@/lib/upload-sources";
-import { useUploads } from "./upload-application";
+import { useUploadIntake, useUploads } from "./upload-application";
 import { saveVerifiedOriginal, supportsVerifiedSave } from "@/lib/downloads";
 import { startLibraryPolling } from "@/lib/library-polling";
 
@@ -148,7 +148,7 @@ function RelayWorkspace() {
   const [deviceName, setDeviceName] = useState("My desktop");
   const [spaceName, setSpaceName] = useState("Our shared space");
   const fileInput = useRef<HTMLInputElement>(null);
-  const [waitingForFiles, setWaitingForFiles] = useState(false);
+  const uploadIntake = useUploadIntake();
   const queuedImportTransfers = useRef(new Set<string>());
   // File objects and scheduling now belong to the application upload manager.
   const dragDepth = useRef(0);
@@ -427,8 +427,8 @@ function RelayWorkspace() {
   }
   // Queue destinations are immutable; page refresh failures cannot demote completed originals.
   function scheduleTransfer(file: File, transfer: Transfer) {
-    if (session?.role === "viewer") { setError("Viewer access does not allow uploads."); return; }
-    uploadManager.enqueue(file, transfer);
+    if (session?.role === "viewer") return false;
+    return uploadManager.enqueue(file, transfer);
   }
   useEffect(() => {
     const completed = (event: Event) => {
@@ -457,13 +457,29 @@ function RelayWorkspace() {
   }
   useEffect(() => {
     const input = fileInput.current;
-    const cancelled = () => setWaitingForFiles(false);
+    const cancelled = () => uploadManager.endIntake();
     input?.addEventListener("cancel", cancelled);
     return () => input?.removeEventListener("cancel", cancelled);
   }, []);
   // Persistent desktop handles avoid reselection after reload; native input remains the universal fallback.
+  // Everything that can refuse an upload is checked before the picker opens, so nobody selects
+  // files only to have them discarded afterwards.
+  function uploadRefusal() {
+    if (!session) return "Sign in again to upload.";
+    if (session.role === "viewer") return "Viewer access does not allow uploads.";
+    if (filter === "trash") return "Leave Trash before adding files.";
+    if (libraryQuery.scope === "accessible") return "Choose one audience before adding files.";
+    if (librarySurface === "albums") return "Open or create an album before adding files.";
+    const destination = albums.find(album => album.id === libraryQuery.album);
+    if (destination?.archivedAt) return "Unarchive this album before uploading into it.";
+    if (libraryQuery.album && libraryQuery.album !== "unorganised" && !destination) return "This album is no longer available. Choose another album.";
+    return "";
+  }
+  const uploadDestinationLabel = () => [albums.find(album => album.id === libraryQuery.album)?.name || session?.space.name, sections.find(section => section.id === libraryQuery.section)?.name].filter(Boolean).join(" / ");
   async function chooseOriginalFiles() {
-    setWaitingForFiles(true);
+    const refusal = uploadRefusal();
+    if (refusal) { uploadManager.failIntake(refusal); return; }
+    uploadManager.beginIntake(uploadDestinationLabel());
     const picker = (window as Window & { showOpenFilePicker?: (options: { multiple: boolean }) => Promise<OriginalHandle[]> }).showOpenFilePicker;
     if (!picker) { fileInput.current?.click(); return; }
     try {
@@ -471,26 +487,27 @@ function RelayWorkspace() {
       const originals = await Promise.all(handles.map(async handle => { const file = await handle.getFile(); rememberOriginalHandle(file, handle); return file; }));
       await selectOriginals(originals);
     } catch (failure) {
-      if (!(failure instanceof DOMException && failure.name === "AbortError")) fileInput.current?.click();
-    } finally { setWaitingForFiles(false); }
+      if (failure instanceof DOMException && failure.name === "AbortError") uploadManager.endIntake(); else fileInput.current?.click();
+    }
   }
   // Show the entire selection immediately; the queue saves each manifest before sending bytes.
   async function selectOriginals(selected: FileList | File[]) {
-    if (!session || session.role === "viewer" || filter === "trash" || libraryQuery.scope === "accessible") return;
-    if (librarySurface === "albums") { setError("Open or create an album before adding files."); return; }
+    const refusal = uploadRefusal();
+    if (refusal || !session) { uploadManager.failIntake(refusal || "Sign in again to upload."); return; }
     const destination = albums.find(album => album.id === libraryQuery.album);
-    if (destination?.archivedAt) { setError("Unarchive this album before uploading into it."); return; }
-    if (libraryQuery.album && libraryQuery.album !== "unorganised" && !destination) { setError("This album is no longer available. Choose a destination before uploading."); return; }
-    setWaitingForFiles(false);
+    let accepted = 0;
     const uploadBatch = crypto.randomUUID();
     const category = filter === "final" ? "final" : "original";
     const rejected: string[] = [];
     for (const file of Array.from(selected)) {
       if (!file.size || file.size > MAX_FILE_SIZE) { rejected.push(file.name); continue; }
       const transfer: Transfer = { id: crypto.randomUUID(), deviceId: session.deviceId, accountSpaceId, spaceName: session.space.name, name: file.name, size: file.size, mime: file.type || "application/octet-stream", category, accessScopeId: libraryQuery.scope || null, audienceName: libraryQuery.scope ? "Restricted audience" : "General library", albumId: destination?.id, albumName: destination?.name, sectionId: libraryQuery.section && libraryQuery.section !== "unsectioned" ? libraryQuery.section : undefined, sectionName: sections.find(section => section.id === libraryQuery.section)?.name, uploadBatch, parts: [], state: "queued", progress: 0 };
-      scheduleTransfer(file, transfer);
+      if (scheduleTransfer(file, transfer)) accepted++;
     }
-    if (rejected.length) setError(`${rejected.length} ${rejected.length === 1 ? "file was" : "files were"} skipped (empty or over 100 GB): ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}`);
+    // A selection never disappears silently: it either starts visibly or says why it did not.
+    if (accepted) uploadManager.startIntake(accepted, uploadDestinationLabel());
+    else uploadManager.failIntake(rejected.length ? "These files can't be uploaded. Files must not be empty or over 100 GB." : "Nothing was added. These files may already be uploading, or this library needs reloading.");
+    if (rejected.length && accepted) setError(`${rejected.length} ${rejected.length === 1 ? "file was" : "files were"} skipped (empty or over 100 GB): ${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? "…" : ""}`);
   }
   // The invitation is encoded locally so device credentials never reach a third-party QR service.
   async function createInvitation() {
@@ -753,7 +770,7 @@ function RelayWorkspace() {
       <main id="main-content" tabIndex={-1}>
         {session?.restrictedScopes && <AccessScopes value={libraryQuery.scope} refreshLibrary={refreshAudienceAccess} owner={isOwner} onChange={scope => changeLibraryQuery({ ...emptyLibraryQuery, scope })} />}
         {session && librarySurface === "files" && <button className="back-to-albums text-button" onClick={openAlbumLibrary}>← Back to albums</button>}
-        {librarySurface === "files" || !session ? <div className="page-heading"><div className="album-title-group">{currentAlbum && <AlbumCover album={currentAlbum} colour={appearance[currentAlbum.id]?.colour} compact />}<h1>{pageTitle}<span className="title-dot">.</span></h1></div>{filter !== "trash" && canUpload && <div className="page-upload-actions">{isOrganiser && !currentAlbum && <FolderImport accessScopeId={libraryQuery.scope || null} audienceName={libraryQuery.scope ? "Restricted audience" : "General library"} disabled={!session || session.transport === "unconfigured"} spaceName={session?.space.name || "This library"} queue={queueFolderImport} />}<button className="button primary" disabled={!session || session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={chooseOriginalFiles}><Plus size={18} />Add files</button></div>}{filter === "trash" && <button className="button secondary" onClick={() => setFilter("all")}>Back to files</button>}</div> : null}
+        {librarySurface === "files" || !session ? <div className="page-heading"><div className="album-title-group">{currentAlbum && <AlbumCover album={currentAlbum} colour={appearance[currentAlbum.id]?.colour} compact />}<h1>{pageTitle}<span className="title-dot">.</span></h1></div>{filter !== "trash" && canUpload && <div className="page-upload-actions">{isOrganiser && !currentAlbum && <FolderImport accessScopeId={libraryQuery.scope || null} audienceName={libraryQuery.scope ? "Restricted audience" : "General library"} disabled={!session || session.transport === "unconfigured"} spaceName={session?.space.name || "This library"} queue={queueFolderImport} />}<button className="button primary" disabled={!session || session.transport === "unconfigured" || Boolean(currentAlbum?.archivedAt)} onClick={chooseOriginalFiles} aria-busy={uploadIntake.phase === "waiting"}><Plus size={18} />{uploadIntake.phase === "waiting" ? "Getting files…" : "Add files"}</button></div>}{filter === "trash" && <button className="button secondary" onClick={() => setFilter("all")}>Back to files</button>}</div> : null}
         {error && <div className="error-banner" role="alert"><span>{error}</span><button className="icon-button" aria-label="Dismiss error" onClick={() => setError("")}><X size={17} /></button></div>}
         {!online && session && <div className="error-banner" role="status">Offline. Uploads will continue when the connection returns.</div>}
         {session?.transport === "local" && <div className="local-note"><span className="status-dot" />Local workspace · files stay on this computer until hosting is connected.</div>}
@@ -782,8 +799,7 @@ function RelayWorkspace() {
     </div>
 
     {currentAlbum && sectionMoveItems.length > 0 && <SectionPlacement key={currentAlbum.id} album={currentAlbum} sections={sections.filter(section => section.albumId === currentAlbum.id)} files={sectionMoveItems} close={() => setSectionMoveItems([])} refresh={refreshLibrary} clearSelection={() => setSelectedIds(new Set())} feedback={{ setMessage: setFeedbackMessage, setUndo: setUndoLibraryAction }} />}
-    {waitingForFiles && <div className="toast" role="status">Waiting for selected files from your phone or computer. Cloud photos and videos may need to download first.<button className="text-button" onClick={() => setWaitingForFiles(false)}>Dismiss</button></div>}
-    <input ref={fileInput} tabIndex={-1} className="visually-hidden" type="file" multiple aria-label="Choose original files" onChange={event => { setWaitingForFiles(false); if (event.target.files) void selectOriginals(event.target.files); event.target.value = ""; }} />
+    <input ref={fileInput} tabIndex={-1} className="visually-hidden" type="file" multiple aria-label="Choose original files" onChange={event => { if (event.target.files?.length) void selectOriginals(event.target.files); else uploadManager.endIntake(); event.target.value = ""; }} />
 
     {dragging && librarySurface === "files" && canUpload && filter !== "trash" && <div className="drop-overlay"><Upload size={52} /><h2>Drop files to add</h2></div>}
     {/* Legacy combined tray is retired; verified downloads retain their independent cancellation control. */}

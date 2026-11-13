@@ -24,6 +24,7 @@ try {
   await page.route('**/uploads/*/bytes/*', async route => { await gate; await route.continue().catch(() => {}); });
   const large = Buffer.alloc(33 * 1024 * 1024 + 1, 23);
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'large-original.raw', mimeType: 'application/octet-stream', buffer: large });
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('Uploading', { exact: true })).toBeVisible({ timeout: 45000 });
   await page.getByRole('button', { name: 'Pause large-original.raw', exact: true }).click();
@@ -48,6 +49,7 @@ try {
   const secondGate = new Promise(resolve => { releaseSecond = resolve; });
   await page.route('**/uploads/*/bytes/*', async route => { await secondGate; await route.continue().catch(() => {}); });
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'shared-tab.raw', mimeType: 'application/octet-stream', buffer: Buffer.alloc(1024 * 1024, 56) });
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('Uploading', { exact: true })).toBeVisible();
   const observer = await context.newPage();
@@ -72,6 +74,7 @@ try {
   await page.reload();
   await expect(page.getByRole('button', { name: 'Add files', exact: true }).first()).toBeVisible();
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'without-storage.raw', mimeType: 'application/octet-stream', buffer: Buffer.from('original survives unavailable recovery storage') });
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 30000 });
   assert.deepEqual(errors, []);

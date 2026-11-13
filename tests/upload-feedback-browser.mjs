@@ -24,9 +24,12 @@ try {
   await page.route('**/hash-original.worker-*.js', async route => { await preparationGate; await route.continue(); });
   const picker = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Add files', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Waiting for selected files');
+  await expect(page.getByRole('status')).toContainText('Getting your files');
   const originals = [3, 33, 3].map(size => Buffer.alloc(size * 1024 * 1024 + 17, 83));
   await (await picker).setFiles([1, 2, 3].map(number => ({ name: `Original ${number}.dng`, mimeType: 'application/octet-stream', buffer: originals[number - 1] })));
+  // A new selection opens the upload sheet; hiding it leaves the compact indicator.
+  await expect(page.locator('.upload-sheet')).toContainText('Uploading 3 files');
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await expect(page.locator('.upload-drawer')).toHaveCount(0);
   await page.locator('.upload-indicator').click();
   await expect(page.locator('.transfer-row')).toHaveCount(3);
