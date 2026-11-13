@@ -1,5 +1,10 @@
 # Relay development roadmap
 
+## Bulk download reliability - 13 November 2026
+
+- [x] Remove Worker-side SHA-256 re-hashing, speed up CRC-32, batch authority queries, declare an exact archive length and log failures. Local unit, Chrome and WebKit built-Worker checks pass. [Evidence](BULK-DOWNLOAD.md).
+- [ ] Deploy and confirm a real 1 GB+ selection on the canonical domain. Existing phase completion counts remain unchanged.
+
 ## Media upload workflow implementation - 1 October 2026
 
 - [x] Implement and locally verify the application-wide manager and capability-based recovery. [Evidence](UPLOAD-WORKFLOW-IMPLEMENTATION.md).

@@ -5,7 +5,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 
 const bundle=await build({entryPoints:['lib/original-package.ts'],bundle:true,write:false,platform:'node',format:'esm'});
-const {writeOriginalPackage,validatePackageManifest,packageMemoryLimit}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const {writeOriginalPackage,validatePackageManifest,originalPackageLength,packageMemoryLimit}=await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const bytes=Buffer.from('Generated original with exact bytes.'),hash=createHash('sha256').update(bytes).digest('hex');
 const ids=[randomUUID(),randomUUID()],files=ids.map(id=>({id,name:'Same name.txt',size:bytes.length,sha256:hash,suggestedPath:`files/${id}/Same name.txt`}));
 const manifest={format:'relay-metadata',formatVersion:1,files:files.map(file=>({...file,albums:[{name:'Album',section:{name:'Section'}}]}))};
@@ -49,4 +49,20 @@ const chunk=Buffer.alloc(1024*1024,7),largeHash=createHash('sha256');for(let n=0
 const large={files:[{...files[0],size:streamMiB*1024**2,sha256:largeHash.digest('hex')}]};let largestWrite=0,committed=false;
 await writeOriginalPackage(large,{write:async value=>{largestWrite=Math.max(largestWrite,value.length);},close:async()=>{committed=true;},abort:async()=>{committed=false;}},{signal:new AbortController().signal,revalidate:async()=>{},read:async()=>{let count=0;return new Response(new ReadableStream({pull(controller){if(count++<streamMiB)controller.enqueue(chunk);else controller.close();}}));}});
 assert.equal(committed,true);assert.equal(largestWrite,1024*1024);console.log(`PASS ${streamMiB} MiB streamed package; maximum output chunk ${largestWrite} bytes`);
+// Server mode: flat names, no SHA-256 re-hash, and a length known before the first byte. Odd-sized
+// chunks exercise the eight-byte CRC blocks and their remainder; Python recomputes every CRC.
+const serverBytes=Buffer.from(Array.from({length:100003},(_,index)=>(index*31+7)%251)),serverFiles=ids.map(id=>({id,name:'Photo é.jpg',size:serverBytes.length,sha256:'0'.repeat(64),suggestedPath:`files/${id}/Photo é.jpg`}));
+const serverManifest={format:'relay-originals',formatVersion:1,files:serverFiles},serverSink=makeSink(),serverMode={flatNames:true,verifyHashes:false};
+await writeOriginalPackage(serverManifest,serverSink,{...serverMode,signal:new AbortController().signal,revalidate:async()=>{},read:async()=>{let sent=0;return new Response(new ReadableStream({pull(controller){if(sent>=serverBytes.length)return controller.close();const next=Math.min(sent+4099,serverBytes.length);controller.enqueue(serverBytes.subarray(sent,next));sent=next;}}));}});
+assert.equal(serverSink.closed,true);const serverZip=Buffer.concat(serverSink.chunks);assert.equal(serverZip.length,originalPackageLength(serverManifest,serverMode));
+assert.notEqual(originalPackageLength(serverManifest,serverMode),originalPackageLength(serverManifest));
+await writeFile('.sites-runtime/package-test/server.zip',serverZip);
+const serverChecked=spawnSync(process.platform==='win32'?'python':'python3',['-c',`import zipfile,json,sys
+with zipfile.ZipFile(sys.argv[1]) as archive:
+ assert archive.testzip() is None
+ manifest=json.loads(archive.read('manifest.json'))
+ assert 'recorded at upload' in manifest['checksumProvenance']
+ assert all(len(archive.read(file['suggestedPath']))==100003 for file in manifest['files'])
+`,'.sites-runtime/package-test/server.zip'],{encoding:'utf8'});assert.equal(serverChecked.status,0,serverChecked.stderr);
+console.log('PASS server ZIP mode: declared length exact, CRC verified independently, no SHA-256 re-hash');
 console.log('PASS original packages: independent ZIP extraction/CRC/manifest, identical names, SHA-256, bounds, corrupt/truncated/denied originals, final revocation and cancellation without sink commit');
