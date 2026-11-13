@@ -11,6 +11,11 @@ export const runningUploadStates = ["queued", "preparing", "sending", "finalizin
 const emptyUploads: Transfer[] = [];
 
 // This client-only store owns file objects and tasks independently of mounted pages and panels.
+// A user-started selection is announced before any file exists: phones can take a long time to
+// hand files to the page, and that wait must be visible rather than look like a dead button.
+export type UploadIntake = { phase: "idle" | "waiting" | "started" | "error"; destination?: string; message?: string; count?: number; since: number };
+const idleIntake: UploadIntake = { phase: "idle", since: 0 };
+
 class UploadManager {
   private jobs: Transfer[] = emptyUploads;
   private listeners = new Set<() => void>();
@@ -27,6 +32,14 @@ class UploadManager {
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   snapshot = () => this.jobs;
   serverSnapshot = () => emptyUploads;
+  private intake: UploadIntake = idleIntake;
+  intakeSnapshot = () => this.intake;
+  serverIntake = () => idleIntake;
+  private setIntake(intake: UploadIntake) { this.intake = intake; this.publish(); }
+  beginIntake(destination?: string) { this.setIntake({ phase: "waiting", destination, since: Date.now() }); }
+  startIntake(count: number, destination?: string) { this.setIntake({ phase: "started", count, destination, since: Date.now() }); }
+  failIntake(message: string) { this.setIntake({ phase: "error", message, since: Date.now() }); }
+  endIntake() { if (this.intake.phase !== "idle") this.setIntake(idleIntake); }
   private allowed = (job: Transfer) => this.identities.some(identity => identity.id === job.accountSpaceId && identity.actorId === job.deviceId);
   private publish() { this.listeners.forEach(listener => listener()); }
   private update(job: Transfer) {

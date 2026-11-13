@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowUp, Check, ChevronDown, FileImage, Pause, Play, RefreshCw, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, FileImage, LoaderCircle, Pause, Play, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { requestJson, RequestError } from "@/lib/api-client";
 import { formatBytes, type Session } from "@/lib/contracts";
 import { runningUploadStates, uploadManager } from "@/lib/upload-manager";
@@ -12,6 +12,7 @@ import { PresentationShield } from "./presentation-shield";
 import { useActionConfirmation } from "./action-confirmation";
 
 export const useUploads = () => useSyncExternalStore(uploadManager.subscribe, uploadManager.snapshot, uploadManager.serverSnapshot);
+export const useUploadIntake = () => useSyncExternalStore(uploadManager.subscribe, uploadManager.intakeSnapshot, uploadManager.serverIntake);
 const labels: Record<Transfer["state"], string> = { queued: "Queued", preparing: "Preparing original", sending: "Uploading", finalizing: "Finishing upload", paused: "Paused", offline: "Waiting for connection", elsewhere: "Uploading in another tab", "needs-access": "File access needed", "needs-file": "Original needed", error: "Needs attention", complete: "Uploaded" };
 const needsAttention = (job: Transfer) => ["error", "needs-file", "needs-access"].includes(job.state);
 
@@ -56,12 +57,80 @@ export function UploadApplication({ children }: { children: React.ReactNode }) {
     window.addEventListener("relay-navigate", appNavigate);
     return () => { disposed = true; clearInterval(timer); clearInterval(transfers); window.removeEventListener("online", online); window.removeEventListener("offline", online); window.removeEventListener("beforeunload", warn); document.removeEventListener("click", navigate); window.removeEventListener("relay-navigate", appNavigate); };
   }, [router, pathname]);
-  return <PresentationShield>{children}<UploadIndicator /></PresentationShield>;
+  return <PresentationShield>{children}<UploadSheet /><UploadIndicator /></PresentationShield>;
+}
+
+// The sheet opens only for a selection the person has just started, and stays through the whole
+// journey: waiting for the device to hand files over, sending, and the result. Queues restored
+// after a reload stay quiet behind the compact indicator.
+function UploadSheet() {
+  const intake = useUploadIntake();
+  const jobs = useUploads();
+  const pathname = usePathname();
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (intake.phase !== "waiting") return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [intake.phase, intake.since]);
+  useEffect(() => {
+    // A started sheet has nothing to describe once its queue has been cleared or cancelled.
+    if (intake.phase === "started" && !jobs.length) uploadManager.endIntake();
+  }, [intake.phase, jobs.length]);
+  const allUploaded = jobs.length > 0 && jobs.every(job => job.state === "complete");
+  useEffect(() => {
+    // Confirm the result, then get out of the way; the compact indicator keeps the summary.
+    if (intake.phase !== "started" || !allUploaded) return;
+    const timer = setTimeout(() => uploadManager.endIntake(), 4000);
+    return () => clearTimeout(timer);
+  }, [intake.phase, allUploaded]);
+  if (intake.phase === "idle" || pathname === "/uploads") return null;
+  const close = () => uploadManager.endIntake();
+  if (intake.phase === "waiting") {
+    const waited = Math.max(0, Math.floor((now - intake.since) / 1000));
+    return <div className="upload-center"><section className="upload-sheet" role="status" aria-label="Upload">
+      <div className="upload-sheet-head"><LoaderCircle size={24} className="spin" /><div><h2>Getting your files</h2>{intake.destination && <p>{intake.destination}</p>}</div></div>
+      <p className="upload-sheet-note">Your device is handing them over. Videos can take a minute.{waited >= 5 && ` ${Math.floor(waited / 60)}:${String(waited % 60).padStart(2, "0")}`}</p>
+      <div className="upload-sheet-actions"><button onClick={close}>Cancel</button></div>
+    </section></div>;
+  }
+  if (intake.phase === "error") return <div className="upload-center"><section className="upload-sheet attention" role="alert" aria-label="Upload">
+    <div className="upload-sheet-head"><TriangleAlert size={24} /><div><h2>Upload didn&apos;t start</h2><p>{intake.message}</p></div></div>
+    <div className="upload-sheet-actions"><button onClick={close}>Close</button></div>
+  </section></div>;
+  if (!jobs.length) return null;
+  const total = jobs.reduce((sum, job) => sum + job.size, 0);
+  const sent = jobs.reduce((sum, job) => sum + (job.state === "complete" ? job.size : job.sentBytes ?? job.size * job.progress / 100), 0);
+  const completed = jobs.filter(job => job.state === "complete").length;
+  const attention = jobs.filter(needsAttention).length;
+  const active = jobs.filter(job => runningUploadStates.includes(job.state));
+  const resumable = jobs.filter(job => ["paused", "offline", "error"].includes(job.state));
+  const current = jobs.find(job => ["preparing", "sending", "finalizing"].includes(job.state)) ?? active[0];
+  const speed = jobs.find(job => job.state === "sending")?.bytesPerSecond;
+  const finished = completed === jobs.length;
+  const files = (count: number) => `${count} ${count === 1 ? "file" : "files"}`;
+  const title = finished ? `${files(completed)} uploaded` : active.length ? `Uploading ${files(jobs.length - completed)}` : attention ? `${files(attention)} need attention` : "Uploads paused";
+  return <div className="upload-center"><section className={`upload-sheet${attention ? " attention" : ""}`} aria-label="Upload">
+    <div className="upload-sheet-head">{finished ? <Check size={24} /> : attention && !active.length ? <TriangleAlert size={24} /> : <ArrowUp size={24} />}<div><h2 role="status">{title}</h2>{intake.destination && <p>{intake.destination}</p>}</div><button className="upload-icon" aria-label="Hide upload progress" onClick={close}><X size={20} /></button></div>
+    <progress max={Math.max(total, 1)} value={sent} aria-label="Total upload progress" />
+    <p className="upload-sheet-figures">{completed} of {jobs.length} · {formatBytes(sent)} of {formatBytes(total)}{speed && speed > 0 && !finished ? ` · about ${Math.max(1, Math.ceil((total - sent) / speed / 60))} min left` : ""}</p>
+    {current && <p className="upload-sheet-current"><strong>{current.name}</strong><span>{labels[current.state]}{current.state === "preparing" ? ` ${current.preparationProgress ?? 0}%` : current.state === "sending" ? ` ${Math.round(current.progress)}%` : ""}</span></p>}
+    {attention > 0 && active.length > 0 && <p className="upload-sheet-alert">{files(attention)} need attention</p>}
+    {active.length > 0 && <p className="upload-sheet-note">Keep Relay open on this screen until uploads finish.</p>}
+    <div className="upload-sheet-actions">
+      {finished ? <button className="primary" onClick={close}>Done</button> : <>
+        {active.length > 0 && <button onClick={() => active.forEach(job => uploadManager.pause(job.id))}><Pause size={15} />Pause</button>}
+        {!active.length && resumable.length > 0 && <button className="primary" onClick={() => resumable.forEach(job => void uploadManager.resume(job.id))}><Play size={15} />Resume</button>}
+      </>}
+      <Link href="/uploads" onClick={close}>Details</Link>
+    </div>
+  </section></div>;
 }
 
 // Details are opt-in; neither restore, new jobs nor errors can expand the panel or steal focus.
 function UploadIndicator() {
   const jobs = useUploads();
+  const intake = useUploadIntake();
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -85,7 +154,7 @@ function UploadIndicator() {
     if (expanded) document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [expanded]);
-  if (!jobs.length || pathname === "/uploads") return null;
+  if (!jobs.length || pathname === "/uploads" || intake.phase !== "idle") return null;
   const completed = jobs.filter(job => job.state === "complete").length;
   const attention = jobs.filter(needsAttention).length;
   const active = jobs.some(job => runningUploadStates.includes(job.state));

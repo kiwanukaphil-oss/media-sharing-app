@@ -32,6 +32,9 @@ try {
     { name: 'trip-one.raw', mimeType: 'application/octet-stream', buffer: first },
     { name: 'trip-two.raw', mimeType: 'application/octet-stream', buffer: second },
   ]);
+  // A new selection opens the upload sheet; hiding it leaves the compact indicator.
+  await expect(page.locator('.upload-sheet')).toContainText('Uploading 2 files');
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await expect(page.locator('.upload-indicator')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Upload details' })).toHaveCount(0);
   await page.locator('.upload-indicator').click();
@@ -66,6 +69,7 @@ try {
   const holdBytes = new Promise(resolve => { releaseBytes = resolve; });
   await page.route('**/uploads/*/bytes/*', async route => { await holdBytes; await route.continue().catch(() => {}); });
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'recovery.raw', mimeType: 'application/octet-stream', buffer: first });
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('Uploading', { exact: true })).toBeVisible({ timeout: 30000 });
   await expect(page.getByText('Recovery copy saved on this device', { exact: true })).toBeVisible();
@@ -99,6 +103,7 @@ try {
     else await route.continue();
   });
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'lost-receipt.raw', mimeType: 'application/octet-stream', buffer: second });
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await expect(page.getByText('All files delivered', { exact: true })).toBeVisible({ timeout: 45000 });
   assert.ok(lost);
@@ -113,6 +118,7 @@ try {
     { name: 'network-loss.raw', mimeType: 'application/octet-stream', buffer: first },
     { name: 'deliberate-pause.raw', mimeType: 'application/octet-stream', buffer: second },
   ]);
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await page.getByRole('button', { name: 'Pause deliberate-pause.raw', exact: true }).click();
   await expect(page.getByText('Uploading', { exact: true })).toBeVisible({ timeout: 30000 });
@@ -137,6 +143,7 @@ try {
     await completionGate; await route.fulfill({ response }).catch(() => {});
   });
   await page.getByLabel('Choose original files', { exact: true }).setInputFiles({ name: 'cancel-after-commit.raw', mimeType: 'application/octet-stream', buffer: second });
+  await page.getByRole('button', { name: 'Hide upload progress', exact: true }).click();
   await page.locator('.upload-indicator').click();
   await expect.poll(() => committed, { timeout: 45000 }).toBe(true);
   await page.getByRole('button', { name: 'Cancel cancel-after-commit.raw', exact: true }).click();
