@@ -38,5 +38,6 @@ Assumption recorded: an access revocation now stops a running archive within 15 
 Evidence: TypeScript and focused lint pass; `tests/original-package.mjs` adds a server-mode case (exact declared length, independent Python CRC check, odd chunk sizes); `tests/bulk-download-browser.mjs` passes in Chrome and WebKit against the built Worker in workerd. A local 1,400 MiB archive costs 1.1 s CPU against 6.2 s for the previous hashing alone (desktop Node, not Worker CPU).
 
 - [x] Implement and verify locally on `main`.
-- [ ] Deploy to production and confirm a real multi-gigabyte selection on the canonical domain.
+- [x] Deployed compatible release `75ed721` (`ui/album-library-live`, selection query filtered by workspace because schema 0020 has no audience scoping) as Worker `58438ec4-5b2a-44e0-8012-7b5de1540463` at 100% on 13 November 2026, 05:58 UTC. Both-origin health and anonymous bulk/feed denial pass. Rollback: `05e8f162-b56d-4c1b-b1a7-82611e02051f`. No schema change.
+- [ ] Owner confirmation of a real multi-gigabyte selection on the canonical domain (the reported 29-file, 1.4 GB case).
 - [ ] Not changed: an error response before streaming is still saved by the browser as `relay-originals.zip`; downloads are not resumable; ZIP64 and whole-album download are not implemented.

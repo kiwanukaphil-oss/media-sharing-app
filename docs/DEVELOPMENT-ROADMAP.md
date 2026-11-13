@@ -3,7 +3,8 @@
 ## Bulk download reliability - 13 November 2026
 
 - [x] Remove Worker-side SHA-256 re-hashing, speed up CRC-32, batch authority queries, declare an exact archive length and log failures. Local unit, Chrome and WebKit built-Worker checks pass. [Evidence](BULK-DOWNLOAD.md).
-- [ ] Deploy and confirm a real 1 GB+ selection on the canonical domain. Existing phase completion counts remain unchanged.
+- [x] Deployed `75ed721` as Worker `58438ec4-5b2a-44e0-8012-7b5de1540463` at 100%; both-origin health passes.
+- [ ] Owner confirmation of a real 1 GB+ selection on the canonical domain. Existing phase completion counts remain unchanged.
 
 ## Media upload workflow implementation - 1 October 2026
 
