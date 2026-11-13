@@ -58,6 +58,9 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
   assert.equal(checked.status, 0, checked.stderr);
   const feed = await (await page.request.get(`${origin}/api/feed`)).json();
   const ids = feed.items.map(item => item.id).join(',');
+  // The declared length must survive the framework and equal the bytes sent, so truncation is detectable.
+  const archive = await page.request.get(`${origin}/api/bulk-download?ids=${ids}`);
+  assert.equal(Number(archive.headers()['content-length']), (await archive.body()).length);
   assert.equal((await page.request.get(`${origin}/api/bulk-download?ids=${feed.items[0].id},${feed.items[0].id}&check=1`)).status(), 400);
   const stranger = await browser.newContext();
   assert.equal((await stranger.request.get(`${origin}/api/bulk-download?ids=${ids}`)).status(), 401);
