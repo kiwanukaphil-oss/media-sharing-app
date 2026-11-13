@@ -7,7 +7,20 @@ export type PackageSink={write:(bytes:Uint8Array)=>Promise<void>;close:()=>Promi
 export const packageByteLimit=2*1024**3,packageMemoryLimit=64*1024**2;
 const encoder=new TextEncoder();
 const crcTable=Uint32Array.from({length:256},(_,value)=>{for(let bit=0;bit<8;bit++)value=(value>>>1)^((value&1)?0xedb88320:0);return value>>>0;});
-const updateCrc=(crc:number,bytes:Uint8Array)=>{for(const byte of bytes)crc=(crc>>>8)^crcTable[(crc^byte)&255];return crc;};
+// Slicing-by-8 tables: table k advances a byte's CRC contribution by k further bytes.
+const crcTables=[crcTable];
+for(let level=1;level<8;level++){const previous=crcTables[level-1];crcTables.push(Uint32Array.from(previous,value=>((value>>>8)^crcTable[value&255])>>>0));}
+// Server ZIP streaming is bounded by Worker CPU time, so consume eight bytes per step
+// instead of one; the trailing loop handles the remaining 0-7 bytes of each chunk.
+const updateCrc=(crc:number,bytes:Uint8Array)=>{
+  const [t0,t1,t2,t3,t4,t5,t6,t7]=crcTables,blockEnd=bytes.length-(bytes.length%8);let index=0;
+  for(;index<blockEnd;index+=8){
+    const mixed=crc^(bytes[index]|(bytes[index+1]<<8)|(bytes[index+2]<<16)|(bytes[index+3]<<24));
+    crc=t7[mixed&255]^t6[(mixed>>>8)&255]^t5[(mixed>>>16)&255]^t4[mixed>>>24]^t3[bytes[index+4]]^t2[bytes[index+5]]^t1[bytes[index+6]]^t0[bytes[index+7]];
+  }
+  for(;index<bytes.length;index++)crc=(crc>>>8)^crcTable[(crc^bytes[index])&255];
+  return crc;
+};
 const record=(length:number)=>{const bytes=new Uint8Array(length);return {bytes,view:new DataView(bytes.buffer)};};
 
 // ZIP paths are generated separately from display names. Never accept traversal or reserved paths
@@ -25,21 +38,37 @@ export function validatePackageManifest(manifest:PackageManifest,limit=packageBy
   return total;
 }
 
+// Paths, manifest bytes and the exact archive length are fixed before any byte is written, so a
+// server can declare Content-Length and a truncated transfer is detectable by the browser.
+function planOriginalPackage(manifest:PackageManifest,flatNames:boolean,verifyHashes:boolean){
+  const total=validatePackageManifest(manifest);
+  const packagedFiles=manifest.files.map((file,index)=>flatNames?{...file,suggestedPath:`${String(index+1).padStart(3,"0")}-${file.suggestedPath.split("/").at(-1)}`} : file);
+  const checksumProvenance=verifyHashes?"Every original in a completed package was independently SHA-256 verified during creation.":"SHA-256 recorded at upload; each original's size and ZIP CRC-32 were checked during creation.";
+  const metadata=encoder.encode(JSON.stringify({...manifest,files:packagedFiles,includesOriginalBytes:true,checksumProvenance},null,2));
+  if(metadata.length>4*1024**2)throw new Error("The package manifest is too large.");
+  // Each entry costs a 30-byte header, 16-byte descriptor and 46-byte directory record plus its path twice.
+  const entryLength=(path:string,size:number)=>92+2*encoder.encode(path).length+size;
+  const length=packagedFiles.reduce((sum,file)=>sum+entryLength(file.suggestedPath,file.size),entryLength('manifest.json',metadata.length)+22);
+  return {total,packagedFiles,metadata,length};
+}
+export const originalPackageLength=(manifest:PackageManifest,options:{flatNames?:boolean;verifyHashes?:boolean}={})=>planOriginalPackage(manifest,!!options.flatNames,options.verifyHashes!==false).length;
+
 // A stored ZIP needs only a small central directory in memory. Each original is independently
 // SHA-256 checked; CRC32 makes the resulting archive interoperable with ordinary ZIP readers.
 // No central directory or sink commit is written after cancellation, access loss or partial bytes.
-export async function writeOriginalPackage(manifest:PackageManifest,sink:PackageSink,options:{flatNames?:boolean;signal:AbortSignal;read:(file:PackageFile)=>Promise<Response>;revalidate:()=>Promise<void>;onProgress?:(bytes:number,total:number)=>void}){
+export async function writeOriginalPackage(manifest:PackageManifest,sink:PackageSink,options:{flatNames?:boolean;verifyHashes?:boolean;signal:AbortSignal;read:(file:PackageFile)=>Promise<Response>;revalidate:()=>Promise<void>;onProgress?:(bytes:number,total:number)=>void}){
   const central:Uint8Array[]=[];let offset=0,processed=0;
   const write=async(bytes:Uint8Array)=>{options.signal.throwIfAborted();await sink.write(bytes);offset+=bytes.length;};
   // Bit 3 permits streaming CRC/size in a data descriptor; bit 11 identifies UTF-8 paths.
+  const verifyHashes=options.verifyHashes!==false;
   const entry=async(path:string,size:number,body:ReadableStream<Uint8Array>,expectedHash?:string)=>{
     const name=encoder.encode(path),start=offset,header=record(30+name.length);
     header.view.setUint32(0,0x04034b50,true);header.view.setUint16(4,20,true);header.view.setUint16(6,0x808,true);header.view.setUint16(12,33,true);header.view.setUint16(26,name.length,true);header.bytes.set(name,30);try{await write(header.bytes);}catch(error){await body.cancel().catch(()=>{});throw error;}
-    const reader=body.getReader(),hash=sha256.create();let crc=0xffffffff,count=0;
+    const reader=body.getReader(),hash=expectedHash&&verifyHashes?sha256.create():null;let crc=0xffffffff,count=0;
     const cancel=()=>{void reader.cancel().catch(()=>{});};options.signal.addEventListener('abort',cancel,{once:true});
     try{
-      for(;;){const {done,value}=await reader.read();options.signal.throwIfAborted();if(done)break;count+=value.length;if(count>size)throw new Error("An original exceeded its recorded size.");hash.update(value);crc=updateCrc(crc,value);await write(value);if(expectedHash){processed+=value.length;options.onProgress?.(processed,total);}}
-      if(count!==size||(expectedHash&&bytesToHex(hash.digest())!==expectedHash))throw new Error("An original failed verification. No complete package was saved; retry the package.");
+      for(;;){const {done,value}=await reader.read();options.signal.throwIfAborted();if(done)break;count+=value.length;if(count>size)throw new Error("An original exceeded its recorded size.");hash?.update(value);crc=updateCrc(crc,value);await write(value);if(expectedHash){processed+=value.length;options.onProgress?.(processed,total);}}
+      if(count!==size||(hash&&bytesToHex(hash.digest())!==expectedHash))throw new Error("An original failed verification. No complete package was saved; retry the package.");
     }finally{options.signal.removeEventListener('abort',cancel);await reader.cancel().catch(()=>{});reader.releaseLock();}
     crc=(crc^0xffffffff)>>>0;
     const descriptor=record(16);descriptor.view.setUint32(0,0x08074b50,true);descriptor.view.setUint32(4,crc,true);descriptor.view.setUint32(8,size,true);descriptor.view.setUint32(12,size,true);await write(descriptor.bytes);
@@ -47,10 +76,7 @@ export async function writeOriginalPackage(manifest:PackageManifest,sink:Package
   };
   let total=0;
   try{
-    total=validatePackageManifest(manifest);
-    const packagedFiles=manifest.files.map((file,index)=>options.flatNames?{...file,suggestedPath:`${String(index+1).padStart(3,"0")}-${file.suggestedPath.split("/").at(-1)}`} : file);
-    const metadata=encoder.encode(JSON.stringify({...manifest,files:packagedFiles,includesOriginalBytes:true,checksumProvenance:"Every original in a completed package was independently SHA-256 verified during creation."},null,2));
-    if(metadata.length>4*1024**2)throw new Error("The package manifest is too large.");
+    const plan=planOriginalPackage(manifest,!!options.flatNames,verifyHashes),{packagedFiles,metadata}=plan;total=plan.total;
     await entry('manifest.json',metadata.length,new Blob([metadata]).stream());
     for(const file of packagedFiles){options.signal.throwIfAborted();const response=await options.read(file);if(!response.ok||!response.body)throw new Error("An original is unavailable. Retry after checking your access.");await entry(file.suggestedPath,file.size,response.body,file.sha256);}
     await options.revalidate();options.signal.throwIfAborted();

@@ -26,3 +26,17 @@ Replaced the bulk download text button with the matching 19 px toolbar icon, pre
 Chrome/WebKit acceptance passed at 320, 430 and 1280 px, including close contrast, icon-only label, no horizontal overflow, focus return, native ZIP download and original-byte checks. Mobile screenshots inspected; TypeScript, focused lint, build and dry-run passed.
 
 - [x] Published `2c5c2f3` as Worker `89be1406-81b8-4301-9b36-e6311bc491dc`. Both-origin health and canonical-domain icon-only action, dark close icon, visible Cancel and concise modal checks passed; live phone-width screenshot inspected.
+
+## Large-selection reliability - 13 November 2026
+
+The owner reported inconsistent bulk downloads; a 29-file, 1.4 GB selection failed. Code review found three causes: pure-JavaScript SHA-256 and byte-wise CRC-32 over every byte inside the Worker (CPU time grows with archive size and can end the stream mid-file), about 13 D1 queries per file (roughly 70 files reaches the 1,000-query request ceiling, failing in the final recheck after all bytes were sent), and no declared length or failure log, so a truncated archive looked like a finished download. The live failure itself was not reproduced or read from production logs; the CPU cause is inferred from the reported size.
+
+Changes: the Worker no longer re-hashes originals (size and CRC-32 are still checked; the manifest states that SHA-256 values are those recorded at upload); CRC-32 uses slicing-by-8; the selection is read in one query, each file costs one query plus one R2 read, account/workspace authority is rechecked when a file starts if 15 seconds have passed and always, with the whole selection in one query, before the directory; the response is a fixed-length stream with an exact `Content-Length`; failures log a redacted `relay_bulk_download_failed` event. The browser package (`components/original-package.tsx`) still verifies SHA-256. Limits remain 100 files and 2 GiB.
+
+Assumption recorded: an access revocation now stops a running archive within 15 seconds at the next file boundary, or at the final recheck, instead of at every file boundary. No complete archive is produced in either case.
+
+Evidence: TypeScript and focused lint pass; `tests/original-package.mjs` adds a server-mode case (exact declared length, independent Python CRC check, odd chunk sizes); `tests/bulk-download-browser.mjs` passes in Chrome and WebKit against the built Worker in workerd. A local 1,400 MiB archive costs 1.1 s CPU against 6.2 s for the previous hashing alone (desktop Node, not Worker CPU).
+
+- [x] Implement and verify locally on `main`.
+- [ ] Deploy to production and confirm a real multi-gigabyte selection on the canonical domain.
+- [ ] Not changed: an error response before streaming is still saved by the browser as `relay-originals.zip`; downloads are not resumable; ZIP64 and whole-album download are not implemented.
