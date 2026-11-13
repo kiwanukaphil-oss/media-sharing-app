@@ -25,7 +25,11 @@ const relayWorker = {
       if (status >= 500) console.error(JSON.stringify({ event: "relay_worker_failed", status, requestId }));
       response = Response.json({ error: "Service temporarily unavailable. Please retry.", requestId }, { status, headers: { ...privateResponseHeaders(requestId), ...(status === 429 ? { "Retry-After": "60" } : {}) } });
     }
-    const secured = new Response(response.body, response);
+    // The framework re-wraps route bodies, which turns a fixed-length archive into a chunked one.
+    // Restore the declared length so browsers and download managers can show progress and detect truncation.
+    const declaredLength = url.pathname === "/api/bulk-download" && response.headers.get("Content-Type") === "application/zip" ? response.headers.get("Content-Length") : null;
+    const body = response.body && declaredLength && /^\d+$/.test(declaredLength) ? response.body.pipeThrough(new FixedLengthStream(Number(declaredLength))) : response.body;
+    const secured = new Response(body, response);
     for (const [name, value] of Object.entries(responseSecurityHeaders)) {
       if (name === "Content-Security-Policy" && process.env.NODE_ENV !== "production") continue;
       secured.headers.set(name, value);
