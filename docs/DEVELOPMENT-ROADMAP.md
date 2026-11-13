@@ -5,7 +5,8 @@
 - [x] Remove Worker-side SHA-256 re-hashing, speed up CRC-32, batch authority queries, declare an exact archive length and log failures. Local unit, Chrome and WebKit built-Worker checks pass. [Evidence](BULK-DOWNLOAD.md).
 - [x] Deployed `75ed721` as Worker `58438ec4-5b2a-44e0-8012-7b5de1540463` at 100%; both-origin health passes.
 - [x] Live reproduction found `exceededCpu`; deployed 1 MiB reads and a 300 s CPU ceiling as Worker `c29278f8-e948-4c90-851b-311a48c51cbd`. A live 29-file, 1.5 GB archive now completes (51 s CPU).
-- [ ] Restore the stripped `Content-Length`, profile the remaining CPU cost, and obtain owner confirmation through IDM. Existing phase completion counts remain unchanged.
+- [x] Owner confirmed an IDM download; exact `Content-Length` restored and live-verified as Worker `554a0623-7143-42bd-8a8a-8f65d7f099c6`.
+- [ ] Profile the remaining Worker CPU cost (about 33 ms per MiB). Existing phase completion counts remain unchanged.
 
 ## Media upload workflow implementation - 1 October 2026
 
