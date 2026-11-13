@@ -1,4 +1,5 @@
 {
+  "limits": { "cpu_ms": 300000 },
   "ratelimits": [
     {
       "name": "API_RATE_LIMIT",

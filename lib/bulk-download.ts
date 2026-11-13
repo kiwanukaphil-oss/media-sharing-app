@@ -20,6 +20,26 @@ async function readSelectedOriginals(device: ActiveDevice, ids: string[]) {
   });
 }
 
+// R2 hands JavaScript small chunks, and each one costs promise and stream bookkeeping in every
+// stage of the response. Reading at least 1 MiB at a time natively keeps Worker CPU time
+// proportional to bytes (the CRC) instead of to chunk count, which previously exhausted the limit.
+const archiveChunkBytes = 1024 * 1024;
+function readInLargeChunks(body: ReadableStream<Uint8Array>) {
+  let reader: ReadableStreamBYOBReader;
+  try { reader = body.getReader({ mode: "byob" }); } catch { return body; }
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const target = new Uint8Array(archiveChunkBytes);
+      // readAtLeast is a Workers extension; a plain BYOB read still fills the large buffer where it is absent.
+      const filling = reader as ReadableStreamBYOBReader & { readAtLeast?: (minimum: number, view: Uint8Array) => Promise<ReadableStreamReadResult<Uint8Array>> };
+      const { value, done } = filling.readAtLeast ? await filling.readAtLeast(archiveChunkBytes, target) : await reader.read(target);
+      if (value?.byteLength) controller.enqueue(value);
+      if (done || !value?.byteLength) controller.close();
+    },
+    cancel: reason => reader.cancel(reason),
+  }, { highWaterMark: 0 });
+}
+
 const sameOriginal = (current: SelectedOriginal, initial: SelectedOriginal) => current.status === "ready" && !current.archived_at
   && current.object_key === initial.object_key && current.sha256 === initial.sha256 && current.size === initial.size && current.name === initial.name;
 
@@ -64,7 +84,7 @@ export async function bulkDownload(request: Request, device: ActiveDevice, stora
       if (!sameOriginal(current, initialById.get(file.id)!)) throw new ApiError(409, "A selected file changed. Retry the download.");
       const original = await storage.get(current.object_key);
       if (!original) throw new ApiError(404, "An original is unavailable.");
-      return new Response(original.body);
+      return new Response(readInLargeChunks(original.body));
     },
     revalidate: async () => {
       await recheckAccess();
