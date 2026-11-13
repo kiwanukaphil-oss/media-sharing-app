@@ -1,5 +1,4 @@
 import { ApiError, database, type ActiveDevice } from "./server";
-import { resourceAudienceAuthority } from "./asset-scope-authority";
 import { portableFilePath } from "./portable-file-path";
 import { originalPackageLength, validatePackageManifest, writeOriginalPackage } from "./original-package";
 
@@ -7,13 +6,12 @@ type SelectedOriginal = { id: string; name: string; size: number; sha256: string
 // Authority is rechecked when a file starts if this long has passed, and always before the directory.
 const accessRecheckIntervalMs = 15_000;
 
-// One query reads the whole selection under the caller's current audience, in the requested order.
+// One query reads the whole selection within the caller's workspace, in the requested order.
 // A missing row means the file is absent or outside this library, exactly as a single lookup reports it.
 async function readSelectedOriginals(device: ActiveDevice, ids: string[]) {
-  const audience = resourceAudienceAuthority(device);
   const { results } = await database().prepare(`SELECT id, name, size, sha256, status, archived_at, object_key FROM media
-    WHERE space_id = ? AND id IN (SELECT value FROM json_each(?)) AND ${audience.sql}`)
-    .bind(device.space_id, JSON.stringify(ids), ...audience.bindings).all<SelectedOriginal>();
+    WHERE space_id = ? AND id IN (SELECT value FROM json_each(?))`)
+    .bind(device.space_id, JSON.stringify(ids)).all<SelectedOriginal>();
   const found = new Map(results.map(file => [file.id, file]));
   return ids.map(id => {
     const file = found.get(id);
