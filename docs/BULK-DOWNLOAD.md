@@ -43,5 +43,5 @@ Evidence: TypeScript and focused lint pass; `tests/original-package.mjs` adds a 
 - [x] Second deployment `c29278f8-e948-4c90-851b-311a48c51cbd` (13 November 2026, 06:17 UTC, 100%): originals are read in 1 MiB chunks and `limits.cpu_ms` is 300000 in `deploy/runtime-policy.json`. The same reproduction completed: 1,596,072,882 bytes, outcome `ok`, 51.0 s CPU, 111 s wall. A three-file live archive has a valid end-of-directory record and entry count. Both-origin health passes. Rollback: `58438ec4-5b2a-44e0-8012-7b5de1540463`, then `05e8f162-b56d-4c1b-b1a7-82611e02051f`.
 - [ ] CPU is still about 33 ms per MiB, so the 1 MiB reads did not remove the cost; the raised ceiling is what lets large archives finish (a 2 GiB archive needs roughly 70 s). The remaining cost is unprofiled.
 - [ ] The live response has no `Content-Length` although the route sets one; a layer after the route removes it, so truncation is still not detectable by the browser or a download manager.
-- [ ] Owner confirmation through IDM, including extraction.
+- [x] Owner confirmed on 13 November 2026 that the download through IDM completed successfully.
 - [ ] Not changed: an error response before streaming is still saved by the browser as `relay-originals.zip`; downloads are not resumable; ZIP64 and whole-album download are not implemented.
